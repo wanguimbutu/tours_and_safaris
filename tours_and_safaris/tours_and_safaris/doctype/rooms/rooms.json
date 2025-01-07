@@ -1,0 +1,92 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-06 15:47:29.416327",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "room_number",
+  "room_type",
+  "capacity",
+  "base_price",
+  "status",
+  "section_break_atkp",
+  "amenities"
+ ],
+ "fields": [
+  {
+   "fieldname": "room_number",
+   "fieldtype": "Data",
+   "label": "Room Number"
+  },
+  {
+   "fieldname": "room_type",
+   "fieldtype": "Select",
+   "label": "Room Type",
+   "options": "Standard\nDeluxe\nBasic"
+  },
+  {
+   "fieldname": "capacity",
+   "fieldtype": "Int",
+   "label": "Capacity"
+  },
+  {
+   "fieldname": "base_price",
+   "fieldtype": "Currency",
+   "label": "Base Price"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Available\nBooked\nUnder Maintenance"
+  },
+  {
+   "fieldname": "section_break_atkp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amenities",
+   "fieldtype": "Table",
+   "label": "Amenities",
+   "options": "Amenities"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-06 16:35:04.943972",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Rooms",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [
+  {
+   "color": "Green",
+   "title": "Available"
+  },
+  {
+   "color": "Blue",
+   "title": "Under Maintenance"
+  },
+  {
+   "color": "Blue",
+   "title": "Booked"
+  }
+ ]
+}
