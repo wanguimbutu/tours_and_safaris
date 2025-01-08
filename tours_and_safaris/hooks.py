@@ -5,6 +5,14 @@ app_description = "Frappe app for tours and safaris"
 app_email = "wanguimbutu@gmail.com"
 app_license = "mit"
 
+
+doc_events = {
+    "Maintenance Log": {
+        "on_submit": "tours_and_safaris.tours_and_safaris.doctype.booking.booking.on_submit_maintenance_log"
+    }
+}
+
+
 # Apps
 # ------------------
 
