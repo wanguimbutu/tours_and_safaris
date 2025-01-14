@@ -6,6 +6,8 @@
  "engine": "InnoDB",
  "field_order": [
   "customer_name",
+  "customer_email",
+  "kitlist",
   "column_break_wttd",
   "check_in_date",
   "check_out_date",
@@ -20,7 +22,13 @@
   "proposed_activities_section",
   "activities",
   "section_break_9jt5",
-  "accommodation_type"
+  "accommodation_type",
+  "meals_section",
+  "dietary_needs",
+  "section_break_qpcx",
+  "column_break_nyte",
+  "column_break_jcbo",
+  "proposed_total_cost"
  ],
  "fields": [
   {
@@ -111,12 +119,50 @@
    "fieldtype": "Select",
    "label": "Accommodation Type",
    "options": "\nRooms\nTents\nOwn Tents"
+  },
+  {
+   "fieldname": "kitlist",
+   "fieldtype": "Attach",
+   "label": "KitList"
+  },
+  {
+   "fieldname": "customer_email",
+   "fieldtype": "Data",
+   "label": "Customer Email"
+  },
+  {
+   "fieldname": "section_break_qpcx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_nyte",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_jcbo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "proposed_total_cost",
+   "fieldtype": "Currency",
+   "label": "Proposed Total Cost",
+   "read_only": 1
+  },
+  {
+   "fieldname": "meals_section",
+   "fieldtype": "Section Break",
+   "label": "Meals"
+  },
+  {
+   "fieldname": "dietary_needs",
+   "fieldtype": "Small Text",
+   "label": "Dietary Needs"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-14 12:50:17.606819",
+ "modified": "2025-01-14 14:24:42.273421",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
