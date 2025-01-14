@@ -1,0 +1,142 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-14 12:23:17.676235",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "customer_name",
+  "column_break_wttd",
+  "check_in_date",
+  "check_out_date",
+  "amended_from",
+  "kyc_section",
+  "number_of_persons",
+  "column_break_euag",
+  "no_of_adults",
+  "no_of_children",
+  "guests_information_section",
+  "guests_details",
+  "proposed_activities_section",
+  "activities",
+  "section_break_9jt5",
+  "accommodation_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_9jt5",
+   "fieldtype": "Section Break",
+   "label": "Accommodataion"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Booking Inquiry",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Link",
+   "label": "Customer Name",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "column_break_wttd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "bold": 1,
+   "fieldname": "check_in_date",
+   "fieldtype": "Datetime",
+   "label": "Check In Date"
+  },
+  {
+   "bold": 1,
+   "fieldname": "check_out_date",
+   "fieldtype": "Datetime",
+   "label": "Check Out Date"
+  },
+  {
+   "fieldname": "kyc_section",
+   "fieldtype": "Section Break",
+   "label": "KYC"
+  },
+  {
+   "fieldname": "number_of_persons",
+   "fieldtype": "Int",
+   "label": "Number of Persons"
+  },
+  {
+   "fieldname": "column_break_euag",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "no_of_adults",
+   "fieldtype": "Int",
+   "label": "No. of Adults"
+  },
+  {
+   "fieldname": "no_of_children",
+   "fieldtype": "Int",
+   "label": "No. of Children"
+  },
+  {
+   "fieldname": "guests_information_section",
+   "fieldtype": "Section Break",
+   "label": "Guests Information"
+  },
+  {
+   "fieldname": "guests_details",
+   "fieldtype": "Table",
+   "label": "Guests Details",
+   "options": "Guest Information"
+  },
+  {
+   "fieldname": "proposed_activities_section",
+   "fieldtype": "Section Break",
+   "label": "Proposed Activities"
+  },
+  {
+   "fieldname": "activities",
+   "fieldtype": "Table",
+   "label": "Activities",
+   "options": "Proposed Activities"
+  },
+  {
+   "fieldname": "accommodation_type",
+   "fieldtype": "Select",
+   "label": "Accommodation Type",
+   "options": "\nRooms\nTents\nOwn Tents"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-01-14 12:50:17.606819",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Booking Inquiry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
