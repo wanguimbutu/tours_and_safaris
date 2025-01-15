@@ -28,6 +28,7 @@
    "fetch_from": "room_name.status",
    "fieldname": "status",
    "fieldtype": "Read Only",
+   "in_list_view": 1,
    "label": "Status"
   },
   {
@@ -35,6 +36,7 @@
    "fetch_from": "room_name.capacity",
    "fieldname": "capacity",
    "fieldtype": "Read Only",
+   "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Capacity"
   }
@@ -42,7 +44,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-14 12:53:44.706446",
+ "modified": "2025-01-15 14:20:08.443977",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Room Booking",
