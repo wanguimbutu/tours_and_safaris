@@ -5,17 +5,148 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_6n1v"
+  "record_section",
+  "name1",
+  "type",
+  "initial_state",
+  "frequency",
+  "quantity",
+  "next_check_date",
+  "inspection_frequency",
+  "notify_date",
+  "uploads_section",
+  "image",
+  "optional_info_section",
+  "category",
+  "manufacturer",
+  "weight",
+  "certifications",
+  "additional_manufacturer_details_section",
+  "part_number",
+  "lifespan",
+  "description",
+  "comments_section",
+  "comments"
  ],
  "fields": [
   {
-   "fieldname": "section_break_6n1v",
-   "fieldtype": "Section Break"
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "label": "Name"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Harnesses\nHelmets\nCarabiners\nAnchors\nLanyards"
+  },
+  {
+   "fieldname": "initial_state",
+   "fieldtype": "Select",
+   "label": "Initial State",
+   "options": "\nMissing\nQuarantine\nMonitor - Safe for use\nRetired\nSafe for Use"
+  },
+  {
+   "fieldname": "frequency",
+   "fieldtype": "Select",
+   "label": "Frequency",
+   "options": "Yearly\nMonthly"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Int",
+   "label": "Quantity",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "next_check_date",
+   "fieldtype": "Date",
+   "label": "Next Check Date"
+  },
+  {
+   "fieldname": "notify_date",
+   "fieldtype": "Date",
+   "label": "Notify Date"
+  },
+  {
+   "fieldname": "inspection_frequency",
+   "fieldtype": "Data",
+   "label": "Inspection Frequency"
+  },
+  {
+   "fieldname": "record_section",
+   "fieldtype": "Section Break",
+   "label": "Record"
+  },
+  {
+   "fieldname": "optional_info_section",
+   "fieldtype": "Section Break",
+   "label": "Optional Info"
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Data",
+   "label": "Category"
+  },
+  {
+   "fieldname": "manufacturer",
+   "fieldtype": "Data",
+   "label": "Manufacturer"
+  },
+  {
+   "fieldname": "weight",
+   "fieldtype": "Data",
+   "label": "Weight"
+  },
+  {
+   "fieldname": "certifications",
+   "fieldtype": "Data",
+   "label": "Certifications"
+  },
+  {
+   "fieldname": "additional_manufacturer_details_section",
+   "fieldtype": "Section Break",
+   "label": "Additional Manufacturer Details"
+  },
+  {
+   "fieldname": "part_number",
+   "fieldtype": "Data",
+   "label": "Part Number"
+  },
+  {
+   "fieldname": "lifespan",
+   "fieldtype": "Data",
+   "label": "Lifespan"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "comments_section",
+   "fieldtype": "Section Break",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Small Text",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "uploads_section",
+   "fieldtype": "Section Break",
+   "label": "Uploads"
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach",
+   "label": "Image"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-15 12:01:12.169851",
+ "modified": "2025-01-15 15:36:08.713216",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment",
