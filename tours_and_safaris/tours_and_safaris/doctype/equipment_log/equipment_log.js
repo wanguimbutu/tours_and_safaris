@@ -1,7 +1,7 @@
 // Copyright (c) 2025, wanguimbutu and contributors
 // For license information, please see license.txt
 
-// frappe.ui.form.on("Booking Inquiry", {
+// frappe.ui.form.on("Equipment Log", {
 // 	refresh(frm) {
 
 // 	},

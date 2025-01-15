@@ -5,6 +5,8 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "activity",
+  "section_break_ybdc",
   "customer_name",
   "customer_email",
   "kitlist",
@@ -17,8 +19,6 @@
   "column_break_euag",
   "no_of_adults",
   "no_of_children",
-  "guests_information_section",
-  "guests_details",
   "proposed_activities_section",
   "activities",
   "section_break_9jt5",
@@ -93,17 +93,6 @@
    "label": "No. of Children"
   },
   {
-   "fieldname": "guests_information_section",
-   "fieldtype": "Section Break",
-   "label": "Guests Information"
-  },
-  {
-   "fieldname": "guests_details",
-   "fieldtype": "Table",
-   "label": "Guests Details",
-   "options": "Guest Information"
-  },
-  {
    "fieldname": "proposed_activities_section",
    "fieldtype": "Section Break",
    "label": "Proposed Activities"
@@ -132,7 +121,8 @@
   },
   {
    "fieldname": "section_break_qpcx",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Cost"
   },
   {
    "fieldname": "column_break_nyte",
@@ -157,12 +147,22 @@
    "fieldname": "dietary_needs",
    "fieldtype": "Small Text",
    "label": "Dietary Needs"
+  },
+  {
+   "fieldname": "activity",
+   "fieldtype": "Select",
+   "label": "Activity",
+   "options": "\nCamping\nMt.Kenya\nSafari"
+  },
+  {
+   "fieldname": "section_break_ybdc",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-14 14:24:42.273421",
+ "modified": "2025-01-15 14:15:10.235711",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
