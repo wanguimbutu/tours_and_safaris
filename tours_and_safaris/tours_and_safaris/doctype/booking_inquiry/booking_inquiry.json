@@ -26,7 +26,7 @@
   "room_booking",
   "no_of_tents_needed",
   "meals_section",
-  "dietary_needs",
+  "dietary_specifications",
   "section_break_qpcx",
   "column_break_nyte",
   "column_break_jcbo",
@@ -149,12 +149,6 @@
    "label": "Meals"
   },
   {
-   "bold": 1,
-   "fieldname": "dietary_needs",
-   "fieldtype": "Small Text",
-   "label": "Dietary Needs"
-  },
-  {
    "fieldname": "activity",
    "fieldtype": "Select",
    "label": "Activity",
@@ -174,12 +168,18 @@
    "fieldname": "no_of_tents_needed",
    "fieldtype": "Int",
    "label": "No. of Tents Needed"
+  },
+  {
+   "fieldname": "dietary_specifications",
+   "fieldtype": "Table MultiSelect",
+   "label": "Dietary Specifications",
+   "options": "Diet"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-15 14:46:32.394716",
+ "modified": "2025-01-21 12:09:42.299142",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",

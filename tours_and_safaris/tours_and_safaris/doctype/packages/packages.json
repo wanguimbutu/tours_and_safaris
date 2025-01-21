@@ -1,0 +1,86 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-21 12:13:56.974853",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "package_name",
+  "customer_group",
+  "column_break_sagz",
+  "group_size",
+  "activties_section",
+  "activity",
+  "meals_section",
+  "meal_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "package_name",
+   "fieldtype": "Data",
+   "label": "Package Name"
+  },
+  {
+   "fieldname": "customer_group",
+   "fieldtype": "Link",
+   "label": "Customer Group",
+   "options": "Customer Group"
+  },
+  {
+   "fieldname": "activties_section",
+   "fieldtype": "Section Break",
+   "label": "Activties"
+  },
+  {
+   "fieldname": "activity",
+   "fieldtype": "Table",
+   "label": "Activity ",
+   "options": "Activity Package"
+  },
+  {
+   "fieldname": "group_size",
+   "fieldtype": "Int",
+   "label": "Group Size",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "column_break_sagz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "meals_section",
+   "fieldtype": "Section Break",
+   "label": "Meals"
+  },
+  {
+   "fieldname": "meal_type",
+   "fieldtype": "Table MultiSelect",
+   "label": "Meal Type",
+   "options": "Meal Type Table"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-21 12:57:37.535549",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Packages",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
