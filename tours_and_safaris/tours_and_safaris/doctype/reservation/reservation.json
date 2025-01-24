@@ -1,0 +1,313 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-24 14:26:56.926397",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "reservartion_type_section",
+  "activity",
+  "column_break_allb",
+  "amended_from",
+  "kyc_section",
+  "customer_name",
+  "customer_email",
+  "customer_group",
+  "kitlist",
+  "column_break_rddc",
+  "check_in_date",
+  "check_out_date",
+  "section_break_jq1u",
+  "no_of_people",
+  "column_break_llxt",
+  "no_of_adults",
+  "no_of_children",
+  "general_requirements_section",
+  "transport_required",
+  "meals_required",
+  "safari_section",
+  "destination",
+  "transport_type",
+  "meal_type",
+  "column_break_qxyf",
+  "mtkenya_section",
+  "package_name",
+  "package_type",
+  "proposed_activities_section",
+  "activities",
+  "accommodation_section",
+  "accommodation_type",
+  "room_booking",
+  "no_of_tents",
+  "dietary_requirements_section",
+  "diets",
+  "cost_section",
+  "column_break_stiu",
+  "column_break_wqdw",
+  "proposed_total_cost",
+  "guest_details_tab",
+  "guest_details",
+  "dashboard_tab"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_jq1u",
+   "fieldtype": "Section Break",
+   "label": "Guest Details"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Reservation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "reservartion_type_section",
+   "fieldtype": "Section Break",
+   "label": "Reservartion Type"
+  },
+  {
+   "fieldname": "activity",
+   "fieldtype": "Select",
+   "label": "Activity",
+   "options": "\nCamping\nMt.Kenya\nSafari"
+  },
+  {
+   "fieldname": "column_break_allb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "kyc_section",
+   "fieldtype": "Section Break",
+   "label": "KYC"
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Link",
+   "label": "Customer Name",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "customer_email",
+   "fieldtype": "Data",
+   "label": "Customer Email"
+  },
+  {
+   "fieldname": "kitlist",
+   "fieldtype": "Attach",
+   "label": "KitList"
+  },
+  {
+   "fieldname": "column_break_rddc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "check_in_date",
+   "fieldtype": "Datetime",
+   "label": "Check In Date"
+  },
+  {
+   "fieldname": "check_out_date",
+   "fieldtype": "Data",
+   "label": "Check Out Date"
+  },
+  {
+   "fieldname": "no_of_people",
+   "fieldtype": "Int",
+   "label": "No. of People"
+  },
+  {
+   "fieldname": "column_break_llxt",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "no_of_adults",
+   "fieldtype": "Int",
+   "label": "No. of Adults"
+  },
+  {
+   "fieldname": "no_of_children",
+   "fieldtype": "Int",
+   "label": "No. of Children"
+  },
+  {
+   "fieldname": "guest_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Guest Details"
+  },
+  {
+   "allow_bulk_edit": 1,
+   "bold": 1,
+   "fieldname": "guest_details",
+   "fieldtype": "Table",
+   "label": "Guest Details",
+   "options": "Guest Details"
+  },
+  {
+   "fieldname": "dashboard_tab",
+   "fieldtype": "Tab Break",
+   "label": "Dashboard",
+   "show_dashboard": 1
+  },
+  {
+   "fieldname": "safari_section",
+   "fieldtype": "Section Break",
+   "label": "Safari"
+  },
+  {
+   "fieldname": "destination",
+   "fieldtype": "Data",
+   "label": "Destination"
+  },
+  {
+   "fieldname": "transport_type",
+   "fieldtype": "Select",
+   "label": "Transport Type",
+   "options": "\nSWS TENTS\nOWN TENTS"
+  },
+  {
+   "fieldname": "meal_type",
+   "fieldtype": "Select",
+   "label": "Meal Type",
+   "options": "\nSWS meals\nOther"
+  },
+  {
+   "fieldname": "column_break_qxyf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "mtkenya_section",
+   "fieldtype": "Section Break",
+   "label": "Mt.Kenya"
+  },
+  {
+   "fieldname": "package_name",
+   "fieldtype": "Link",
+   "label": "Package Name",
+   "options": "Packages"
+  },
+  {
+   "fieldname": "package_type",
+   "fieldtype": "Link",
+   "label": "Package Type",
+   "options": "Package Type"
+  },
+  {
+   "fieldname": "proposed_activities_section",
+   "fieldtype": "Section Break",
+   "label": "Proposed Activities"
+  },
+  {
+   "fieldname": "activities",
+   "fieldtype": "Table",
+   "label": "Activities",
+   "options": "Activity Package"
+  },
+  {
+   "fieldname": "accommodation_section",
+   "fieldtype": "Section Break",
+   "label": "Accommodation"
+  },
+  {
+   "fieldname": "accommodation_type",
+   "fieldtype": "Select",
+   "label": "Accommodation Type",
+   "options": "\nRooms\nSWS Tents\nOwn Tents"
+  },
+  {
+   "fieldname": "room_booking",
+   "fieldtype": "Table",
+   "label": "Room Booking",
+   "options": "Room Booking"
+  },
+  {
+   "fieldname": "no_of_tents",
+   "fieldtype": "Int",
+   "label": "No. of Tents"
+  },
+  {
+   "fieldname": "dietary_requirements_section",
+   "fieldtype": "Section Break",
+   "label": "Dietary Requirements"
+  },
+  {
+   "fieldname": "diets",
+   "fieldtype": "Table MultiSelect",
+   "label": "Diets",
+   "options": "Diet"
+  },
+  {
+   "fieldname": "customer_group",
+   "fieldtype": "Link",
+   "label": "Customer Group",
+   "options": "Customer Group"
+  },
+  {
+   "fieldname": "general_requirements_section",
+   "fieldtype": "Section Break",
+   "label": "General Requirements"
+  },
+  {
+   "default": "0",
+   "fieldname": "transport_required",
+   "fieldtype": "Check",
+   "label": "Transport Required"
+  },
+  {
+   "default": "0",
+   "fieldname": "meals_required",
+   "fieldtype": "Check",
+   "label": "Meals Required"
+  },
+  {
+   "fieldname": "cost_section",
+   "fieldtype": "Section Break",
+   "label": "Cost"
+  },
+  {
+   "fieldname": "column_break_stiu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_wqdw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "bold": 1,
+   "fieldname": "proposed_total_cost",
+   "fieldtype": "Currency",
+   "label": "Proposed Total Cost",
+   "non_negative": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-01-24 16:31:23.824037",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Reservation",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,53 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-22 15:40:42.129338",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "guest_name",
+  "age",
+  "allergies",
+  "dietary_restictions"
+ ],
+ "fields": [
+  {
+   "bold": 1,
+   "fieldname": "guest_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Guest Name"
+  },
+  {
+   "fieldname": "age",
+   "fieldtype": "Data",
+   "label": "Age"
+  },
+  {
+   "fieldname": "allergies",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Allergies"
+  },
+  {
+   "fieldname": "dietary_restictions",
+   "fieldtype": "Table MultiSelect",
+   "label": "Dietary Restictions",
+   "options": "Diet"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-22 15:43:19.353245",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Guest Details",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

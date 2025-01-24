@@ -1,28 +1,42 @@
 // Copyright (c) 2025, wanguimbutu and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on('Booking Inquiry', {
-    refresh: function(frm) {
-        // Hide both fields initially
-        frm.set_df_property('no_of_tents_needed', 'hidden', 1);
+ frappe.ui.form.on("Reservation", {
+ 	refresh:function(frm) {
+        frm.set_df_property('safari_section', 'hidden', 1);
+        frm.set_df_property('mtkenya_section', 'hidden', 1);
         frm.set_df_property('room_booking', 'hidden', 1);
+        frm.set_df_property('no_of_tents', 'hidden', 1);
 
-        // Calculate total cost on form refresh
         calculate_total_cost(frm);
+ 	},
+    activity:function(frm){
+        if (frm.doc.activity === 'Safari'){
+            frm.set_df_property('safari_section', 'hidden', 0);
+            frm.set_df_property('mtkenya_section', 'hidden', 1);
+        }else if(frm.doc.activity === 'Mt.Kenya'){
+            frm.set_df_property('mtkenya_section', 'hidden', 0);
+            frm.set_df_property('safari_section', 'hidden', 1);
+        }else{
+            frm.set_df_property('safari_section', 'hidden', 1);
+            frm.set_df_property('mtkenya_section', 'hidden', 1);
+        }
     },
     accommodation_type: function(frm) {
         // Hide both fields initially
-        frm.set_df_property('no_of_tents_needed', 'hidden', 1);
+        frm.set_df_property('no_of_tents', 'hidden', 1);
         frm.set_df_property('room_booking', 'hidden', 1);
 
         // Show fields based on the selected accommodation type
         if (frm.doc.accommodation_type === 'Rooms') {
             frm.set_df_property('room_booking', 'hidden', 0);
-        } else if (frm.doc.accommodation_type === 'Tents') {
-            frm.set_df_property('no_of_tents_needed', 'hidden', 0);
+        } else if (frm.doc.accommodation_type === 'SWS Tents') {
+            frm.set_df_property('no_of_tents', 'hidden', 0);
+        } else if (frm.doc.accommodation_type === 'Own Tents') {
+            frm.set_df_property('no_of_tents', 'hidden', 0);
         }
-    },
-    // Recalculate total cost when activities table changes
+    
+    },// Recalculate total cost when activities table changes
     activities_add: function(frm) {
         calculate_total_cost(frm);
     },
@@ -66,3 +80,5 @@ function calculate_total_cost(frm) {
     // Update the proposed total cost field
     frm.set_value('proposed_total_cost', total_cost);
 }
+
+ 
