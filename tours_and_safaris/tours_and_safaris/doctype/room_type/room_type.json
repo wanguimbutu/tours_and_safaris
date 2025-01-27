@@ -1,33 +1,27 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:package_type",
- "creation": "2025-01-24 15:40:04.197315",
+ "autoname": "field:room_type",
+ "creation": "2025-01-27 14:56:32.083303",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "package_type",
-  "cost"
+  "room_type"
  ],
  "fields": [
   {
-   "fieldname": "package_type",
+   "fieldname": "room_type",
    "fieldtype": "Data",
-   "label": "Package Type",
+   "label": "Room Type",
    "unique": 1
-  },
-  {
-   "fieldname": "cost",
-   "fieldtype": "Currency",
-   "label": "Cost"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-27 14:37:51.849575",
+ "modified": "2025-01-27 14:57:12.626557",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
- "name": "Package Type",
+ "name": "Room Type",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
