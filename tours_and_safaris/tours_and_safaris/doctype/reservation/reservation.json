@@ -11,6 +11,7 @@
   "amended_from",
   "kyc_section",
   "customer_name",
+  "customer",
   "customer_email",
   "customer_group",
   "kitlist",
@@ -41,6 +42,7 @@
   "accommodation_type",
   "room_booking",
   "no_of_tents",
+  "room_type",
   "dietary_requirements_section",
   "diets",
   "cost_section",
@@ -294,12 +296,24 @@
    "fieldtype": "Link",
    "label": "Provider Name",
    "options": "Service Providers"
+  },
+  {
+   "fetch_from": "customer_name.customer_name",
+   "fieldname": "customer",
+   "fieldtype": "Read Only",
+   "label": "Customer"
+  },
+  {
+   "fieldname": "room_type",
+   "fieldtype": "Link",
+   "label": "Room Type",
+   "options": "Room Type"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-27 14:27:56.013513",
+ "modified": "2025-01-27 14:59:30.169921",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
