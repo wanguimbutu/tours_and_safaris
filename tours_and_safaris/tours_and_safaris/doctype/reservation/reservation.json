@@ -112,7 +112,7 @@
   },
   {
    "fieldname": "check_out_date",
-   "fieldtype": "Data",
+   "fieldtype": "Datetime",
    "label": "Check Out Date"
   },
   {
@@ -287,7 +287,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-24 16:31:23.824037",
+ "modified": "2025-01-27 09:46:15.301359",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
