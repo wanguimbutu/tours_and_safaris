@@ -60,38 +60,14 @@ frappe.ui.form.on("Reservation", {
         }
     },
 
-    on_submit: function (frm) {
-        if (frm.doc.docstatus === 1) {
-            // Create an Event for the calendar
-            frappe.call({
-                method: "frappe.client.insert",
-                args: {
-                    doc: {
-                        doctype: "Event",
-                        subject: `Reservation for ${frm.doc.customer_name}`,
-                        starts_on: frm.doc.check_in_date,
-                        ends_on: frm.doc.check_out_date,
-                        description: `
-                            Reservation Details:
-                            - Rooms Booked: ${(frm.doc.room_booking || []).map(room => room.room_name).join(", ")}
-                            - Number of Tents: ${frm.doc.no_of_tents || "N/A"}
-                            - Total Guests: ${frm.doc.no_of_people || "N/A"}
-                        `,
-                        event_type: "Public",
-                        reference_doctype: "Reservation",
-                        reference_name: frm.doc.name
-                    }
-                },
-                callback: function (response) {
-                    if (response.message) {
-                        frappe.msgprint({
-                            title: __("Event Created"),
-                            message: `Reservation added to the calendar successfully.`,
-                            indicator: "green"
-                        });
-                    }
-                }
-            });
+    check_in_date: function (frm) {
+        if (frm.doc.check_in_date && frm.doc.check_out_date) {
+            fetch_calendar_events(frm);
+        }
+    },
+    check_out_date: function (frm) {
+        if (frm.doc.check_in_date && frm.doc.check_out_date) {
+            fetch_calendar_events(frm);
         }
     },
 
@@ -137,7 +113,6 @@ frappe.ui.form.on("Reservation", {
             });
         }
     },
-
     activity: function (frm) {
         if (frm.doc.activity === "Safari") {
             frm.set_df_property("safari_section", "hidden", 0);
@@ -170,9 +145,7 @@ frappe.ui.form.on("Reservation", {
                         package.activity.forEach(activity => {
                             const new_row = frm.add_child("activities");
                             new_row.activity_name = activity.activity_name;
-                            //new_row.description = activity.description || "";
                             new_row.cost = activity.cost || 0;
-                            //new_row.quantity = activity.quantity || 1;
                         });
 
                         frm.refresh_field("activities");
@@ -182,6 +155,7 @@ frappe.ui.form.on("Reservation", {
             });
         }
     },
+
     activities_add: function (frm) {
         calculate_total_cost(frm);
     },
@@ -214,6 +188,42 @@ frappe.ui.form.on("Reservation", {
         }
     }
 });
+
+function fetch_calendar_events(frm) {
+    frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+            doctype: "Event",
+            filters: [
+                ["starts_on", "<=", frm.doc.check_out_date],
+                ["ends_on", ">=", frm.doc.check_in_date]
+            ],
+            fields: ["name", "subject", "starts_on", "ends_on", "description"]
+        },
+        callback: function (response) {
+            const events = response.message || [];
+            if (events.length) {
+                let event_details = events.map(event => `
+                    <b>${event.subject}</b><br>
+                    <i>${event.starts_on} to ${event.ends_on}</i><br>
+                    ${event.description || "No description"}<br><br>
+                `).join("");
+
+                frappe.msgprint({
+                    title: __("Events Found"),
+                    message: event_details,
+                    wide: true
+                });
+            } else {
+                frappe.msgprint({
+                    title: __("No Events Found"),
+                    message: "There are no events scheduled for the selected period.",
+                    indicator: "orange"
+                });
+            }
+        }
+    });
+}
 
 function calculate_total_cost(frm) {
     let total_cost = 0;
