@@ -1,11 +1,14 @@
 frappe.ui.form.on("Reservation", {
     refresh: function (frm) {
-    
         calculate_total_cost(frm);
-
         toggle_accommodation_fields(frm);
 
-        if (frm.doc.docstatus === 1) { 
+        // Ensure room_booking stays visible if Rooms are selected
+        if (frm.doc.accommodation_type === "Rooms") {
+            frm.set_df_property("room_booking", "hidden", 0);
+        }
+
+        if (frm.doc.docstatus === 1) {
             frm.add_custom_button('Create Quotation', function () {
                 if (!frm.doc.customer_name) {
                     frappe.msgprint(__('Please ensure the Customer Name field is filled in the Reservation.'));
@@ -20,23 +23,20 @@ frappe.ui.form.on("Reservation", {
                             customer: frm.doc.customer_name,
                             custom_check_in_date: frm.doc.check_in_date,
                             custom_check_out_date: frm.doc.check_out_date,
+                            custom_reservation: frm.doc.name,
                             items: [
-                        
                                 ...(frm.doc.activities || []).map(activity => ({
                                     item_name: activity.activity_name,
                                     description: activity.description || "",
                                     qty: activity.quantity || 1,
                                     rate: activity.cost || 0
                                 })),
-
                                 ...(frm.doc.room_booking || []).map(room => ({
                                     item_name: room.room_name || "Room",
                                     description: `Room Booking: ${room.room_name || "N/A"}`,
                                     qty: 1,
                                     rate: room.price || 0
                                 })),
-
-                            
                                 ...(frm.doc.no_of_tents || []).map(tent => ({
                                     item_name: "Tent",
                                     description: `Tent: ${tent.tent_name || "N/A"}`,
@@ -56,27 +56,132 @@ frappe.ui.form.on("Reservation", {
                         }
                     }
                 });
-            }, __("Actions")); 
+            }, __("Actions"));
+        }
+    },
+
+    on_submit: function (frm) {
+        if (frm.doc.docstatus === 1) {
+            // Create an Event for the calendar
+            frappe.call({
+                method: "frappe.client.insert",
+                args: {
+                    doc: {
+                        doctype: "Event",
+                        subject: `Reservation for ${frm.doc.customer_name}`,
+                        starts_on: frm.doc.check_in_date,
+                        ends_on: frm.doc.check_out_date,
+                        description: `
+                            Reservation Details:
+                            - Rooms Booked: ${(frm.doc.room_booking || []).map(room => room.room_name).join(", ")}
+                            - Number of Tents: ${frm.doc.no_of_tents || "N/A"}
+                            - Total Guests: ${frm.doc.no_of_people || "N/A"}
+                        `,
+                        event_type: "Public",
+                        reference_doctype: "Reservation",
+                        reference_name: frm.doc.name
+                    }
+                },
+                callback: function (response) {
+                    if (response.message) {
+                        frappe.msgprint({
+                            title: __("Event Created"),
+                            message: `Reservation added to the calendar successfully.`,
+                            indicator: "green"
+                        });
+                    }
+                }
+            });
         }
     },
 
     accommodation_type: function (frm) {
         toggle_accommodation_fields(frm);
-    },
 
-    activity: function (frm) {
-        if (frm.doc.activity === 'Safari') {
-            frm.set_df_property('safari_section', 'hidden', 0);
-            frm.set_df_property('mtkenya_section', 'hidden', 1);
-        } else if (frm.doc.activity === 'Mt.Kenya') {
-            frm.set_df_property('mtkenya_section', 'hidden', 0);
-            frm.set_df_property('safari_section', 'hidden', 1);
+        // Ensure room_type is visible if Rooms are selected
+        if (frm.doc.accommodation_type === "Rooms") {
+            frm.set_df_property("room_type", "hidden", 0);
+            frm.set_df_property("room_booking", "hidden", 1); // Hide room_booking until room_type is selected
         } else {
-            frm.set_df_property('safari_section', 'hidden', 1);
-            frm.set_df_property('mtkenya_section', 'hidden', 1);
+            frm.set_df_property("room_type", "hidden", 1);
         }
     },
 
+    room_type: function (frm) {
+        if (frm.doc.room_type) {
+            // Fetch available rooms based on selected room type
+            frappe.call({
+                method: "frappe.client.get_list",
+                args: {
+                    doctype: "Rooms",
+                    filters: {
+                        room_type: frm.doc.room_type,
+                        status: "Available"
+                    },
+                    fields: ["name", "room_number", "base_price"]
+                },
+                callback: function (response) {
+                    const available_rooms = response.message || [];
+                    frm.set_value("room_booking", []); // Clear room_booking table
+
+                    // Populate room_booking table with available rooms
+                    available_rooms.forEach(room => {
+                        const new_row = frm.add_child("room_booking");
+                        new_row.room_name = room.room_name;
+                        new_row.price = room.price;
+                    });
+
+                    frm.refresh_field("room_booking");
+                    frm.set_df_property("room_booking", "hidden", 0); // Make room_booking visible
+                }
+            });
+        }
+    },
+
+    activity: function (frm) {
+        if (frm.doc.activity === "Safari") {
+            frm.set_df_property("safari_section", "hidden", 0);
+            frm.set_df_property("mtkenya_section", "hidden", 1);
+        } else if (frm.doc.activity === "Mt.Kenya") {
+            frm.set_df_property("mtkenya_section", "hidden", 0);
+            frm.set_df_property("safari_section", "hidden", 1);
+        } else {
+            frm.set_df_property("safari_section", "hidden", 1);
+            frm.set_df_property("mtkenya_section", "hidden", 1);
+        }
+    },
+    package_name: function (frm) {
+        if (frm.doc.package_name) {
+            // Fetch activities from the selected package
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "Packages",
+                    name: frm.doc.package_name
+                },
+                callback: function (response) {
+                    const package = response.message;
+
+                    if (package && package.activity) {
+                        // Clear existing activities table
+                        frm.clear_table("activities");
+
+                        // Add activities from the package to the activities table
+                        package.activity.forEach(activity => {
+                            const new_row = frm.add_child("activities");
+                            new_row.activity_name = activity.activity_name;
+                            //new_row.description = activity.description || "";
+                            new_row.cost = activity.cost || 0;
+                            //new_row.quantity = activity.quantity || 1;
+                        });
+
+                        frm.refresh_field("activities");
+                        calculate_total_cost(frm);
+                    }
+                }
+            });
+        }
+    },
     activities_add: function (frm) {
         calculate_total_cost(frm);
     },
@@ -110,38 +215,32 @@ frappe.ui.form.on("Reservation", {
     }
 });
 
-
 function calculate_total_cost(frm) {
     let total_cost = 0;
 
-    
     if (frm.doc.activities) {
         frm.doc.activities.forEach(activity => {
             total_cost += flt(activity.cost);
         });
     }
 
-    
     if (frm.doc.room_booking) {
         frm.doc.room_booking.forEach(room => {
             total_cost += flt(room.price);
         });
     }
 
-    
     frm.set_value('proposed_total_cost', total_cost);
 }
 
-
 function toggle_accommodation_fields(frm) {
-    
     frm.set_df_property('no_of_tents', 'hidden', 1);
     frm.set_df_property('room_booking', 'hidden', 1);
-
+    frm.set_df_property('room_type', 'hidden', 1);
 
     if (frm.doc.accommodation_type === 'Rooms') {
-        frm.set_df_property('room_booking', 'hidden', 0);
+        frm.set_df_property('room_type', 'hidden', 0); // Show room_type
     } else if (frm.doc.accommodation_type === 'SWS Tents' || frm.doc.accommodation_type === 'Own Tents') {
-        frm.set_df_property('no_of_tents', 'hidden', 0);
+        frm.set_df_property('no_of_tents', 'hidden', 0); // Show no_of_tents for tents
     }
 }

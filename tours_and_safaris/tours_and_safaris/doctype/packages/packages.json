@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:package_name",
  "creation": "2025-01-21 12:13:56.974853",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -18,7 +19,8 @@
   {
    "fieldname": "package_name",
    "fieldtype": "Data",
-   "label": "Package Name"
+   "label": "Package Name",
+   "unique": 1
   },
   {
    "fieldname": "customer_group",
@@ -61,10 +63,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-21 12:57:37.535549",
+ "modified": "2025-01-28 11:43:33.281993",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Packages",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
