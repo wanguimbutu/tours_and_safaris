@@ -77,8 +77,10 @@
   {
    "fieldname": "activity",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Activity",
-   "options": "\nCamping\nMt.Kenya\nSafari"
+   "options": "\nCamping\nMt.Kenya\nSafari",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_allb",
@@ -92,8 +94,10 @@
   {
    "fieldname": "customer_name",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Customer Name",
-   "options": "Customer"
+   "options": "Customer",
+   "reqd": 1
   },
   {
    "fieldname": "customer_email",
@@ -112,17 +116,22 @@
   {
    "fieldname": "check_in_date",
    "fieldtype": "Datetime",
-   "label": "Check In Date"
+   "in_list_view": 1,
+   "label": "Check In Date",
+   "reqd": 1
   },
   {
    "fieldname": "check_out_date",
    "fieldtype": "Datetime",
-   "label": "Check Out Date"
+   "in_list_view": 1,
+   "label": "Check Out Date",
+   "reqd": 1
   },
   {
    "fieldname": "no_of_people",
    "fieldtype": "Int",
-   "label": "No. of People"
+   "label": "No. of People",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_llxt",
@@ -313,7 +322,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-27 14:59:30.169921",
+ "modified": "2025-01-28 15:07:16.946266",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
