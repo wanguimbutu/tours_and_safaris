@@ -1,0 +1,39 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-29 10:59:56.290461",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "transport_name",
+  "price"
+ ],
+ "fields": [
+  {
+   "fieldname": "transport_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Transport Name",
+   "options": "Transport Service"
+  },
+  {
+   "fieldname": "price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Price"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-29 11:03:45.918042",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Transport",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

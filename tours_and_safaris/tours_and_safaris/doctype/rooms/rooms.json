@@ -9,6 +9,8 @@
   "room_type",
   "capacity",
   "base_price",
+  "resident_rate",
+  "non_resident_rate",
   "status",
   "section_break_atkp",
   "amenities"
@@ -50,11 +52,21 @@
    "fieldtype": "Table",
    "label": "Amenities",
    "options": "Amenities"
+  },
+  {
+   "fieldname": "resident_rate",
+   "fieldtype": "Currency",
+   "label": "Resident Rate"
+  },
+  {
+   "fieldname": "non_resident_rate",
+   "fieldtype": "Currency",
+   "label": "Non Resident Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-28 15:00:09.547738",
+ "modified": "2025-01-29 10:20:57.747900",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Rooms",

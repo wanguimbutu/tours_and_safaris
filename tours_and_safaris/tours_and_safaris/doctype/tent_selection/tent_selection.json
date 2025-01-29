@@ -1,0 +1,47 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-29 11:59:46.144096",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "tent_type",
+  "qty",
+  "price"
+ ],
+ "fields": [
+  {
+   "fieldname": "tent_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Tent Type",
+   "options": "Tents"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty"
+  },
+  {
+   "fetch_from": "tent_type.rate",
+   "fieldname": "price",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Price"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-29 12:02:50.374002",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Tent Selection",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

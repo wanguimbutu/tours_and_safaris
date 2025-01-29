@@ -23,9 +23,9 @@
   "column_break_llxt",
   "no_of_adults",
   "no_of_children",
-  "general_requirements_section",
-  "transport_required",
-  "meals_required",
+  "column_break_vkqs",
+  "transport_section",
+  "transport",
   "safari_section",
   "destination",
   "transport_type",
@@ -43,6 +43,7 @@
   "room_booking",
   "no_of_tents",
   "room_type",
+  "tent_selection",
   "dietary_requirements_section",
   "diets",
   "cost_section",
@@ -260,23 +261,6 @@
    "options": "Customer Group"
   },
   {
-   "fieldname": "general_requirements_section",
-   "fieldtype": "Section Break",
-   "label": "General Requirements"
-  },
-  {
-   "default": "0",
-   "fieldname": "transport_required",
-   "fieldtype": "Check",
-   "label": "Transport Required"
-  },
-  {
-   "default": "0",
-   "fieldname": "meals_required",
-   "fieldtype": "Check",
-   "label": "Meals Required"
-  },
-  {
    "fieldname": "cost_section",
    "fieldtype": "Section Break",
    "label": "Cost"
@@ -317,12 +301,33 @@
    "fieldtype": "Link",
    "label": "Room Type",
    "options": "Room Type"
+  },
+  {
+   "fieldname": "column_break_vkqs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "transport_section",
+   "fieldtype": "Section Break",
+   "label": "Transport"
+  },
+  {
+   "fieldname": "transport",
+   "fieldtype": "Table",
+   "label": "Transport",
+   "options": "Transport"
+  },
+  {
+   "fieldname": "tent_selection",
+   "fieldtype": "Table",
+   "label": "Tent Selection",
+   "options": "Tent Selection"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-28 15:07:16.946266",
+ "modified": "2025-01-29 12:03:51.631371",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
