@@ -12,6 +12,7 @@
   "kyc_section",
   "customer_name",
   "customer",
+  "billing_type",
   "customer_email",
   "customer_group",
   "kitlist",
@@ -48,6 +49,7 @@
   "diets",
   "cost_section",
   "column_break_stiu",
+  "status",
   "column_break_wqdw",
   "proposed_total_cost",
   "guest_details_tab",
@@ -322,12 +324,26 @@
    "fieldtype": "Table",
    "label": "Tent Selection",
    "options": "Tent Selection"
+  },
+  {
+   "fetch_from": "customer_name.default_currency",
+   "fieldname": "billing_type",
+   "fieldtype": "Read Only",
+   "label": "Billing Type"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "\nReserved\nConfirmed Reservation"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-29 12:03:51.631371",
+ "modified": "2025-01-29 15:14:21.571901",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
@@ -349,5 +365,14 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [
+  {
+   "color": "Pink",
+   "title": "Reserved"
+  },
+  {
+   "color": "Green",
+   "title": "Confirmed Reservation"
+  }
+ ]
 }
