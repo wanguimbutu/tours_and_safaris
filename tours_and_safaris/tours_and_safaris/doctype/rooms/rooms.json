@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:room_number",
  "creation": "2025-01-06 15:47:29.416327",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -19,7 +20,8 @@
   {
    "fieldname": "room_number",
    "fieldtype": "Data",
-   "label": "Room Number"
+   "label": "Room Number",
+   "unique": 1
   },
   {
    "fieldname": "room_type",
@@ -33,6 +35,7 @@
    "label": "Capacity"
   },
   {
+   "fetch_from": "room_type.resident_rate",
    "fieldname": "base_price",
    "fieldtype": "Currency",
    "label": "Base Price"
@@ -54,22 +57,25 @@
    "options": "Amenities"
   },
   {
+   "fetch_from": "room_type.resident_rate",
    "fieldname": "resident_rate",
-   "fieldtype": "Currency",
+   "fieldtype": "Read Only",
    "label": "Resident Rate"
   },
   {
+   "fetch_from": "room_type.non_resident_rate",
    "fieldname": "non_resident_rate",
-   "fieldtype": "Currency",
+   "fieldtype": "Read Only",
    "label": "Non Resident Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-29 10:20:57.747900",
+ "modified": "2025-01-30 11:49:30.505238",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Rooms",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

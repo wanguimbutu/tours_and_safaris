@@ -1,0 +1,40 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-30 14:58:09.137993",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "service_name",
+  "price"
+ ],
+ "fields": [
+  {
+   "fieldname": "service_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Service Name",
+   "options": "Services"
+  },
+  {
+   "fetch_from": "service_name.price",
+   "fieldname": "price",
+   "fieldtype": "Read Only",
+   "in_list_view": 1,
+   "label": "Price"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-30 15:01:01.916472",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Reservation Services",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -45,6 +45,8 @@
   "no_of_tents",
   "room_type",
   "tent_selection",
+  "section_break_guea",
+  "hired_services",
   "dietary_requirements_section",
   "diets",
   "cost_section",
@@ -338,12 +340,23 @@
    "hidden": 1,
    "label": "Status",
    "options": "\nReserved\nConfirmed Reservation"
+  },
+  {
+   "fieldname": "section_break_guea",
+   "fieldtype": "Section Break",
+   "label": "Services"
+  },
+  {
+   "fieldname": "hired_services",
+   "fieldtype": "Table",
+   "label": "Hired Services",
+   "options": "Reservation Services"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-29 15:14:21.571901",
+ "modified": "2025-01-31 09:22:03.372242",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

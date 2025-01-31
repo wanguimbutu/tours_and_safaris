@@ -1,39 +1,33 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:room_type",
- "creation": "2025-01-27 14:56:32.083303",
+ "autoname": "field:service_name",
+ "creation": "2025-01-30 11:54:37.123510",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "room_type",
-  "resident_rate",
-  "non_resident_rate"
+  "service_name",
+  "price"
  ],
  "fields": [
   {
-   "fieldname": "room_type",
+   "fieldname": "service_name",
    "fieldtype": "Data",
-   "label": "Room Type",
+   "label": "Service Name",
    "unique": 1
   },
   {
-   "fieldname": "resident_rate",
+   "fieldname": "price",
    "fieldtype": "Currency",
-   "label": "Resident Rate"
-  },
-  {
-   "fieldname": "non_resident_rate",
-   "fieldtype": "Currency",
-   "label": "Non Resident Rate"
+   "label": "Price"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-30 11:38:22.703044",
+ "modified": "2025-01-30 11:58:14.269522",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
- "name": "Room Type",
+ "name": "Services",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
