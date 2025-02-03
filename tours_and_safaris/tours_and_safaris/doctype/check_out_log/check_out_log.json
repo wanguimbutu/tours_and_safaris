@@ -5,7 +5,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "booking",
+  "reservation",
   "bill_amount",
   "column_break_vjjn",
   "status",
@@ -22,16 +22,16 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Checking Out Log",
+   "options": "Check Out Log",
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
   },
   {
-   "fieldname": "booking",
+   "fieldname": "reservation",
    "fieldtype": "Link",
-   "label": "Booking",
-   "options": "Booking"
+   "label": "Reservation",
+   "options": "Reservation"
   },
   {
    "fieldname": "bill_amount",
@@ -52,7 +52,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-08 11:25:11.069243",
+ "modified": "2025-01-31 15:48:42.764211",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Check Out Log",

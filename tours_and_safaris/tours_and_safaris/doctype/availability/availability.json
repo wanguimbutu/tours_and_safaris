@@ -1,33 +1,32 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-01-30 12:17:10.177868",
+ "creation": "2025-02-03 08:49:24.645710",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "section_break_mrdh",
+  "amended_from",
   "room_name",
   "reservation",
   "check_in_date",
   "check_out_date",
-  "status",
-  "amended_from"
+  "status"
  ],
  "fields": [
   {
-   "fieldname": "check_in_date",
-   "fieldtype": "Datetime",
-   "label": "Check in date"
+   "fieldname": "section_break_mrdh",
+   "fieldtype": "Section Break"
   },
   {
-   "fieldname": "check_out_date",
-   "fieldtype": "Datetime",
-   "label": "Check Out Date"
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "\nAvailable\nReserved\nConfirmed Reservation\nUnder Maintenace"
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Availability",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "room_name",
@@ -42,20 +41,26 @@
    "options": "Reservation"
   },
   {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Availability",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
+   "fieldname": "check_in_date",
+   "fieldtype": "Datetime",
+   "label": "Check In Date"
+  },
+  {
+   "fieldname": "check_out_date",
+   "fieldtype": "Datetime",
+   "label": "Check Out Date"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nReserved\nConfirmed Reservation\nUnder Maintenance"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-30 17:12:24.122456",
+ "modified": "2025-02-03 08:51:32.979812",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Availability",
@@ -71,6 +76,7 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],

@@ -12,6 +12,13 @@ doc_events = {
     }
 }
 
+scheduler_events = {
+    "daily": [
+        "tours_and_safaris.tours_and_safaris.doctype.availability.availability.update_room_status"
+    ]
+}
+
+
 
 # Apps
 # ------------------
