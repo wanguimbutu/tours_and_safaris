@@ -119,3 +119,35 @@ def create_quotation(reservation_name):
     
     # Return the newly created quotation name
     return quotation.name
+
+@frappe.whitelist()
+def update_room_availability(doc, method=None):
+    """Update room availability status based on reservation status."""
+    
+    if not doc.room_booking:
+        return  # Exit if no rooms are booked
+
+    room_status = None
+    if doc.status == "Reserved":
+        room_status = "Reserved"
+    elif doc.status == "Confirmed Reservation":
+        room_status = "Booked"
+
+    if room_status:
+        for room in doc.room_booking:
+            # Find availability records for the room in the given date range
+            availability_records = frappe.get_all(
+                "Availability",
+                filters={
+                    "room": room.room_number,  # Ensure this matches your field name in Availability
+                    "date": ["between", [doc.check_in_date, doc.check_out_date]]
+                },
+                fields=["name"]
+            )
+
+            # Update each found availability record
+            for record in availability_records:
+                availability_doc = frappe.get_doc("Availability", record.name)
+                availability_doc.status = room_status
+                availability_doc.save()
+                frappe.db.commit()  # Ensure changes persist in the database

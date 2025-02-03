@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-03 14:08:01.290900",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_yiwa",
+  "amended_from",
+  "section_break_xbyu",
+  "reservation",
+  "check_in_time"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_yiwa",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Check In",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "reservation",
+   "fieldtype": "Link",
+   "label": "Reservation",
+   "options": "Reservation"
+  },
+  {
+   "fieldname": "check_in_time",
+   "fieldtype": "Datetime",
+   "label": "Check In Time"
+  },
+  {
+   "fieldname": "section_break_xbyu",
+   "fieldtype": "Section Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-02-03 14:10:26.144445",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Check In",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

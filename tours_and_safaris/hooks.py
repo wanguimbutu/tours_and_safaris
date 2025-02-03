@@ -9,6 +9,9 @@ app_license = "mit"
 doc_events = {
     "Maintenance Log": {
         "on_submit": "tours_and_safaris.tours_and_safaris.doctype.booking.booking.on_submit_maintenance_log"
+    },
+    "Reservation": {
+        "on_update": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_room_availability"
     }
 }
 
