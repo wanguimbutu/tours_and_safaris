@@ -8,179 +8,43 @@ frappe.ui.form.on("Reservation", {
         }
 
         if (frm.doc.docstatus === 1) {
-            frm.add_custom_button('Create Quotation', function () {
-                if (!frm.doc.customer_name) {
-                    frappe.msgprint(__('Please ensure the Customer Name field is filled in the Reservation.'));
-                    return;
-                }
-
-                frappe.call({
-                    method: "frappe.client.insert",
-                    args: {
-                        doc: {
-                            doctype: "Quotation",
-                            customer: frm.doc.customer_name,
-                            custom_check_in_date: frm.doc.check_in_date,
-                            custom_check_out_date: frm.doc.check_out_date,
-                            custom_reservation: frm.doc.name,
-                            items: [
-                                ...(frm.doc.activities || []).map(activity => ({
-                                    item_code: 'ACTIVITY',
-                                    item_name: activity.activity_name,
-                                    description: activity.description || "",
-                                    qty: activity.quantity || 1,
-                                    rate: activity.cost || 0
-                                })),
-                                ...(frm.doc.room_booking || []).map(room => ({
-                                    item_code: 'ACCOMMODATION',
-                                    item_name: room.room_name || "Room",
-                                    description: `Room Booking: ${room.room_name || "N/A"}`,
-                                    qty: 1,
-                                    rate: room.price || 0
-                                })),
-                                ...(frm.doc.tent_selection || []).map(tent => ({
-                                    item_code: 'ACCOMMODATION',
-                                    item_name: tent.tent_name || "Tent",
-                                    description: `Tent: ${tent.tent_name || "N/A"}`,
-                                    qty: tent.qty || 1,
-                                    rate: tent.price || 0
-                                })),
-                                ...(frm.doc.no_of_tents || []).map(tent => ({
-                                    item_code: 'ACCOMMODATION',
-                                    item_name: "Own Tent",
-                                    description: `Own Tent: ${tent.tent_name || "N/A"}`,
-                                    qty: tent.qty || 1,
-                                    rate: tent.cost || 0
-                                })),
-                                ...(frm.doc.transport || []).map(transport => ({
-                                    item_code: 'TRANSPORT',
-                                    item_name: transport.transort_name || "Transport",
-                                    qty: 1,
-                                    rate: transport.price || 0
-                                }))
-                            ]
-                        }
-                    },
-                    callback: function (response) {
-                        if (response.message) {
-                            frappe.msgprint({
-                                title: __("Success"),
-                                message: `Quotation <a href="/app/quotation/${response.message.name}" target="_blank">${response.message.name}</a> created successfully.`,
-                                indicator: "green"
-                            });
-                        }
-                    }
-                });
-            }, __("Actions"));
-        }
-    },
-
-                        
-
-    check_in_date: function (frm) {
-        if (frm.doc.check_in_date && frm.doc.check_out_date) {
-            fetch_calendar_events(frm);
-        }
-    },
-    check_out_date: function (frm) {
-        if (frm.doc.check_in_date && frm.doc.check_out_date) {
-            fetch_calendar_events(frm);
-        }
-    },
-
-    accommodation_type: function (frm) {
-        toggle_accommodation_fields(frm);
-
-        // Ensure room_type is visible if Rooms are selected
-        if (frm.doc.accommodation_type === "Rooms") {
-            frm.set_df_property("room_type", "hidden", 0);
-            frm.set_df_property("room_booking", "hidden", 1); // Hide room_booking until room_type is selected
-        } else {
-            frm.set_df_property("room_type", "hidden", 1);
-        }
-    },
-
-    room_type: function (frm) {
-        if (frm.doc.room_type) {
+            // Check if a quotation is already created and submitted for this reservation
             frappe.call({
                 method: "frappe.client.get_list",
                 args: {
-                    doctype: "Availability",
-                    filters: [
-                        ["room_name", "=", frm.doc.room_type],
-                        ["check_in_date", "<=", frm.doc.check_out_date],
-                        ["check_out_date", ">=", frm.doc.check_in_date],
-                        ["status", "=", "Booked"]
-                    ],
-                    fields: ["room_name"]
+                    doctype: "Quotation",
+                    filters: {
+                        "custom_reservation": frm.doc.name,
+                        "docstatus": 1  // Looking for submitted quotations
+                    },
+                    fields: ["name"]
                 },
-                callback: function (availabilityResponse) {
-                    const booked_rooms = (availabilityResponse.message || []).map(r => r.room_name);
-
-                    frappe.call({
-                        method: "frappe.client.get_list",
-                        args: {
-                            doctype: "Rooms",
-                            filters: {
-                                room_type: frm.doc.room_type,
-                                status: "Available"
-                        },    
-                            fields: ["name", "room_number", "base_price"]
-                        },
-                        callback: function (response) {
-                            const available_rooms = (response.message || []).filter(room => !booked_rooms.includes(room.room_number));
-
-                            frm.set_value("room_booking", []);
-
-                            if (available_rooms.length === 0) {
-                                frappe.msgprint({
-                                    title: __("No Available Rooms"),
-                                    message: `Rooms of type ${frm.doc.room_type} are fully booked for the selected dates.`,
-                                    indicator: "red"
-                                });
-                            } else {
-                                available_rooms.forEach(room => {
-                                    const new_row = frm.add_child("room_booking");
-                                    new_row.room_name = room.room_number;
-                                    new_row.price = room.base_price;
-                                });
-
-                                frm.refresh_field("room_booking");
-                                frm.set_df_property("room_booking", "hidden", 0);
-                            }
-                        }
-                    });
+                callback: function(response) {
+                    if (response.message && response.message.length > 0) {
+                        // If a submitted quotation exists, remove the "Create Quotation" button
+                        frm.remove_custom_button(__('Create Quotation'));
+                    } else {
+                        // If no submitted quotation exists, show the "Create Quotation" button
+                        frm.add_custom_button('Create Quotation', function () {
+                            frappe.call({
+                                method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.create_quotation", // Replace `your_app` with your actual app name
+                                args: { reservation_name: frm.doc.name },
+                                callback: function (response) {
+                                    if (response.message) {
+                                        frappe.msgprint({
+                                            title: __("Success"),
+                                            message: `Quotation <a href="/app/quotation/${response.message}" target="_blank">${response.message}</a> created successfully.`,
+                                            indicator: "green"
+                                        });
+                                    }
+                                }
+                            });
+                        }, __("Actions"));
+                    }
                 }
             });
         }
     },
-
-    on_submit: function (frm) {
-        if (frm.doc.room_booking && frm.doc.room_booking.length > 0) {
-            frm.doc.room_booking.forEach(room => {
-                frappe.call({
-                    method: "frappe.client.insert",
-                    args: {
-                        doc: {
-                            doctype: "Availability",
-                            room_name: room.room_name,
-                            check_in_date: frm.doc.check_in_date,
-                            check_out_date: frm.doc.check_out_date,
-                            status: "Reserved",
-                            reservation: frm.doc.name 
-                        }
-                    },
-                    callback: function (response) {
-                        if (response.message) {
-                            console.log(`Availability created for room: ${room.room_name}`);
-                        }
-                    }
-                });
-            });
-        }
-    },
-
-    
     activity: function (frm) {
         if (frm.doc.activity === "Safari") {
             frm.set_df_property("safari_section", "hidden", 0);
@@ -193,6 +57,7 @@ frappe.ui.form.on("Reservation", {
             frm.set_df_property("mtkenya_section", "hidden", 1);
         }
     },
+    
     package_name: function (frm) {
         if (frm.doc.package_name) {
             // Fetch activities from the selected package
@@ -224,12 +89,24 @@ frappe.ui.form.on("Reservation", {
         }
     },
 
+    check_in_date: function (frm) {
+        fetch_calendar_events(frm);
+    },
+    check_out_date: function (frm) {
+        fetch_calendar_events(frm);
+    },
+
+    accommodation_type: function (frm) {
+        toggle_accommodation_fields(frm);
+    },
+
     activities_add: function (frm) {
         calculate_total_cost(frm);
     },
     activities_remove: function (frm) {
         calculate_total_cost(frm);
     },
+
     room_booking_add: function (frm) {
         calculate_total_cost(frm);
     },
@@ -237,26 +114,23 @@ frappe.ui.form.on("Reservation", {
         calculate_total_cost(frm);
     },
 
-    'activities.*.cost': function (frm) {
-        calculate_total_cost(frm);
-    },
-    'room_booking.*.price': function (frm) {
-        calculate_total_cost(frm);
-    },
-
     validate: function (frm) {
-        const no_of_people = frm.doc.no_of_people || 0;
-        const no_of_adults = frm.doc.no_of_adults || 0;
-        const no_of_children = frm.doc.no_of_children || 0;
-    
-        if (no_of_people !== (no_of_adults + no_of_children)) {
-            frappe.throw(
-                `The total number of people (${no_of_people}) must equal the sum of adults (${no_of_adults}) and children (${no_of_children}).`
-            );
-        }
-    
+        calculate_total_cost(frm);
     }
 });
+
+function calculate_total_cost(frm) {
+    if (!frm.doc.name) return;
+
+    frappe.call({
+        method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.calculate_total_cost",
+        args: { reservation_name: frm.doc.name },
+        callback: function(response) {
+            frm.set_value("proposed_total_cost", response.message);
+        }
+    });
+}
+
 function fetch_calendar_events(frm) {
     frappe.call({
         method: "frappe.client.get_list",
@@ -290,53 +164,20 @@ function fetch_calendar_events(frm) {
                 });
             }
         }
-    });
+    })
 }
-
-function calculate_total_cost(frm) {
-    let total_cost = 0;
-
-    if (frm.doc.activities) {
-        frm.doc.activities.forEach(activity => {
-            total_cost += flt(activity.cost);
-        });
-    }
-
-    if (frm.doc.room_booking) {
-        frm.doc.room_booking.forEach(room => {
-            total_cost += flt(room.price);
-        });
-    }
-
-    if (frm.doc.transport) {
-        frm.doc.transport.forEach(transport => {
-            total_cost += flt(transport.price);
-        });
-    }
-
-    
-    if (frm.doc.tent_selection) {
-        frm.doc.tent_selection.forEach(tent => {
-            total_cost += flt(tent.qty) * flt(tent.price);
-        });
-    }
-
-
-    frm.set_value('proposed_total_cost', total_cost);
-}
-
 
 function toggle_accommodation_fields(frm) {
     frm.set_df_property('no_of_tents', 'hidden', 1);
     frm.set_df_property('room_booking', 'hidden', 1);
     frm.set_df_property('room_type', 'hidden', 1);
-    frm.set_df_property('tent_selection', 'hidden',1);
+    frm.set_df_property('tent_selection', 'hidden', 1);
 
     if (frm.doc.accommodation_type === 'Rooms') {
-        frm.set_df_property('room_type', 'hidden', 0); // Show room_type
+        frm.set_df_property('room_type', 'hidden', 0);
     } else if (frm.doc.accommodation_type === 'Own Tents') {
-        frm.set_df_property('no_of_tents', 'hidden', 0); // Show no_of_tents for tents
-    }else if(frm.doc.accommodation_type === 'SWS Tents'){
-        frm.set_df_property('tent_selection', 'hidden', 0); // Show no_of_tents for tents
+        frm.set_df_property('no_of_tents', 'hidden', 0);
+    } else if (frm.doc.accommodation_type === 'SWS Tents') {
+        frm.set_df_property('tent_selection', 'hidden', 0);
     }
 }
