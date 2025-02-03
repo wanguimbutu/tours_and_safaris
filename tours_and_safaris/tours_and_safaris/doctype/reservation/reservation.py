@@ -23,6 +23,7 @@ def calculate_total_cost(reservation_name):
     # Check if any selected activity belongs to the "Water Sports" category
     if reservation.activities:
         for activity in reservation.activities:
+            # Get the category of the activity
             activity_category = frappe.get_value("Activity", activity.activity_name, "category")
             if activity_category == "Water Sports":
                 has_watersports = True
@@ -42,7 +43,7 @@ def calculate_total_cost(reservation_name):
     if reservation.transport:
         total_cost += sum(transport.price for transport in reservation.transport)
 
-    # Add everything together
+    # Add accommodation cost to the total cost
     total_cost += accommodation_cost
 
     return total_cost
