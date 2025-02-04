@@ -21,10 +21,10 @@ frappe.ui.form.on("Reservation", {
                 },
                 callback: function(response) {
                     if (response.message && response.message.length > 0) {
-                        // If a submitted quotation exists, remove the "Create Quotation" button
+                    
                         frm.remove_custom_button(__('Create Quotation'));
                     } else {
-                        // If no submitted quotation exists, show the "Create Quotation" button
+                
                         frm.add_custom_button('Create Quotation', function () {
                             frappe.call({
                                 method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.create_quotation", // Replace `your_app` with your actual app name
@@ -81,7 +81,7 @@ frappe.ui.form.on("Reservation", {
                                 message: `Check-Out recorded and maintenance log created.`,
                                 indicator: "green"
                             });
-                            frm.reload_doc(); // Refresh document after check-out
+                            frm.reload_doc(); 
                         }
                     }
                 });
@@ -115,10 +115,10 @@ activity: function (frm) {
                     const package = response.message;
 
                     if (package && package.activity) {
-                        // Clear existing activities table
+                    
                         frm.clear_table("activities");
 
-                        // Add activities from the package to the activities table
+                        
                         package.activity.forEach(activity => {
                             const new_row = frm.add_child("activities");
                             new_row.activity_name = activity.activity_name;
