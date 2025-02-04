@@ -12,9 +12,9 @@ class Reservation(Document):
 def calculate_total_cost(reservation_name):
     """Calculate the total cost of a reservation, including accommodation, activities, and transport."""
     
-    # Check if the reservation exists before proceeding
+    # Check if the reservation exists
     if not frappe.db.exists("Reservation", reservation_name):
-        return 0  # Return 0 cost instead of throwing an error for new documents
+        return 0  
 
     reservation = frappe.get_doc("Reservation", reservation_name)
     total_cost = 0
@@ -36,15 +36,14 @@ def calculate_total_cost(reservation_name):
     if reservation.tent_selection:
         accommodation_cost += sum(tent.qty * tent.price for tent in reservation.tent_selection)
 
-    # Apply discount if Water Sports activity is selected
+
     if has_watersports:
-        accommodation_cost *= 0.5  # 50% discount on accommodation
+        accommodation_cost *= 0.5  # Apply a 50% discount
 
     # Calculate transport costs
     if reservation.transport:
         total_cost += sum(transport.price for transport in reservation.transport)
 
-    # Add accommodation cost to the total cost
     total_cost += accommodation_cost
 
     return total_cost
@@ -79,7 +78,7 @@ def create_quotation(reservation_name):
             quotation.append("items", {
                 "item_code": "ACTIVITY",
                 "item_name": activity.activity_name,
-                "qty": 1,  # Default to 1 if no quantity is specified
+                "qty": 1,  
                 "rate": activity.cost or 0
             })
 
@@ -124,10 +123,10 @@ def create_quotation(reservation_name):
                 "rate": service.price or 0
             })
 
-    # Save the quotation as a draft (not submitted)
+    
     quotation.insert(ignore_permissions=True)
     
-    # Return the newly created quotation name
+
     return quotation.name
 
 @frappe.whitelist()
@@ -135,7 +134,7 @@ def update_room_availability(doc, method=None):
     """Update room availability status based on reservation status."""
     
     if not doc.room_booking:
-        return  # Exit if no rooms are booked
+        return  
 
     room_status = None
     if doc.status == "Reserved":
@@ -149,18 +148,18 @@ def update_room_availability(doc, method=None):
             availability_records = frappe.get_all(
                 "Availability",
                 filters={
-                    "room": room.room_number,  # Ensure this matches your field name in Availability
+                    "room": room.room_number,  
                     "date": ["between", [doc.check_in_date, doc.check_out_date]]
                 },
                 fields=["name"]
             )
 
-            # Update each found availability record
+            
             for record in availability_records:
                 availability_doc = frappe.get_doc("Availability", record.name)
                 availability_doc.status = room_status
                 availability_doc.save()
-                frappe.db.commit()  # Ensure changes persist in the database
+                frappe.db.commit()  
 
 @frappe.whitelist()
 def create_check_in(reservation_name):
