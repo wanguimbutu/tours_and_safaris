@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe.utils import now_datetime
 
 class Reservation(Document):
     pass 
@@ -113,6 +114,15 @@ def create_quotation(reservation_name):
                 "qty": 1,
                 "rate": transport.price or 0
             })
+    
+    if reservation.hired_services:
+        for service in reservation.hired_services:
+            quotation.append("items", {
+                "item_code": "SERVICE",
+                "item_name": service.service_name or "Service",
+                "qty": 1,
+                "rate": service.price or 0
+            })
 
     # Save the quotation as a draft (not submitted)
     quotation.insert(ignore_permissions=True)
@@ -151,3 +161,62 @@ def update_room_availability(doc, method=None):
                 availability_doc.status = room_status
                 availability_doc.save()
                 frappe.db.commit()  # Ensure changes persist in the database
+
+@frappe.whitelist()
+def create_check_in(reservation_name):
+    """Creates a Check-In document for the reservation."""
+    
+    reservation = frappe.get_doc("Reservation", reservation_name)
+    
+    check_in = frappe.get_doc({
+        "doctype": "Check In",
+        "reservation": reservation.name,
+        "customer_name": reservation.customer_name,
+        "check_in_time": now_datetime(),
+        "room_details": reservation.room_booking
+    })
+    
+    check_in.insert()
+    
+    # Mark reservation as checked in
+    reservation.checked_in = 1
+    reservation.save()
+    
+    frappe.db.commit()
+    
+    return check_in.name
+
+@frappe.whitelist()
+def create_check_out(reservation_name):
+    """Creates a Check-Out document and a Maintenance Log for the reservation."""
+    
+    reservation = frappe.get_doc("Reservation", reservation_name)
+    
+    check_out = frappe.get_doc({
+        "doctype": "Check Out Log",
+        "reservation": reservation.name,
+        "customer_name": reservation.customer_name,
+        "check_out_datetime": now_datetime(),
+        "room_details": reservation.room_booking
+    })
+    
+    check_out.insert()
+    
+    # Create Maintenance Log for each room
+    for room in reservation.room_booking:
+        maintenance_log = frappe.get_doc({
+            "doctype": "Maintenance Log",
+            "room": room.room_number,
+            "maintenance_date": now_datetime(),
+            "description": "Routine maintenance after guest check-out"
+            
+        })
+        maintenance_log.insert()
+    
+    # Mark reservation as checked out
+    reservation.checked_out = 1
+    reservation.save()
+    
+    frappe.db.commit()
+    
+    return check_out.name

@@ -44,15 +44,59 @@ frappe.ui.form.on("Reservation", {
                 }
             });
         }
-    },
-    activity: function (frm) {
+        if (frm.doc.room_booking && frm.doc.room_booking.length > 0 && !frm.doc.checked_in) {
+            frm.add_custom_button("Check-In", function () {
+                frappe.call({
+                    method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.create_check_in",
+                    args: {
+                        reservation_name: frm.doc.name
+                    },
+                    callback: function (response) {
+                        if (response.message) {
+                            frappe.msgprint({
+                                title: __("Success"),
+                                message: `Check-In recorded successfully for ${frm.doc.customer_name}.`,
+                                indicator: "green"
+                            });
+                            frm.reload_doc(); // Refresh document after check-in
+                        }
+                    }
+                });
+            }, __("Actions"));
+        }
+
+        // Show Check-Out button when the check-out date is reached
+        let today = frappe.datetime.get_today();
+        if (frm.doc.checked_in && frm.doc.check_out_date <= today && !frm.doc.checked_out) {
+            frm.add_custom_button("Check-Out", function () {
+                frappe.call({
+                    method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.create_check_out",
+                    args: {
+                        reservation_name: frm.doc.name
+                    },
+                    callback: function (response) {
+                        if (response.message) {
+                            frappe.msgprint({
+                                title: __("Success"),
+                                message: `Check-Out recorded and maintenance log created.`,
+                                indicator: "green"
+                            });
+                            frm.reload_doc(); // Refresh document after check-out
+                        }
+                    }
+                });
+            }, __("Actions"));
+        }
+},
+
+activity: function (frm) {
         if (frm.doc.activity === "Safari") {
             frm.set_df_property("safari_section", "hidden", 0);
             frm.set_df_property("mtkenya_section", "hidden", 1);
         } else if (frm.doc.activity === "Mt.Kenya") {
             frm.set_df_property("mtkenya_section", "hidden", 0);
             frm.set_df_property("safari_section", "hidden", 1);
-        } else {
+        } else if (frm.doc.activity === "Walk In") {
             frm.set_df_property("safari_section", "hidden", 1);
             frm.set_df_property("mtkenya_section", "hidden", 1);
         }

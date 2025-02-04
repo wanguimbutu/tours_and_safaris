@@ -9,7 +9,8 @@
   "amended_from",
   "section_break_xbyu",
   "reservation",
-  "check_in_time"
+  "check_in_time",
+  "customer_name"
  ],
  "fields": [
   {
@@ -40,12 +41,18 @@
   {
    "fieldname": "section_break_xbyu",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Link",
+   "label": "Customer Name",
+   "options": "Customer"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-03 14:10:26.144445",
+ "modified": "2025-02-04 09:55:03.468020",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Check In",
