@@ -109,7 +109,7 @@ def create_quotation(reservation_name):
         for transport in reservation.transport:
             quotation.append("items", {
                 "item_code": "TRANSPORT",
-                "item_name": transport.transort_name or "Transport",
+                "item_name": transport.transport_name or "Transport",
                 "qty": 1,
                 "rate": transport.price or 0
             })
