@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:name1",
  "creation": "2025-02-05 15:04:50.879888",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -14,7 +15,8 @@
   {
    "fieldname": "name1",
    "fieldtype": "Data",
-   "label": "Name"
+   "label": "Name",
+   "unique": 1
   },
   {
    "fieldname": "employee_id",
@@ -35,10 +37,11 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-05 15:18:19.790713",
+ "modified": "2025-02-11 10:55:10.996479",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Instructor",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
