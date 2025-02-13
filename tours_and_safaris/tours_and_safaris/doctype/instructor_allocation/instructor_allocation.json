@@ -1,21 +1,23 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-02-11 14:42:59.240306",
+ "creation": "2025-02-11 15:43:44.057642",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "activity_name",
-  "level"
+  "instructor_name",
+  "level",
+  "session_type",
+  "rate"
  ],
  "fields": [
   {
-   "fieldname": "activity_name",
+   "fieldname": "instructor_name",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Activity Name",
-   "options": "Activity Type"
+   "label": "Instructor Name",
+   "options": "Instructor"
   },
   {
    "fieldname": "level",
@@ -23,15 +25,28 @@
    "in_list_view": 1,
    "label": "Level",
    "options": "Qualification Type"
+  },
+  {
+   "fieldname": "session_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Session Type",
+   "options": "Session Type"
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-11 14:45:11.484615",
+ "modified": "2025-02-11 16:15:11.875063",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
- "name": "Instructor Activity Level",
+ "name": "Instructor Allocation",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
