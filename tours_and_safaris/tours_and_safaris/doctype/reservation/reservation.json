@@ -105,8 +105,9 @@
    "reqd": 1
   },
   {
+   "fetch_from": "customer_name.customer_primary_contact",
    "fieldname": "customer_email",
-   "fieldtype": "Data",
+   "fieldtype": "Read Only",
    "label": "Customer Email"
   },
   {
@@ -259,8 +260,9 @@
    "options": "Diet"
   },
   {
+   "fetch_from": "customer_name.customer_group",
    "fieldname": "customer_group",
-   "fieldtype": "Link",
+   "fieldtype": "Read Only",
    "label": "Customer Group",
    "options": "Customer Group"
   },
@@ -356,7 +358,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-04 11:25:46.286235",
+ "modified": "2025-02-14 09:00:27.703613",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

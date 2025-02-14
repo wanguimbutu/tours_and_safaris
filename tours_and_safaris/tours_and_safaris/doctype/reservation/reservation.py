@@ -8,32 +8,35 @@ from frappe.utils import now_datetime
 class Reservation(Document):
     def on_submit(self):
         """Create an availability record when a reservation is submitted."""
-        room_bookings = self.get("room_booking", [])
-        if not room_bookings:
-            frappe.throw("No rooms selected for reservation")
-
     
-        for room in room_bookings:
-            self.create_availability_record(room)
+        if not self.room_booking and not self.tent_selection:
+            frappe.msgprint("Warning: No accommodation selected for this reservation.")  # Soft warning
+    
+    # Process rooms
+        for room in self.get("room_booking", []):
+            self.create_availability_record(room, "Room")
 
-    def create_availability_record(self,room):
-            
-            room_name = room.get("room_name")
-            check_in =self.check_in_date
-            check_out = self.check_out_date
+    # Process tents
+        for tent in self.get("tent_selection", []):
+            self.create_availability_record(tent, "Tent")
 
-            frappe.logger("Creating availability for Room {room_name}")
+    def create_availability_record(self, accommodation, acc_type):
+        acc_name = accommodation.get("room_name") if acc_type == "Room" else accommodation.get("tent_type")
+    
+        frappe.logger().info(f"Creating availability for {acc_type}: {acc_name}")
 
-            availability = frappe.get_doc({
-                "doctype": "Availability",
-                "room_name": room.room_name,  # Ensure field names match
-                "check_in_date": self.check_in_date,
-                "check_out_date": self.check_out_date,
-                "status": "Reserved",  # Default status when booking is confirmed
-                "reservation": self.name  # Link to Reservation
-            })
-            availability.insert()
-            frappe.db.commit()
+        availability = frappe.get_doc({
+            "doctype": "Availability",
+            "room_name" if acc_type == "Room" else "tent_type": acc_name,
+            "check_in_date": self.check_in_date,
+            "check_out_date": self.check_out_date,
+            "status": "Reserved",
+            "reservation": self.name
+        })
+    
+        availability.insert()
+        frappe.db.commit()
+
 
     def on_cancel(self):
         """Remove availability record if reservation is canceled."""
@@ -266,51 +269,53 @@ def create_check_out(reservation_name):
     return check_out.name
 
 @frappe.whitelist()
-def get_available_rooms(check_in_date, check_out_date, room_type):
-    """Fetch available rooms of a selected type that are not reserved for the given dates."""
+def get_available_rooms(check_in_date=None, check_out_date=None, room_type=None):
+    """Fetch available rooms of a selected type that are NOT reserved for the given date range."""
 
     try:
+        # If either check-in or check-out date is missing, return an empty list without throwing an error
         if not check_in_date or not check_out_date:
-            frappe.throw("Check-in and check-out dates are required.")
+            return []
 
         check_in_date = frappe.utils.getdate(check_in_date)
         check_out_date = frappe.utils.getdate(check_out_date)
 
-        # Fetch reserved rooms
+        # Ensure check-out date is after check-in date
+        if check_out_date < check_in_date:
+            return []  # No error message, just return an empty list
+
+        # Fetch reserved rooms in the selected period
         reserved_rooms = frappe.get_all(
             "Availability",
             filters={
-                "check_in_date": ["<=", check_out_date],  # Overlapping check-in
-                "check_out_date": [">=", check_in_date]  # Overlapping check-out
+                "status": "Reserved",
+                "check_in_date": ["<=", check_out_date],  # Overlapping bookings
+                "check_out_date": [">=", check_in_date]
             },
-            fields=["room_name", "status"]
+            fields=["room_name"]
         )
 
-        # Convert to dictionary for quick lookup
-        reserved_dict = {room["room_name"]: room["status"] for room in reserved_rooms}
+        # Convert to a set for quick lookup
+        reserved_room_names = {room["room_name"] for room in reserved_rooms}
 
-        # Fetch all available rooms of selected type
-        rooms = frappe.get_all(
+        # Fetch all rooms of the selected type
+        available_rooms = frappe.get_all(
             "Rooms",
             filters={"room_type": room_type},
-            fields=["room_number", "capacity", "resident_rate", "status"]
+            fields=["room_number", "capacity", "resident_rate"]
         )
 
-        available_rooms = []
-        for room in rooms:
-            room_status = reserved_dict.get(room["room_number"], "Available")
-            available_rooms.append({
-                "room_number": room["room_number"],
-                "capacity": room["capacity"],
-                "resident_rate": room["resident_rate"],
-                "status": room_status  # If reserved, show status
-            })
+        # Filter out reserved rooms
+        filtered_rooms = [
+            room for room in available_rooms
+            if room["room_number"] not in reserved_room_names
+        ]
 
-        return available_rooms
+        return filtered_rooms
 
     except Exception as e:
         frappe.log_error(f"Error in get_available_rooms: {str(e)}", "Room Booking Error")
-        frappe.throw("An error occurred while fetching available rooms. Please check the logs.")
+        return []  # Return an empty list without an error message
 
 
 @frappe.whitelist()

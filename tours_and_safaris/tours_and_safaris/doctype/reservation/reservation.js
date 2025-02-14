@@ -189,12 +189,11 @@ function calculate_total_cost(frm) {
 
 function fetch_available_rooms(frm) {
     if (!frm.doc.check_in_date || !frm.doc.check_out_date) {
-        frappe.msgprint("Please select check-in and check-out dates first.");
         return;
     }
 
     if (!frm.doc.room_type) {
-        frappe.msgprint("Please select a room type.");
+        //frappe.msgprint("Please select a room type.");
         return;
     }
 
