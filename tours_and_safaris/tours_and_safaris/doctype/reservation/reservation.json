@@ -19,6 +19,8 @@
   "column_break_rddc",
   "check_in_date",
   "check_out_date",
+  "checked_in",
+  "checked_out",
   "section_break_jq1u",
   "no_of_people",
   "column_break_llxt",
@@ -353,12 +355,28 @@
    "fieldtype": "Table",
    "label": "Hired Services",
    "options": "Reservation Services"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "checked_in",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Checked In"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "checked_out",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Checked Out"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-14 09:00:27.703613",
+ "modified": "2025-02-17 12:23:23.486010",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

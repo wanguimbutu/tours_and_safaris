@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import now_datetime
+from frappe.utils import getdate, now_datetime
 
 class Reservation(Document):
     def on_submit(self):
@@ -35,6 +35,7 @@ class Reservation(Document):
         })
     
         availability.insert()
+        availability.submit()
         frappe.db.commit()
 
 
@@ -117,6 +118,7 @@ def create_quotation(reservation_name):
         "custom_check_in_date": reservation.check_in_date,
         "custom_check_out_date": reservation.check_out_date,
         "custom_reservation": reservation.name,
+        "custom_no_of_people": reservation.no_of_people,
         "items": []
     })
 
@@ -207,12 +209,20 @@ def update_room_availability(doc, method=None):
                 availability_doc = frappe.get_doc("Availability", record.name)
                 availability_doc.status = room_status
                 availability_doc.save()
+                availability_doc.submit()
                 frappe.db.commit()  
+@frappe.whitelist()
+def get_check_in_status(reservation_name):
+    """Check if the reservation has been checked in and return its status"""
+    check_in = frappe.db.exists("Check In", {"reservation": reservation_name})
+    check_out = frappe.db.exists("Check Out Log", {"reservation": reservation_name})
+    
+    return {"checked_in": bool(check_in), "checked_out": bool(check_out)}
+
 
 @frappe.whitelist()
 def create_check_in(reservation_name):
-    """Creates a Check-In document for the reservation."""
-    
+    """Handles check-in process."""
     reservation = frappe.get_doc("Reservation", reservation_name)
     
     check_in = frappe.get_doc({
@@ -224,98 +234,78 @@ def create_check_in(reservation_name):
     })
     
     check_in.insert()
+    check_in.submit()
+
+    # Update room status to "Occupied"
+    for room in reservation.room_booking:
+        frappe.db.set_value("Rooms", room.room_name, "status", "Occupied")
     
-    # Mark reservation as checked in
     reservation.checked_in = 1
     reservation.save()
-    
     frappe.db.commit()
     
     return check_in.name
 
 @frappe.whitelist()
 def create_check_out(reservation_name):
-    """Creates a Check-Out document and a Maintenance Log for the reservation."""
-    
+    """Handles check-out process and triggers maintenance logs."""
     reservation = frappe.get_doc("Reservation", reservation_name)
     
     check_out = frappe.get_doc({
         "doctype": "Check Out Log",
         "reservation": reservation.name,
         "customer_name": reservation.customer_name,
-        "check_out_datetime": now_datetime(),
-        "room_details": reservation.room_booking
+        "check_out_time": now_datetime(),
+       # "room_details": reservation.room_booking
     })
     
     check_out.insert()
-    
-    # Create Maintenance Log for each room
+    check_out.submit()
+
+    # Create Maintenance Logs
     for room in reservation.room_booking:
         maintenance_log = frappe.get_doc({
             "doctype": "Maintenance Log",
-            "room": room.room_number,
+            "room_name": room.room_name,
             "maintenance_date": now_datetime(),
-            "description": "Routine maintenance after guest check-out"
-            
+            "description": "Routine cleaning after check-out",
+            "status": "Pending"
         })
         maintenance_log.insert()
-    
+
     # Mark reservation as checked out
     reservation.checked_out = 1
     reservation.save()
-    
     frappe.db.commit()
     
     return check_out.name
 
 @frappe.whitelist()
-def get_available_rooms(check_in_date=None, check_out_date=None, room_type=None):
-    """Fetch available rooms of a selected type that are NOT reserved for the given date range."""
+def get_available_rooms(check_in_date, check_out_date, room_type=None):
+    """Fetch rooms that are NOT booked for the selected date range."""
+    check_in_date, check_out_date = getdate(check_in_date), getdate(check_out_date)
 
-    try:
-        # If either check-in or check-out date is missing, return an empty list without throwing an error
-        if not check_in_date or not check_out_date:
-            return []
+    # Get all booked rooms for the selected period
+    booked_rooms = frappe.get_all(
+        "Availability",
+        filters={
+            "status": "Booked",
+            "check_in_date": ["<=", check_out_date],
+            "check_out_date": [">=", check_in_date]
+        },
+        fields=["room_name"]
+    )
 
-        check_in_date = frappe.utils.getdate(check_in_date)
-        check_out_date = frappe.utils.getdate(check_out_date)
+    booked_room_names = {room["room_name"] for room in booked_rooms}
 
-        # Ensure check-out date is after check-in date
-        if check_out_date < check_in_date:
-            return []  # No error message, just return an empty list
+    # Fetch all available rooms of the given type
+    filters = {"status": "Available"}
+    if room_type:
+        filters["room_type"] = room_type
 
-        # Fetch reserved rooms in the selected period
-        reserved_rooms = frappe.get_all(
-            "Availability",
-            filters={
-                "status": "Reserved",
-                "check_in_date": ["<=", check_out_date],  # Overlapping bookings
-                "check_out_date": [">=", check_in_date]
-            },
-            fields=["room_name"]
-        )
+    available_rooms = frappe.get_all("Rooms", filters=filters, fields=["room_number", "capacity", "base_price"])
 
-        # Convert to a set for quick lookup
-        reserved_room_names = {room["room_name"] for room in reserved_rooms}
-
-        # Fetch all rooms of the selected type
-        available_rooms = frappe.get_all(
-            "Rooms",
-            filters={"room_type": room_type},
-            fields=["room_number", "capacity", "resident_rate"]
-        )
-
-        # Filter out reserved rooms
-        filtered_rooms = [
-            room for room in available_rooms
-            if room["room_number"] not in reserved_room_names
-        ]
-
-        return filtered_rooms
-
-    except Exception as e:
-        frappe.log_error(f"Error in get_available_rooms: {str(e)}", "Room Booking Error")
-        return []  # Return an empty list without an error message
+    return [room for room in available_rooms if room["room_number"] not in booked_room_names]
 
 
 @frappe.whitelist()
@@ -394,15 +384,31 @@ def update_availability_status():
     return {"message": "Room availability updated successfully"}
 
 
-
-            
 @frappe.whitelist()
-def check_in(reservation):
-        """Mark room as 'Occupied' on check-in."""
-        reservation = frappe.get_doc("Reservation", reservation)
+def complete_maintenance(maintenance_log_name):
+    """Marks maintenance as completed and makes the room available."""
+    maintenance_log = frappe.get_doc("Maintenance Log", maintenance_log_name)
+    
+    if maintenance_log.status != "Pending":
+        frappe.throw("Maintenance log must be in Pending status to complete.")
 
-        if not reservation.room_booking:
-            frappe.throw("No rooms found for this reservation.")
+    maintenance_log.status = "Completed"
+    maintenance_log.submit()
 
-        for room in reservation.room_booking:
-            update_availability_status(room, "Occupied")
+    # Update room status to Available
+    frappe.db.set_value("Rooms", maintenance_log.room_name, "status", "Available")
+
+    # Check if all rooms in the reservation are cleaned
+    reservation = frappe.get_doc("Reservation", maintenance_log.reservation)
+    all_rooms_cleaned = all(
+        frappe.db.get_value("Rooms", room.room_name, "status") == "Available"
+        for room in reservation.room_booking
+    )
+
+    if all_rooms_cleaned:
+        reservation.status = "Completed"
+        reservation.save()
+    
+    frappe.db.commit()
+
+    return {"message": "Maintenance completed, room is now available for booking."}

@@ -6,6 +6,7 @@ frappe.ui.form.on("Reservation", {
         if (frm.doc.accommodation_type === "Rooms") {
             frm.set_df_property("room_booking", "hidden", 0);
         }
+
         if (frm.doc.status === "Confirmed Reservation") {
             frappe.call({
                 method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_availability_status",
@@ -22,14 +23,14 @@ frappe.ui.form.on("Reservation", {
         }
 
         if (frm.doc.docstatus === 1) {
-            // Check if a quotation is already created and submitted for this reservation
+            // Check if a quotation already exists for this reservation
             frappe.call({
                 method: "frappe.client.get_list",
                 args: {
                     doctype: "Quotation",
                     filters: {
                         "custom_reservation": frm.doc.name,
-                        "docstatus": 1  // Looking for submitted quotations
+                        "docstatus": 1  // Submitted quotations
                     },
                     fields: ["name"]
                 },
@@ -57,6 +58,7 @@ frappe.ui.form.on("Reservation", {
             });
         }
 
+        // Check-In Button Logic
         if (frm.doc.room_booking && frm.doc.room_booking.length > 0 && !frm.doc.checked_in) {
             frm.add_custom_button("Check-In", function () {
                 frappe.call({
@@ -78,6 +80,7 @@ frappe.ui.form.on("Reservation", {
             }, __("Actions"));
         }
 
+        // Check-Out Button Logic
         let today = frappe.datetime.get_today();
         if (frm.doc.checked_in && frm.doc.check_out_date <= today && !frm.doc.checked_out) {
             frm.add_custom_button("Check-Out", function () {
@@ -100,7 +103,6 @@ frappe.ui.form.on("Reservation", {
             }, __("Actions"));
         }
     },
-
     activity: function (frm) {
         if (frm.doc.activity === "Safari") {
             frm.set_df_property("safari_section", "hidden", 0);
@@ -175,6 +177,7 @@ frappe.ui.form.on("Reservation", {
     }
 });
 
+
 function calculate_total_cost(frm) {
     if (!frm.doc.name) return;
 
@@ -188,21 +191,14 @@ function calculate_total_cost(frm) {
 }
 
 function fetch_available_rooms(frm) {
-    if (!frm.doc.check_in_date || !frm.doc.check_out_date) {
-        return;
-    }
-
-    if (!frm.doc.room_type) {
-        //frappe.msgprint("Please select a room type.");
-        return;
-    }
+    if (!frm.doc.check_in_date || !frm.doc.check_out_date || !frm.doc.room_type) return;
 
     frappe.call({
         method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.get_available_rooms",
         args: {
             check_in_date: frm.doc.check_in_date,
             check_out_date: frm.doc.check_out_date,
-            room_type: frm.doc.room_type  // Ensures filtering by room type
+            room_type: frm.doc.room_type
         },
         callback: function (response) {
             console.log("Available rooms response:", response);
@@ -219,15 +215,14 @@ function fetch_available_rooms(frm) {
                 });
 
                 frm.refresh_field("room_booking");
-                frm.set_df_property('room_booking', 'hidden', 0);  // Show table after fetching
+                frm.set_df_property('room_booking', 'hidden', 0);
             } else {
-                frm.set_df_property('room_booking', 'hidden', 1);  // Hide table if no rooms found
+                frm.set_df_property('room_booking', 'hidden', 1);
                 frappe.msgprint("No available rooms of this type for the selected dates.");
             }
         }
     });
 }
-
 
 function add_room_to_calendar(frm, row) {
     frappe.call({
@@ -268,9 +263,5 @@ function toggle_accommodation_fields(frm) {
 
     if (frm.doc.accommodation_type === 'Rooms') {
         frm.set_df_property('room_type', 'hidden', 0);
-    } else if (frm.doc.accommodation_type === 'Own Tents') {
-        frm.set_df_property('no_of_tents', 'hidden', 0);
-    } else if (frm.doc.accommodation_type === 'SWS Tents') {
-        frm.set_df_property('tent_selection', 'hidden', 0);
     }
 }
