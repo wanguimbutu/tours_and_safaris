@@ -6,7 +6,10 @@
  "engine": "InnoDB",
  "field_order": [
   "reservation",
+  "customer_name",
   "bill_amount",
+  "check_out_datetime",
+  "room_details",
   "column_break_vjjn",
   "status",
   "section_break_lzme",
@@ -47,12 +50,28 @@
    "fieldtype": "Select",
    "label": "Status",
    "options": "Pending\nPaid"
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Link",
+   "label": "Customer Name",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "check_out_datetime",
+   "fieldtype": "Datetime",
+   "label": "Check Out Datetime"
+  },
+  {
+   "fieldname": "room_details",
+   "fieldtype": "Data",
+   "label": "Room Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-31 15:48:42.764211",
+ "modified": "2025-02-17 10:15:58.454414",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Check Out Log",
