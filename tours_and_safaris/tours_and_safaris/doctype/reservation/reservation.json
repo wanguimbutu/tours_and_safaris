@@ -50,7 +50,7 @@
   "section_break_guea",
   "hired_services",
   "dietary_requirements_section",
-  "diets",
+  "dietary_requirements",
   "cost_section",
   "column_break_stiu",
   "status",
@@ -256,12 +256,6 @@
    "label": "Dietary Requirements"
   },
   {
-   "fieldname": "diets",
-   "fieldtype": "Table MultiSelect",
-   "label": "Diets",
-   "options": "Diet"
-  },
-  {
    "fetch_from": "customer_name.customer_group",
    "fieldname": "customer_group",
    "fieldtype": "Read Only",
@@ -371,12 +365,18 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Checked Out"
+  },
+  {
+   "fieldname": "dietary_requirements",
+   "fieldtype": "Table",
+   "label": "Dietary Requirements",
+   "options": "Diet"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-17 12:23:23.486010",
+ "modified": "2025-02-18 11:31:52.062499",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
