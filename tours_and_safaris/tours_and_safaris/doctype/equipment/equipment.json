@@ -36,9 +36,9 @@
   },
   {
    "fieldname": "type",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Type",
-   "options": "Harnesses\nHelmets\nCarabiners\nAnchors\nLanyards"
+   "options": "Equipment Type Folder"
   },
   {
    "fieldname": "initial_state",
@@ -146,7 +146,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-15 15:36:08.713216",
+ "modified": "2025-02-18 16:05:33.738581",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment",
