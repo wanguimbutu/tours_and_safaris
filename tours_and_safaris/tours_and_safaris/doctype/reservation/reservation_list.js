@@ -20,8 +20,6 @@ frappe.listview_settings['Reservation'] = {
             return [__("Confirmed"), "green", "status,=,Confirmed Reservation"];
         } else if (doc.status === "Pending") {
             return [__("Pending"), "orange", "status,=,Pending"];
-        } else {
-            return [__("Cancelled"), "red", "status,=,Cancelled"];
         }
     }
 };

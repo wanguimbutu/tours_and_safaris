@@ -1,0 +1,47 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-19 09:02:11.379613",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "equipment_name",
+  "quantity",
+  "required_quantity"
+ ],
+ "fields": [
+  {
+   "fieldname": "equipment_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Equipment Name",
+   "options": "Equipment"
+  },
+  {
+   "fetch_from": "equipment_name.quantity",
+   "fieldname": "quantity",
+   "fieldtype": "Read Only",
+   "in_list_view": 1,
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "required_quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Required Quantity"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-02-19 09:04:29.215215",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Equipment Allocation",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

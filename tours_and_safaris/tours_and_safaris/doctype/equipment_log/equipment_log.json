@@ -5,6 +5,9 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "equipment_name",
+  "quantity_used",
+  "task",
   "section_break_howe",
   "amended_from"
  ],
@@ -22,12 +25,29 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "equipment_name",
+   "fieldtype": "Link",
+   "label": "Equipment Name",
+   "options": "Equipment"
+  },
+  {
+   "fieldname": "quantity_used",
+   "fieldtype": "Int",
+   "label": "Quantity Used"
+  },
+  {
+   "fieldname": "task",
+   "fieldtype": "Link",
+   "label": "Task ",
+   "options": "Task"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-01-15 12:00:47.931493",
+ "modified": "2025-02-19 10:28:09.956141",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment Log",
