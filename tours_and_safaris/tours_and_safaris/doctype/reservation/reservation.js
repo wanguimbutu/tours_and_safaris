@@ -115,8 +115,24 @@ frappe.ui.form.on("Reservation", {
             frm.set_df_property("mtkenya_section", "hidden", 1);
         }
     },
-    
-    package_name: function (frm) {
+
+    start_date: function (frm) {
+        populate_safari_reservation(frm);
+    },
+
+    end_date: function (frm) {
+        populate_safari_reservation(frm);
+    },
+
+    safari_reservation_add: function (frm) {
+        populate_activities_from_safari(frm);
+    },
+
+    safari_reservation_remove: function (frm) {
+        populate_activities_from_safari(frm);
+    },
+
+package_name: function (frm) {
         if (frm.doc.package_name) {
             frappe.call({
                 method: "frappe.client.get",
@@ -176,6 +192,7 @@ frappe.ui.form.on("Reservation", {
         calculate_total_cost(frm);
     }
 });
+
 
 
 function calculate_total_cost(frm) {
@@ -263,5 +280,50 @@ function toggle_accommodation_fields(frm) {
 
     if (frm.doc.accommodation_type === 'Rooms') {
         frm.set_df_property('room_type', 'hidden', 0);
+    } else if (frm.doc.accommodation_type === 'Own Tents') {
+        frm.set_df_property('no_of_tents', 'hidden', 0);
+    } else if (frm.doc.accommodation_type === 'SWS Tents') {
+        frm.set_df_property('tent_selection', 'hidden', 0);
     }
+}
+
+function populate_safari_reservation(frm) {
+    if (!frm.doc.start_date || !frm.doc.end_date || !frm.doc.activity) {
+        return;  // Don't proceed if dates or activity are missing
+    }
+
+    let start = frappe.datetime.str_to_obj(frm.doc.start_date);
+    let end = frappe.datetime.str_to_obj(frm.doc.end_date);
+    
+    if (start > end) {
+        frappe.msgprint("Start Date must be before End Date.");
+        return;
+    }
+
+    frm.clear_table("safari_reservation");
+
+    for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+        let row = frm.add_child("safari_reservation");
+        row.day = frappe.datetime.obj_to_str(d);
+        row.adventure = frm.doc.activity;  // Assign chosen activity
+    }
+
+    frm.refresh_field("safari_reservation");
+
+    // Populate activities table based on safari reservation
+    populate_activities_from_safari(frm);
+}
+
+// Function to populate activities table from safari reservation's adventure field
+function populate_activities_from_safari(frm) {
+    frm.clear_table("activities");  // Clear previous activities
+
+    frm.doc.safari_reservation.forEach(row => {
+        if (row.adventure) {
+            let activity_row = frm.add_child("activities");
+            activity_row.activity_name = row.adventure;
+        }
+    });
+
+    frm.refresh_field("activities");
 }
