@@ -117,20 +117,34 @@ frappe.ui.form.on("Reservation", {
     },
 
     start_date: function (frm) {
+        console.log("Start Date Changed");
         populate_safari_reservation(frm);
     },
-
     end_date: function (frm) {
+        console.log("End Date Changed");
         populate_safari_reservation(frm);
     },
-
     safari_reservation_add: function (frm) {
+        console.log("Row added to safari_reservation");
         populate_activities_from_safari(frm);
+    },
+    safari_reservation_remove: function (frm) {
+        console.log("Row removed from safari_reservation");
+        populate_activities_from_safari(frm);
+    },
+    
+    depature_date: function (frm) {
+        if (frm.doc.depature_date) {
+            frm.set_value("end_date",frm.doc.depature_date);
+        }
     },
 
-    safari_reservation_remove: function (frm) {
-        populate_activities_from_safari(frm);
-    },
+    arrival_date: function (frm){
+        if(frm.doc.arrival_date){
+        let date_only = frapppe.datetime.get_date(frm.doc.arrival_date)
+            frm.set_value("start_date", date_only);
+        }
+    }, 
 
 package_name: function (frm) {
         if (frm.doc.package_name) {
@@ -288,42 +302,58 @@ function toggle_accommodation_fields(frm) {
 }
 
 function populate_safari_reservation(frm) {
-    if (!frm.doc.start_date || !frm.doc.end_date || !frm.doc.activity) {
-        return;  // Don't proceed if dates or activity are missing
+    if (!frm.doc.start_date || !frm.doc.end_date) {
+    
+        return;
     }
 
     let start = frappe.datetime.str_to_obj(frm.doc.start_date);
     let end = frappe.datetime.str_to_obj(frm.doc.end_date);
-    
+
     if (start > end) {
         frappe.msgprint("Start Date must be before End Date.");
         return;
     }
 
+    console.log("Populating safari reservation...");
     frm.clear_table("safari_reservation");
 
-    for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         let row = frm.add_child("safari_reservation");
         row.day = frappe.datetime.obj_to_str(d);
-        row.adventure = frm.doc.activity;  // Assign chosen activity
+        row.adventure = "";  // Initially blank, user will select
+        console.log(`Added row: Day=${row.day}, Adventure= (empty)`);
     }
 
     frm.refresh_field("safari_reservation");
-
-    // Populate activities table based on safari reservation
-    populate_activities_from_safari(frm);
 }
 
-// Function to populate activities table from safari reservation's adventure field
 function populate_activities_from_safari(frm) {
-    frm.clear_table("activities");  // Clear previous activities
+    console.log("Populating activities table...");
+    frm.clear_table("activities");
+
+    let hasActivities = false;
 
     frm.doc.safari_reservation.forEach(row => {
-        if (row.adventure) {
+        if (row.adventure && row.adventure.trim() !== "") {  
             let activity_row = frm.add_child("activities");
             activity_row.activity_name = row.adventure;
+            console.log(`Added Activity: ${row.adventure}`);
+            hasActivities = true;
         }
     });
 
+    if (!hasActivities) {
+        console.log("No valid adventure values found in safari_reservation.");
+    }
+
     frm.refresh_field("activities");
 }
+
+frappe.ui.form.on("Safari Reservation", {
+    adventure: function (frm, cdt, cdn) {
+        let row = locals[cdt][cdn];  
+        console.log(`Adventure updated for ${row.day}: ${row.adventure}`); // Debugging log
+        populate_activities_from_safari(frm);
+    }
+});
