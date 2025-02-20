@@ -13,7 +13,7 @@ class Availability(Document):
         # Fetch all availability records where check-in date is today and status is "Booked"
         availability_entries = frappe.get_all(
             "Availability",
-            filters={"check_in_date": today, "status": "Booked"},
+            filters={"arrival_date": today, "status": "Booked"},
             fields=["name", "room_name"]
         )
 
@@ -33,7 +33,7 @@ def process_checkout():
     # Fetch all rooms with check-out today
     availability_entries = frappe.get_all(
         "Availability",
-        filters={"check_out_date": today, "status": "Reserved"},
+        filters={"depature_date": today, "status": "Reserved"},
         fields=["name", "room_name"]
     )
 

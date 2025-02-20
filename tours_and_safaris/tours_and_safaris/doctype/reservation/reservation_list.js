@@ -13,7 +13,7 @@ frappe.listview_settings['Reservation'] = {
         }
     },
 
-    add_fields: ["status", "check_in_date", "check_out_date"],
+    add_fields: ["status", "arrival_date", "depature_date"],
 
     get_indicator: function (doc) {
         if (doc.status === "Confirmed Reservation") {

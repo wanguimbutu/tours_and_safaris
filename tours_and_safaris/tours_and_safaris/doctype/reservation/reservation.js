@@ -82,7 +82,7 @@ frappe.ui.form.on("Reservation", {
 
         // Check-Out Button Logic
         let today = frappe.datetime.get_today();
-        if (frm.doc.checked_in && frm.doc.check_out_date <= today && !frm.doc.checked_out) {
+        if (frm.doc.checked_in && frm.doc.depature_date <= today && !frm.doc.checked_out) {
             frm.add_custom_button("Check-Out", function () {
                 frappe.call({
                     method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.create_check_out",
@@ -161,10 +161,10 @@ package_name: function (frm) {
         fetch_available_rooms(frm);
     },
 
-    check_in_date: function (frm) {
+    arrival_date: function (frm) {
         fetch_available_rooms(frm);
     },
-    check_out_date: function (frm) {
+    depature_date: function (frm) {
         fetch_available_rooms(frm);
     },
 
@@ -208,13 +208,13 @@ function calculate_total_cost(frm) {
 }
 
 function fetch_available_rooms(frm) {
-    if (!frm.doc.check_in_date || !frm.doc.check_out_date || !frm.doc.room_type) return;
+    if (!frm.doc.arrival_date || !frm.doc.depature_date || !frm.doc.room_type) return;
 
     frappe.call({
         method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.get_available_rooms",
         args: {
-            check_in_date: frm.doc.check_in_date,
-            check_out_date: frm.doc.check_out_date,
+            arrival_date: frm.doc.arrival_date,
+            depature_date: frm.doc.depature_date,
             room_type: frm.doc.room_type
         },
         callback: function (response) {
@@ -247,8 +247,8 @@ function add_room_to_calendar(frm, row) {
         args: {
             reservation_name: frm.doc.name,
             room_name: row.room_name,
-            check_in_date: frm.doc.check_in_date,
-            check_out_date: frm.doc.check_out_date
+            arrival_date: frm.doc.arrival_date,
+            depature_date: frm.doc.depature_date
         }
     });
 }

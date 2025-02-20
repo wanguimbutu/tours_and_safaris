@@ -17,8 +17,8 @@
   "customer_group",
   "kitlist",
   "column_break_rddc",
-  "check_in_date",
-  "check_out_date",
+  "arrival_date",
+  "depature_date",
   "checked_in",
   "checked_out",
   "section_break_jq1u",
@@ -124,20 +124,6 @@
   {
    "fieldname": "column_break_rddc",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "check_in_date",
-   "fieldtype": "Datetime",
-   "in_list_view": 1,
-   "label": "Check In Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "check_out_date",
-   "fieldtype": "Datetime",
-   "in_list_view": 1,
-   "label": "Check Out Date",
-   "reqd": 1
   },
   {
    "fieldname": "no_of_people",
@@ -393,12 +379,26 @@
    "fieldtype": "Table",
    "label": "Safari Reservation",
    "options": "Safari Reservation"
+  },
+  {
+   "fieldname": "arrival_date",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Arrival Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "depature_date",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Depature Date",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-19 16:21:22.885438",
+ "modified": "2025-02-20 09:35:03.180690",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

@@ -28,8 +28,8 @@ class Reservation(Document):
         availability = frappe.get_doc({
             "doctype": "Availability",
             "room_name" if acc_type == "Room" else "tent_type": acc_name,
-            "check_in_date": self.check_in_date,
-            "check_out_date": self.check_out_date,
+            "arrival_date": self.arrival_date,
+            "depature_date": self.depature_date,
             "status": "Reserved",
             "reservation": self.name
         })
@@ -115,8 +115,8 @@ def create_quotation(reservation_name):
     quotation = frappe.get_doc({
         "doctype": "Quotation",
         "customer": reservation.customer_name,
-        "custom_check_in_date": reservation.check_in_date,
-        "custom_check_out_date": reservation.check_out_date,
+        "custom_arrival_date": reservation.arrival_date,
+        "custom_depature_date": reservation.depature_date,
         "custom_reservation": reservation.name,
         "custom_no_of_people": reservation.no_of_people,
         "items": []
@@ -199,7 +199,7 @@ def update_room_availability(doc, method=None):
                 "Availability",
                 filters={
                     "room": room.room_number,  
-                    "date": ["between", [doc.check_in_date, doc.check_out_date]]
+                    "date": ["between", [doc.arrival_date, doc.depature_date]]
                 },
                 fields=["name"]
             )
@@ -281,17 +281,17 @@ def create_check_out(reservation_name):
     return check_out.name
 
 @frappe.whitelist()
-def get_available_rooms(check_in_date, check_out_date, room_type=None):
+def get_available_rooms(arrival_date, depature_date, room_type=None):
     """Fetch rooms that are NOT booked for the selected date range."""
-    check_in_date, check_out_date = getdate(check_in_date), getdate(check_out_date)
+    arrival_date, depature_date = getdate(arrival_date), getdate(depature_date)
 
     # Get all booked rooms for the selected period
     booked_rooms = frappe.get_all(
         "Availability",
         filters={
             "status": "Booked",
-            "check_in_date": ["<=", check_out_date],
-            "check_out_date": [">=", check_in_date]
+            "arrival_date": ["<=", depature_date],
+            "depature_date": [">=", arrival_date]
         },
         fields=["room_name"]
     )
@@ -309,11 +309,11 @@ def get_available_rooms(check_in_date, check_out_date, room_type=None):
 
 
 @frappe.whitelist()
-def add_room_to_calendar(reservation_name, room_name, check_in_date, check_out_date):
+def add_room_to_calendar(reservation_name, room_name, arrival_date, depature_date):
     """Adds a room to the availability calendar as Reserved."""
     reservation = frappe.get_doc("Reservation", reservation_name)
 
-    for date in frappe.utils.date_range(check_in_date, check_out_date):
+    for date in frappe.utils.date_range(arrival_date, depature_date):
         availability = frappe.get_doc({
             "doctype": "Availability",
             "room": room_name,
