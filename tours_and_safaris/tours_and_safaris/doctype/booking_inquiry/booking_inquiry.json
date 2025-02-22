@@ -1,0 +1,240 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-02-22 10:00:29.543639",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "inquiry_details_tab",
+  "section_break_eot3",
+  "inquiry_date",
+  "column_break_etvu",
+  "amended_from",
+  "new_customer",
+  "existing_customer",
+  "section_break_bfyy",
+  "from_date",
+  "to_date",
+  "column_break_xjrn",
+  "no_of_people",
+  "no_of_adults",
+  "no_of_children",
+  "section_break_ktci",
+  "purpose_of_visit",
+  "section_break_fbqu",
+  "guest_details",
+  "section_break_untc",
+  "accommodation_needed",
+  "accommodation_booking",
+  "section_break_rnwd",
+  "transport_required",
+  "transport_service",
+  "section_break_xphs",
+  "hired_service",
+  "follow_up_tab",
+  "follow_up_date",
+  "column_break_vlrv",
+  "follow_up_notes_section",
+  "notes",
+  "section_break_qyei",
+  "reason_for_cancellation"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_eot3",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Booking Inquiry",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "inquiry_date",
+   "fieldtype": "Date",
+   "label": "Inquiry Date"
+  },
+  {
+   "fieldname": "column_break_etvu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "new_customer",
+   "fieldtype": "Check",
+   "label": "New Customer"
+  },
+  {
+   "default": "0",
+   "fieldname": "existing_customer",
+   "fieldtype": "Check",
+   "label": "Existing Customer"
+  },
+  {
+   "fieldname": "section_break_bfyy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "column_break_xjrn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "no_of_people",
+   "fieldtype": "Int",
+   "label": "No. of People"
+  },
+  {
+   "fieldname": "no_of_adults",
+   "fieldtype": "Int",
+   "label": "No. of Adults"
+  },
+  {
+   "fieldname": "no_of_children",
+   "fieldtype": "Int",
+   "label": "No. of Children"
+  },
+  {
+   "fieldname": "section_break_ktci",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "purpose_of_visit",
+   "fieldtype": "Data",
+   "label": "Purpose of Visit"
+  },
+  {
+   "fieldname": "section_break_fbqu",
+   "fieldtype": "Section Break",
+   "label": "Guest Details"
+  },
+  {
+   "fieldname": "guest_details",
+   "fieldtype": "Table",
+   "label": "Guest Details",
+   "options": "Guest Details"
+  },
+  {
+   "fieldname": "section_break_untc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "accommodation_needed",
+   "fieldtype": "Check",
+   "label": "Accommodation needed"
+  },
+  {
+   "fieldname": "accommodation_booking",
+   "fieldtype": "Table",
+   "label": "Accommodation Booking",
+   "options": "Accommodation Booking"
+  },
+  {
+   "fieldname": "section_break_rnwd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "transport_required",
+   "fieldtype": "Check",
+   "label": "Transport Required"
+  },
+  {
+   "fieldname": "transport_service",
+   "fieldtype": "Table",
+   "label": "Transport Service",
+   "options": "Transport"
+  },
+  {
+   "fieldname": "section_break_xphs",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "hired_service",
+   "fieldtype": "Table",
+   "label": "Hired Service",
+   "options": "Reservation Services"
+  },
+  {
+   "bold": 1,
+   "fieldname": "follow_up_tab",
+   "fieldtype": "Tab Break",
+   "label": "Follow Up"
+  },
+  {
+   "fieldname": "follow_up_date",
+   "fieldtype": "Date",
+   "label": "Follow Up Date"
+  },
+  {
+   "fieldname": "column_break_vlrv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "follow_up_notes_section",
+   "fieldtype": "Section Break",
+   "label": "Follow Up Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "section_break_qyei",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "reason_for_cancellation",
+   "fieldtype": "Select",
+   "label": "Reason for Cancellation"
+  },
+  {
+   "fieldname": "inquiry_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Inquiry Details"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-02-22 11:32:15.077671",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Booking Inquiry",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

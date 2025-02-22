@@ -353,7 +353,7 @@ function populate_activities_from_safari(frm) {
 frappe.ui.form.on("Safari Reservation", {
     adventure: function (frm, cdt, cdn) {
         let row = locals[cdt][cdn];  
-        console.log(`Adventure updated for ${row.day}: ${row.adventure}`); // Debugging log
+        console.log(`Adventure updated for ${row.day}: ${row.adventure}`); 
         populate_activities_from_safari(frm);
     }
 });
