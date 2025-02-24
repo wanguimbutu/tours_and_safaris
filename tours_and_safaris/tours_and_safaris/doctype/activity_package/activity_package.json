@@ -6,9 +6,9 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "activity_group",
   "activity_name",
-  "cost",
-  "category"
+  "cost"
  ],
  "fields": [
   {
@@ -27,17 +27,18 @@
    "non_negative": 1
   },
   {
-   "fetch_from": "activity_name.custom_category",
-   "fieldname": "category",
-   "fieldtype": "Data",
+   "fieldname": "activity_group",
+   "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Category"
+   "label": "Activity Group",
+   "link_filters": "[[\"Item Group\",\"parent_item_group\",\"!=\",\"All Item Groups\"]]",
+   "options": "Item Group"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-03 09:00:41.558885",
+ "modified": "2025-02-24 17:27:28.658291",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Package",

@@ -44,10 +44,10 @@
   "proposed_activities_section",
   "activities",
   "accommodation_section",
-  "accommodation_type",
+  "accommodation_needed",
+  "rooms",
   "room_booking",
-  "no_of_tents",
-  "room_type",
+  "tents",
   "tent_selection",
   "section_break_guea",
   "hired_services",
@@ -211,21 +211,10 @@
    "label": "Accommodation"
   },
   {
-   "fieldname": "accommodation_type",
-   "fieldtype": "Select",
-   "label": "Accommodation Type",
-   "options": "\nRooms\nSWS Tents\nOwn Tents"
-  },
-  {
    "fieldname": "room_booking",
    "fieldtype": "Table",
    "label": "Room Booking",
-   "options": "Room Booking"
-  },
-  {
-   "fieldname": "no_of_tents",
-   "fieldtype": "Int",
-   "label": "No. of Tents"
+   "options": "Inquiry Room Booking"
   },
   {
    "fieldname": "dietary_requirements_section",
@@ -274,12 +263,6 @@
    "fieldname": "customer",
    "fieldtype": "Read Only",
    "label": "Customer"
-  },
-  {
-   "fieldname": "room_type",
-   "fieldtype": "Link",
-   "label": "Room Type",
-   "options": "Room Type"
   },
   {
    "fieldname": "column_break_vkqs",
@@ -394,12 +377,30 @@
    "fieldtype": "Link",
    "label": "Booking Inquiry",
    "options": "Booking Inquiry"
+  },
+  {
+   "default": "0",
+   "fieldname": "accommodation_needed",
+   "fieldtype": "Check",
+   "label": "Accommodation Needed"
+  },
+  {
+   "default": "0",
+   "fieldname": "rooms",
+   "fieldtype": "Check",
+   "label": "Rooms"
+  },
+  {
+   "default": "0",
+   "fieldname": "tents",
+   "fieldtype": "Check",
+   "label": "Tents"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-24 14:59:16.676476",
+ "modified": "2025-02-24 15:57:33.282170",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

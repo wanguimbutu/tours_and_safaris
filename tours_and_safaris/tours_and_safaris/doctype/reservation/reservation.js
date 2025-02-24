@@ -116,6 +116,22 @@ frappe.ui.form.on("Reservation", {
         }
     },
 
+    accommodation_needed: function (frm) {
+        toggle_accommodation_fields(frm);
+    },
+
+    rooms: function (frm) {
+        toggle_accommodation_fields(frm);
+    },
+
+    tents: function (frm) {
+        toggle_accommodation_fields(frm);
+    },
+
+    own_tents: function (frm) {
+        toggle_accommodation_fields(frm);
+    },
+
     start_date: function (frm) {
         console.log("Start Date Changed");
         populate_safari_reservation(frm);
@@ -287,19 +303,16 @@ function confirm_room_reservations(frm) {
 }
 
 function toggle_accommodation_fields(frm) {
-    frm.set_df_property('no_of_tents', 'hidden', 1);
-    frm.set_df_property('room_booking', 'hidden', 1);
-    frm.set_df_property('room_type', 'hidden', 1);
-    frm.set_df_property('tent_selection', 'hidden', 1);
+    let show_accommodation = frm.doc.accommodation_needed;
 
-    if (frm.doc.accommodation_type === 'Rooms') {
-        frm.set_df_property('room_type', 'hidden', 0);
-    } else if (frm.doc.accommodation_type === 'Own Tents') {
-        frm.set_df_property('no_of_tents', 'hidden', 0);
-    } else if (frm.doc.accommodation_type === 'SWS Tents') {
-        frm.set_df_property('tent_selection', 'hidden', 0);
-    }
+    frm.set_df_property("rooms", "hidden", !show_accommodation);
+    frm.set_df_property("tents", "hidden", !show_accommodation);
+    frm.set_df_property("own_tents", "hidden", !show_accommodation);
+
+    frm.set_df_property("room_booking", "hidden", !frm.doc.rooms);
+    frm.set_df_property("tent_selection", "hidden", !frm.doc.tents);
 }
+
 
 function populate_safari_reservation(frm) {
     if (!frm.doc.start_date || !frm.doc.end_date) {

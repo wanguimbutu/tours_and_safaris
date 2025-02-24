@@ -9,11 +9,11 @@
   "section_break_eot3",
   "inquiry_date",
   "column_break_etvu",
-  "amended_from",
   "new_customer",
   "existing_customer",
   "lead_name",
   "customer_name",
+  "amended_from",
   "section_break_bfyy",
   "from_date",
   "to_date",
@@ -25,6 +25,8 @@
   "purpose_of_visit",
   "section_break_fbqu",
   "guest_details",
+  "section_break_apsj",
+  "activities",
   "section_break_untc",
   "accommodation_needed",
   "rooms",
@@ -140,7 +142,8 @@
   },
   {
    "fieldname": "section_break_untc",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Accommodation Booking"
   },
   {
    "default": "0",
@@ -150,7 +153,8 @@
   },
   {
    "fieldname": "section_break_rnwd",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Transport"
   },
   {
    "default": "0",
@@ -166,7 +170,8 @@
   },
   {
    "fieldname": "section_break_xphs",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Other Services"
   },
   {
    "fieldname": "hired_service",
@@ -224,6 +229,7 @@
    "options": "Lead"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "customer_name",
    "fieldtype": "Link",
    "label": "Customer Name",
@@ -270,12 +276,22 @@
    "hidden": 1,
    "label": "Status",
    "options": "\nLost\nReserved"
+  },
+  {
+   "fieldname": "section_break_apsj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "activities",
+   "fieldtype": "Table",
+   "label": "Activities",
+   "options": "Activity Package"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-24 12:45:24.701290",
+ "modified": "2025-02-24 17:17:29.320761",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",

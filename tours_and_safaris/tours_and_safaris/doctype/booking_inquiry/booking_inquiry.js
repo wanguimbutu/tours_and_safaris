@@ -122,13 +122,16 @@ function create_reservation(frm) {
         reservation.no_of_people = frm.doc.no_of_people; 
         reservation.no_of_adults = frm.doc.no_of_adults;
         reservation.no_of_children = frm.doc.no_of_children;
-        reservation.arrival_date = frm.doc.from_date;  // Map from_date to arrival_date
-        reservation.depature_date = frm.doc.to_date;  // Map to_date to departure_date
+        reservation.arrival_date = frm.doc.from_date;  
+        reservation.depature_date = frm.doc.to_date; 
         reservation.activity = frm.doc.purpose_of_visit;
         reservation.guest_details = frm.doc.guest_details;
         reservation.tent_selection = frm.doc.tent_selection;
         reservation.room_booking = frm.doc.room_booking;
         reservation.transport = frm.doc.transport_service;
+        reservation.accommodation_needed = frm.doc.accommodation_needed;
+        reservation.rooms = frm.doc.rooms;
+        reservation.tents = frm.doc.tents;
 
 
 
