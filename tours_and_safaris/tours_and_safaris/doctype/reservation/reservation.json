@@ -9,6 +9,7 @@
   "activity",
   "column_break_allb",
   "amended_from",
+  "booking_inquiry",
   "kyc_section",
   "customer_name",
   "customer",
@@ -89,7 +90,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Activity",
-   "options": "\nCamping\nMt.Kenya\nSafari\nWalk In",
+   "options": "\nCamping - Sagana\nMt.Kenya\nSafari\nWalk In",
    "reqd": 1
   },
   {
@@ -387,12 +388,18 @@
    "in_list_view": 1,
    "label": "Depature Date",
    "reqd": 1
+  },
+  {
+   "fieldname": "booking_inquiry",
+   "fieldtype": "Link",
+   "label": "Booking Inquiry",
+   "options": "Booking Inquiry"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-21 13:03:11.305015",
+ "modified": "2025-02-24 14:59:16.676476",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

@@ -1,35 +1,29 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-02-22 10:53:09.041866",
+ "creation": "2025-02-24 11:53:55.631840",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "accommodation_type",
-  "type",
-  "selected_accommodation",
+  "room_type",
+  "room_name",
   "rate"
  ],
  "fields": [
   {
-   "fieldname": "accommodation_type",
-   "fieldtype": "Select",
+   "fieldname": "room_type",
+   "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Accommodation Type",
-   "options": "\nRoom\nSWS Tent\nOwn Tent"
+   "label": "Room Type",
+   "options": "Room Type"
   },
   {
-   "fieldname": "type",
-   "fieldtype": "Data",
+   "fieldname": "room_name",
+   "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Type"
-  },
-  {
-   "fieldname": "selected_accommodation",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Selected Accommodation"
+   "label": "Room Name",
+   "options": "Rooms"
   },
   {
    "fieldname": "rate",
@@ -41,10 +35,10 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-24 10:34:21.857296",
+ "modified": "2025-02-24 11:55:12.896423",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
- "name": "Accommodation Booking",
+ "name": "Inquiry Room Booking",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

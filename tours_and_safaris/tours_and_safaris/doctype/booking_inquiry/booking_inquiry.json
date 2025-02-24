@@ -12,6 +12,8 @@
   "amended_from",
   "new_customer",
   "existing_customer",
+  "lead_name",
+  "customer_name",
   "section_break_bfyy",
   "from_date",
   "to_date",
@@ -25,12 +27,18 @@
   "guest_details",
   "section_break_untc",
   "accommodation_needed",
-  "accommodation_booking",
+  "rooms",
+  "tents",
+  "own_tents",
+  "tent_selection",
+  "room_booking",
   "section_break_rnwd",
   "transport_required",
   "transport_service",
   "section_break_xphs",
   "hired_service",
+  "section_break_yhuz",
+  "status",
   "follow_up_tab",
   "follow_up_date",
   "column_break_vlrv",
@@ -55,6 +63,7 @@
    "search_index": 1
   },
   {
+   "bold": 1,
    "fieldname": "inquiry_date",
    "fieldtype": "Date",
    "label": "Inquiry Date"
@@ -114,8 +123,9 @@
   },
   {
    "fieldname": "purpose_of_visit",
-   "fieldtype": "Data",
-   "label": "Purpose of Visit"
+   "fieldtype": "Select",
+   "label": "Purpose of Visit",
+   "options": "\nCamping - Sagana\nSafari\nMt.Kenya\nCorporate - Team Building\nTeam Building\nAdventure Trips"
   },
   {
    "fieldname": "section_break_fbqu",
@@ -137,12 +147,6 @@
    "fieldname": "accommodation_needed",
    "fieldtype": "Check",
    "label": "Accommodation needed"
-  },
-  {
-   "fieldname": "accommodation_booking",
-   "fieldtype": "Table",
-   "label": "Accommodation Booking",
-   "options": "Accommodation Booking"
   },
   {
    "fieldname": "section_break_rnwd",
@@ -192,29 +196,86 @@
    "label": "Follow Up Notes"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "notes",
    "fieldtype": "Small Text",
    "label": "Notes"
   },
   {
    "fieldname": "section_break_qyei",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Cancellation"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "reason_for_cancellation",
-   "fieldtype": "Select",
+   "fieldtype": "Small Text",
    "label": "Reason for Cancellation"
   },
   {
    "fieldname": "inquiry_details_tab",
    "fieldtype": "Tab Break",
    "label": "Inquiry Details"
+  },
+  {
+   "fieldname": "lead_name",
+   "fieldtype": "Link",
+   "label": "Lead Name",
+   "options": "Lead"
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Link",
+   "label": "Customer Name",
+   "options": "Customer"
+  },
+  {
+   "default": "0",
+   "fieldname": "rooms",
+   "fieldtype": "Check",
+   "label": "Rooms"
+  },
+  {
+   "default": "0",
+   "fieldname": "tents",
+   "fieldtype": "Check",
+   "label": "Tents"
+  },
+  {
+   "fieldname": "tent_selection",
+   "fieldtype": "Table",
+   "label": "Tent Selection",
+   "options": "Tent Selection"
+  },
+  {
+   "fieldname": "room_booking",
+   "fieldtype": "Table",
+   "label": "Room Booking",
+   "options": "Inquiry Room Booking"
+  },
+  {
+   "default": "0",
+   "fieldname": "own_tents",
+   "fieldtype": "Check",
+   "label": "Own Tents"
+  },
+  {
+   "fieldname": "section_break_yhuz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "\nLost\nReserved"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-22 11:32:15.077671",
+ "modified": "2025-02-24 12:45:24.701290",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
@@ -236,5 +297,15 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [
+  {
+   "color": "Red",
+   "title": "Lost"
+  },
+  {
+   "color": "Green",
+   "title": "Reserved"
+  }
+ ],
+ "track_changes": 1
 }
