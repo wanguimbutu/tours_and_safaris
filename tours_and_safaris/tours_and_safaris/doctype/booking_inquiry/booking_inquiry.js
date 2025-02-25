@@ -7,7 +7,7 @@ frappe.ui.form.on('Booking Inquiry', {
         frm.trigger('toggle_fields');
     },
     refresh: function(frm) {
-        if (frm.doc.docstatus === 1) {  // Only show buttons after submission
+        if (frm.doc.docstatus === 1) {  
             if (frm.doc.status === "Lost") {
                 disable_form_actions(frm);
             } else {
@@ -25,7 +25,7 @@ frappe.ui.form.on('Booking Inquiry', {
             if (row.activity_group) {
                 return {
                     filters: {
-                        "custom_category": row.activity_group  // Use `custom_category` instead of `activity_group`
+                        "custom_category": row.activity_group  
                     }
                 };
             }
@@ -36,11 +36,11 @@ frappe.ui.form.on('Booking Inquiry', {
             frappe.model.with_doctype('Lead', function() {
                 let lead = frappe.model.get_new_doc('Lead');
 
-                // Pre-fill details
+                
                 lead.first_name = frm.doc.customer_name || '';
                 lead.source = 'Booking Inquiry';
 
-                // Store the current Booking Inquiry ID in route_options
+    
                 frappe.route_options = { booking_inquiry_ref: frm };
 
                 // Open the Lead form
@@ -49,14 +49,14 @@ frappe.ui.form.on('Booking Inquiry', {
         }
     },
     existing_customer: function(frm) {
-        frm.trigger('toggle_fields'); // Toggle fields when "Existing Customer" is checked/unchecked
+        frm.trigger('toggle_fields'); 
     },
 
     toggle_fields: function(frm) {
         let is_existing = frm.doc.existing_customer;
 
-        frm.toggle_display('lead_name', !is_existing); // Hide Lead Name if Existing Customer is checked
-        frm.toggle_display('new_customer', !is_existing); // Hide New Customer if Existing Customer is checked
+        frm.toggle_display('lead_name', !is_existing); 
+        frm.toggle_display('new_customer', !is_existing); 
     },
      rooms: function(frm) {
         toggle_tables(frm);
@@ -82,7 +82,7 @@ function toggle_tables(frm) {
     let show_tents = frm.doc.tents;
     let own_tents = frm.doc.own_tents;
 
-    // If "Own Tents" is selected, hide both tables
+    
     if (own_tents) {
         frm.set_df_property('room_booking', 'hidden', 1);
         frm.set_df_property('tent_selection', 'hidden', 1);
@@ -102,7 +102,7 @@ function toggle_accommodation_options(frm) {
     frm.set_df_property('own_tents', 'hidden', !needed);
 
     if (!needed) {
-        // If Accommodation Needed is unchecked, hide everything
+        
         frm.set_df_property('room_booking', 'hidden', 1);
         frm.set_df_property('tent_selection', 'hidden', 1);
     }
@@ -120,12 +120,11 @@ function toggle_transport_option(frm){
     }
 }
 
-// Function to create a reservation without saving it
+
 function create_reservation(frm) {
     frappe.model.with_doctype("Reservation", function() {
         let reservation = frappe.model.get_new_doc("Reservation");
 
-        // Map fields from Booking Inquiry to Reservation
         reservation.booking_inquiry = frm.doc.name;
         reservation.customer_name = frm.doc.customer_name;
         reservation.status = "Reserved";
@@ -144,12 +143,10 @@ function create_reservation(frm) {
         reservation.tents = frm.doc.tents;
 
 
-
-        // Open the new Reservation form without saving
         frappe.set_route("Form", "Reservation", reservation.name);
     });
 }
-// Function to set Booking Inquiry as Lost
+
 function set_as_lost(frm) {
     frappe.prompt([
         {
@@ -169,7 +166,6 @@ function set_as_lost(frm) {
     __("Confirm"));
 }
 
-// Function to convert a Lead to a Customer
 function convert_lead_to_customer(lead_name, callback) {
     frappe.call({
         method: "frappe.client.insert",
@@ -188,14 +184,14 @@ function convert_lead_to_customer(lead_name, callback) {
     });
 }
 function disable_form_actions(frm) {
-    frm.disable_save();  // Disable Save button
+    frm.disable_save();  
     frm.set_df_property("reason_for_cancellation", "read_only", 1);
 
     frm.fields.forEach(field => {
         frm.set_df_property(field.df.fieldname, "read_only", 1);
     });
 
-    frm.clear_custom_buttons();  // Remove action buttons
+    frm.clear_custom_buttons();  
     frm.refresh_fields();
 }
 
@@ -207,7 +203,7 @@ frappe.ui.form.on("Activities", {
             frm.fields_dict["activities"].grid.get_field("activity_name").get_query = function () {
                 return {
                     filters: {
-                        "custom_category": row.activity_group  // Use `custom_category` instead of `activity_group`
+                        "custom_category": row.activity_group  
                     }
                 };
             };
