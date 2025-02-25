@@ -7,7 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "transport_name",
-  "price"
+  "price",
+  "vehicle_name"
  ],
  "fields": [
   {
@@ -20,11 +21,17 @@
    "fieldname": "price",
    "fieldtype": "Currency",
    "label": "Price "
+  },
+  {
+   "fieldname": "vehicle_name",
+   "fieldtype": "Link",
+   "label": "Vehicle Name",
+   "options": "Vehicle"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-29 11:24:42.284431",
+ "modified": "2025-02-25 15:30:38.891589",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Transport Service",
