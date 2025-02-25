@@ -20,6 +20,16 @@ frappe.ui.form.on('Booking Inquiry', {
                 }, __("Actions"));
             }
         }
+        frm.fields_dict["activities"].grid.get_field("activity_name").get_query = function (doc, cdt, cdn) {
+            let row = locals[cdt][cdn];
+            if (row.activity_group) {
+                return {
+                    filters: {
+                        "custom_category": row.activity_group  // Use `custom_category` instead of `activity_group`
+                    }
+                };
+            }
+        };
     },
     new_customer: function(frm) {
         if (frm.doc.new_customer) {
@@ -188,3 +198,20 @@ function disable_form_actions(frm) {
     frm.clear_custom_buttons();  // Remove action buttons
     frm.refresh_fields();
 }
+
+frappe.ui.form.on("Activities", {
+    activity_group: function (frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        if (row.activity_group) {
+            frm.fields_dict["activities"].grid.get_field("activity_name").get_query = function () {
+                return {
+                    filters: {
+                        "custom_category": row.activity_group  // Use `custom_category` instead of `activity_group`
+                    }
+                };
+            };
+        }
+    }
+});
+
