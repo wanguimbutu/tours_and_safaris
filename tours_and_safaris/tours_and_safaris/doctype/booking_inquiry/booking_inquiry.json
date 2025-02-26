@@ -12,6 +12,7 @@
   "new_customer",
   "existing_customer",
   "lead_name",
+  "first_name",
   "customer_name",
   "amended_from",
   "section_break_bfyy",
@@ -135,6 +136,7 @@
    "label": "Guest Details"
   },
   {
+   "allow_bulk_edit": 1,
    "fieldname": "guest_details",
    "fieldtype": "Table",
    "label": "Guest Details",
@@ -286,12 +288,18 @@
    "fieldtype": "Table",
    "label": "Activities",
    "options": "Activity Package"
+  },
+  {
+   "fetch_from": "lead_name.first_name",
+   "fieldname": "first_name",
+   "fieldtype": "Read Only",
+   "label": "First Name"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-24 17:17:29.320761",
+ "modified": "2025-02-26 14:48:21.776161",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",

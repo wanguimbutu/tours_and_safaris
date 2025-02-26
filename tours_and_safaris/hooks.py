@@ -12,8 +12,18 @@ doc_events = {
     },
     "Reservation": {
         "on_update": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_room_availability"
+    },
+    "Booking Inquiry": {
+        "validate":"tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.validate_boking_inquiry"
+    },
+    "Booking Inquiry":{
+        "validate":"tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.validate_people_count"
+    },
+    "Booking Inquiry":{
+        "validate":"tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.validate_guest_details"
     }
 }
+
 
 scheduler_events = {
     "daily": [

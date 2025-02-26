@@ -8,8 +8,10 @@
  "field_order": [
   "guest_name",
   "age",
-  "allergies",
-  "dietary_restictions"
+  "email_address",
+  "phone_number",
+  "country_of_residence",
+  "dietary_preference"
  ],
  "fields": [
   {
@@ -22,26 +24,40 @@
   },
   {
    "fieldname": "age",
-   "fieldtype": "Data",
-   "label": "Age"
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Age",
+   "options": "\nChild\nAdult"
   },
   {
-   "fieldname": "allergies",
+   "fieldname": "phone_number",
+   "fieldtype": "Phone",
+   "in_list_view": 1,
+   "label": "Phone Number"
+  },
+  {
+   "fieldname": "email_address",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Allergies"
+   "label": "Email Address"
   },
   {
-   "fieldname": "dietary_restictions",
-   "fieldtype": "Table MultiSelect",
-   "label": "Dietary Restictions",
-   "options": "Diet"
+   "fieldname": "country_of_residence",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Country of Residence"
+  },
+  {
+   "fieldname": "dietary_preference",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Dietary Preference"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-22 15:43:19.353245",
+ "modified": "2025-02-26 12:20:27.521854",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Guest Details",

@@ -51,6 +51,15 @@ frappe.ui.form.on('Booking Inquiry', {
     existing_customer: function(frm) {
         frm.trigger('toggle_fields'); 
     },
+    
+    from_date: function(frm) {
+        // Compare the chosen date with today's date
+        if (frm.doc.from_date && frappe.datetime.get_diff(frm.doc.from_date, frappe.datetime.get_today()) < 0) {
+            frappe.msgprint("From Date cannot be in the past.");
+            // Optionally, reset the field to today's date
+            frm.set_value("from_date", frappe.datetime.get_today());
+        }
+    },
 
     toggle_fields: function(frm) {
         let is_existing = frm.doc.existing_customer;
