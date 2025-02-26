@@ -7,26 +7,28 @@ from datetime import datetime
 
 
 class Availability(Document):
-    @staticmethod
-    def update_room_status(self):
-        today = datetime.today().date()
+    pass
+@frappe.whitelist()
+def update_room_status(self):
+    today = datetime.today().date()
 
-        # Fetch all availability records where check-in date is today and status is "Booked"
-        availability_entries = frappe.get_all(
-            "Availability",
-            filters={"arrival_date": today, "status": "Booked"},
-            fields=["name", "room_name"]
-        )
+    # Fetch all availability records where check-in date is today and status is "Booked"
+    availability_entries = frappe.get_all(
+        "Availability",
+        filters={"arrival_date": today, "status": "Booked"},
+        fields=["name", "room_name"]
+    )
 
-        for entry in availability_entries:
-            # Update Availability status to Reserved
-            frappe.db.set_value("Availability", entry["name"], "status", "Reserved")
+    for entry in availability_entries:
+        # Update Availability status to Reserved
+        frappe.db.set_value("Availability", entry["name"], "status", "Reserved")
 
-            # Also update the Room status
-            frappe.db.set_value("Rooms", entry["room_number"], "status", "Reserved")
+        # Also update the Room status
+        frappe.db.set_value("Rooms", entry["room_number"], "status", "Reserved")
 
-        frappe.db.commit()
-
+    frappe.db.commit()
+    
+@frappe.whitelist()
 def process_checkout():
     today = datetime.today().date()
     checkout_time = today.strftime("%Y-%m-%d") + " 10:00:00"  # Set to 10 AM
