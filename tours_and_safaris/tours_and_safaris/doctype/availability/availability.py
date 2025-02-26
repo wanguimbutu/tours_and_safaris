@@ -7,6 +7,7 @@ from datetime import datetime
 
 
 class Availability(Document):
+    @staticmethod
     def update_room_status(self):
         today = datetime.today().date()
 

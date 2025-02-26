@@ -8,6 +8,8 @@
   "equipment_name",
   "quantity_used",
   "task",
+  "activity",
+  "reservation",
   "section_break_howe",
   "amended_from"
  ],
@@ -42,12 +44,24 @@
    "fieldtype": "Link",
    "label": "Task ",
    "options": "Task"
+  },
+  {
+   "fieldname": "activity",
+   "fieldtype": "Link",
+   "label": "Activity",
+   "options": "Activity Type"
+  },
+  {
+   "fieldname": "reservation",
+   "fieldtype": "Link",
+   "label": "Reservation",
+   "options": "Reservation"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-19 10:28:09.956141",
+ "modified": "2025-02-26 10:17:30.952551",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment Log",
