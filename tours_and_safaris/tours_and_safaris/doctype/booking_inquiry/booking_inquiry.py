@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import today, getdate
+from collections import Counter
 
 
 class BookingInquiry(Document):
@@ -16,12 +17,10 @@ def validate_booking_inquiry(doc, method):
          
 @frappe.whitelist()
 def validate_people_count(doc, method):
-    # Ensure fields are not None, defaulting to 0 if needed
     no_of_adults = doc.get("no_of_adults") or 0
     no_of_children = doc.get("no_of_children") or 0
     total = no_of_adults + no_of_children
 
-    # Compare total with no_of_people
     if doc.get("no_of_people") != total:
          frappe.throw("No of People must equal the sum of No of Adults and No of Children.")
 
@@ -33,17 +32,14 @@ def validate_guest_details(doc, method):
 
     # Loop through the guest_details child table
     for guest in doc.get("guest_details") or []:
-        # Use lower() for case-insensitive comparison
         if guest.age and guest.age.lower() == "adult":
             guest_adults += 1
         elif guest.age and guest.age.lower() == "child":
             guest_children += 1
 
-    # Get the numbers from the main document (defaulting to 0 if empty)
     no_of_adults = doc.get("no_of_adults") or 0
     no_of_children = doc.get("no_of_children") or 0
 
-    # Check if the counts match the fields
     if guest_adults != no_of_adults:
         frappe.throw(
             "Mismatch in Adults: Guest Details has {} adults, but 'No of Adults' is set to {}.".format(guest_adults, no_of_adults)
@@ -52,3 +48,22 @@ def validate_guest_details(doc, method):
         frappe.throw(
             "Mismatch in Children: Guest Details has {} children, but 'No of Children' is set to {}.".format(guest_children, no_of_children)
         )
+
+@frappe.whitelist()
+def update_diet_preferences(doc, method):
+    """Update Diet Preferences child table based on Guest Details in Booking Inquiry."""
+    if not doc.get("guest_details"):
+        return
+
+    # Count dietary preferences from guest details
+    diet_count = Counter([guest.dietary_preference for guest in doc.get("guest_details") if guest.dietary_preference])
+
+    # Clear existing diet preferences to prevent duplicates
+    doc.set("diet_preferences", [])
+
+    # Add updated counts to Diet Preferences child table
+    for preference, count in diet_count.items():
+        doc.append("diet_preferences", {
+            "dietary_preference": preference,
+            "total_people": count
+        })

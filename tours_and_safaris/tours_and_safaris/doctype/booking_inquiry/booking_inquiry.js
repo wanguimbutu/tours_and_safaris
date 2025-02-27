@@ -51,12 +51,12 @@ frappe.ui.form.on('Booking Inquiry', {
     existing_customer: function(frm) {
         frm.trigger('toggle_fields'); 
     },
-    
+
     from_date: function(frm) {
-        // Compare the chosen date with today's date
+    
         if (frm.doc.from_date && frappe.datetime.get_diff(frm.doc.from_date, frappe.datetime.get_today()) < 0) {
             frappe.msgprint("From Date cannot be in the past.");
-            // Optionally, reset the field to today's date
+        
             frm.set_value("from_date", frappe.datetime.get_today());
         }
     },
@@ -75,9 +75,6 @@ frappe.ui.form.on('Booking Inquiry', {
         toggle_tables(frm);
     },
 
-    own_tents: function(frm) {
-        toggle_tables(frm);
-    }, 
     accommodation_needed: function(frm) {
         toggle_accommodation_options(frm);
     },
@@ -108,7 +105,6 @@ function toggle_accommodation_options(frm) {
 
     frm.set_df_property('rooms', 'hidden', !needed);
     frm.set_df_property('tents', 'hidden', !needed);
-    frm.set_df_property('own_tents', 'hidden', !needed);
 
     if (!needed) {
         

@@ -21,6 +21,9 @@ doc_events = {
     },
     "Booking Inquiry":{
         "validate":"tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.validate_guest_details"
+    },
+    "Booking Inquiry":{
+        "validate":"tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.update_diet_preferences"
     }
 }
 

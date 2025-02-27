@@ -32,12 +32,13 @@
   "accommodation_needed",
   "rooms",
   "tents",
-  "own_tents",
   "tent_selection",
   "room_booking",
   "section_break_rnwd",
   "transport_required",
   "transport_service",
+  "meals_and_menu_section",
+  "diet_preferences",
   "section_break_xphs",
   "hired_service",
   "section_break_yhuz",
@@ -262,12 +263,6 @@
    "options": "Inquiry Room Booking"
   },
   {
-   "default": "0",
-   "fieldname": "own_tents",
-   "fieldtype": "Check",
-   "label": "Own Tents"
-  },
-  {
    "fieldname": "section_break_yhuz",
    "fieldtype": "Section Break"
   },
@@ -294,12 +289,23 @@
    "fieldname": "first_name",
    "fieldtype": "Read Only",
    "label": "First Name"
+  },
+  {
+   "fieldname": "meals_and_menu_section",
+   "fieldtype": "Section Break",
+   "label": "Meals and Menu"
+  },
+  {
+   "fieldname": "diet_preferences",
+   "fieldtype": "Table",
+   "label": "Diet Preferences",
+   "options": "Meal Diet Preferences"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-26 14:48:21.776161",
+ "modified": "2025-02-27 12:01:51.285386",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
