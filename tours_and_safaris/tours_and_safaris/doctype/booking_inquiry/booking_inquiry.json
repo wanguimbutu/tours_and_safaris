@@ -8,6 +8,7 @@
   "inquiry_details_tab",
   "section_break_eot3",
   "inquiry_date",
+  "workflow_state",
   "column_break_etvu",
   "new_customer",
   "existing_customer",
@@ -70,7 +71,9 @@
    "bold": 1,
    "fieldname": "inquiry_date",
    "fieldtype": "Date",
-   "label": "Inquiry Date"
+   "in_list_view": 1,
+   "label": "Inquiry Date",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_etvu",
@@ -95,12 +98,16 @@
   {
    "fieldname": "from_date",
    "fieldtype": "Date",
-   "label": "From Date"
+   "in_list_view": 1,
+   "label": "From Date",
+   "reqd": 1
   },
   {
    "fieldname": "to_date",
    "fieldtype": "Date",
-   "label": "To Date"
+   "in_list_view": 1,
+   "label": "To Date",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_xjrn",
@@ -300,12 +307,19 @@
    "fieldtype": "Table",
    "label": "Diet Preferences",
    "options": "Meal Diet Preferences"
+  },
+  {
+   "fieldname": "workflow_state",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Workflow State",
+   "options": "Workflow"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-27 12:01:51.285386",
+ "modified": "2025-03-03 12:31:20.807620",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
@@ -335,6 +349,14 @@
   {
    "color": "Green",
    "title": "Reserved"
+  },
+  {
+   "color": "Orange",
+   "title": "Ongoing"
+  },
+  {
+   "color": "Blue",
+   "title": "Submitted"
   }
  ],
  "track_changes": 1

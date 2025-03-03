@@ -38,7 +38,6 @@
   "end_point",
   "mtkenya_section",
   "package_name",
-  "package_type",
   "column_break_txvz",
   "provider_name",
   "proposed_activities_section",
@@ -186,13 +185,8 @@
    "fieldname": "package_name",
    "fieldtype": "Link",
    "label": "Package Name",
-   "options": "Packages"
-  },
-  {
-   "fieldname": "package_type",
-   "fieldtype": "Link",
-   "label": "Package Type",
-   "options": "Package Type"
+   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Mountain Climbing\"]]",
+   "options": "Item"
   },
   {
    "fieldname": "proposed_activities_section",
@@ -400,7 +394,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-24 15:57:33.282170",
+ "modified": "2025-03-03 10:46:43.815443",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

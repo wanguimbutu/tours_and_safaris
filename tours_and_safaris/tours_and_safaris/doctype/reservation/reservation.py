@@ -75,7 +75,7 @@ def calculate_total_cost(reservation_name):
         for activity in reservation.activities:
             # Get the category of the activity
             activity_category = frappe.get_value("Activity", activity.activity_name, "category")
-            if activity_category == "Water Sports":
+            if activity_category == "Water Activities":
                 has_watersports = True
 
     # Calculate accommodation costs
@@ -126,7 +126,7 @@ def create_quotation(reservation_name):
     if reservation.activities:
         for activity in reservation.activities:
             quotation.append("items", {
-                "item_code": "ACTIVITY",
+                "item_code": activity.item_code,
                 "item_name": activity.activity_name,
                 "qty": 1,  
                 "rate": activity.cost or 0

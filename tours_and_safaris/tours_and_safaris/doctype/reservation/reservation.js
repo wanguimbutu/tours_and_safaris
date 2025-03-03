@@ -161,32 +161,7 @@ frappe.ui.form.on("Reservation", {
             frm.set_value("start_date", date_only);
         }
     }, 
-
-package_name: function (frm) {
-        if (frm.doc.package_name) {
-            frappe.call({
-                method: "frappe.client.get",
-                args: {
-                    doctype: "Packages",
-                    name: frm.doc.package_name
-                },
-                callback: function (response) {
-                    const package = response.message;
-                    if (package && package.activity) {
-                        frm.clear_table("activities");
-                        package.activity.forEach(activity => {
-                            const new_row = frm.add_child("activities");
-                            new_row.activity_name = activity.activity_name;
-                            new_row.cost = activity.cost || 0;
-                        });
-                        frm.refresh_field("activities");
-                        calculate_total_cost(frm);
-                    }
-                }
-            });
-        }
-    },
-
+    
     room_type: function (frm) {
         fetch_available_rooms(frm);
     },

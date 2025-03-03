@@ -9,17 +9,14 @@
   "package_name",
   "customer_group",
   "column_break_sagz",
-  "group_size",
-  "activties_section",
-  "activity",
-  "meals_section",
-  "meal_type"
+  "group_size"
  ],
  "fields": [
   {
    "fieldname": "package_name",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "label": "Package Name",
+   "options": "Item",
    "unique": 1
   },
   {
@@ -27,17 +24,6 @@
    "fieldtype": "Link",
    "label": "Customer Group",
    "options": "Customer Group"
-  },
-  {
-   "fieldname": "activties_section",
-   "fieldtype": "Section Break",
-   "label": "Activties"
-  },
-  {
-   "fieldname": "activity",
-   "fieldtype": "Table",
-   "label": "Activity ",
-   "options": "Activity Package"
   },
   {
    "fieldname": "group_size",
@@ -48,22 +34,11 @@
   {
    "fieldname": "column_break_sagz",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "meals_section",
-   "fieldtype": "Section Break",
-   "label": "Meals"
-  },
-  {
-   "fieldname": "meal_type",
-   "fieldtype": "Table MultiSelect",
-   "label": "Meal Type",
-   "options": "Meal Type Table"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-28 11:43:33.281993",
+ "modified": "2025-03-03 10:21:23.572135",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Packages",

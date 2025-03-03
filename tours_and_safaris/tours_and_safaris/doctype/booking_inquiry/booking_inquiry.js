@@ -20,6 +20,22 @@ frappe.ui.form.on('Booking Inquiry', {
                 }, __("Actions"));
             }
         }
+        if (!frm.is_new()) {  // Show button only if the document is saved
+            frm.add_custom_button(__('Download PDF'), function() {
+                var docname = frm.doc.name;
+                var doctype = "Booking Inquiry";
+                var print_format = "Booking Inquiry PDF";  // Use the custom print format name
+
+                window.open(frappe.urllib.get_full_url(
+                    "/api/method/frappe.utils.print_format.download_pdf?"
+                    + "doctype=" + doctype
+                    + "&name=" + docname
+                    + "&format=" + print_format
+                    + "&no_letterhead=0"  // 0 = Use letterhead, 1 = No letterhead
+                ));
+            }, __("Actions"));  // Adds button under "Actions" menu
+        }
+
         frm.fields_dict["activities"].grid.get_field("activity_name").get_query = function (doc, cdt, cdn) {
             let row = locals[cdt][cdn];
             if (row.activity_group) {
@@ -146,7 +162,7 @@ function create_reservation(frm) {
         reservation.accommodation_needed = frm.doc.accommodation_needed;
         reservation.rooms = frm.doc.rooms;
         reservation.tents = frm.doc.tents;
-
+        reservation.dietary_requirements = frm.doc.dietary_preferences;
 
         frappe.set_route("Form", "Reservation", reservation.name);
     });
@@ -169,6 +185,20 @@ function set_as_lost(frm) {
     },
     __("Set as Lost"),
     __("Confirm"));
+}
+
+function handle_reservation_creation(frm) {
+    if (frm.doc.new_customer) {
+        // If it's a new customer, first convert the Lead to a Customer
+        convert_lead_to_customer(frm.doc.customer_name, function(customer_name) {
+            frm.set_value("customer_name", customer_name); // Update Booking Inquiry
+            frm.save();  // Save the form after updating
+            create_reservation(frm); // Now create the reservation
+        });
+    } else {
+        // If it's an existing customer, directly create the reservation
+        create_reservation(frm);
+    }
 }
 
 function convert_lead_to_customer(lead_name, callback) {
