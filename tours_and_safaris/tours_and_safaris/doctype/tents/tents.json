@@ -7,7 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "tent_type",
-  "rate"
+  "rate",
+  "item_code"
  ],
  "fields": [
   {
@@ -20,11 +21,18 @@
    "fieldname": "rate",
    "fieldtype": "Currency",
    "label": "Rate"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Camping\"]]",
+   "options": "Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-29 11:55:12.581009",
+ "modified": "2025-03-05 09:01:32.215882",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Tents",

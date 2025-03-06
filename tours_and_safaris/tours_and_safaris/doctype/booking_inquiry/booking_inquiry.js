@@ -156,6 +156,7 @@ function create_reservation(frm) {
         reservation.depature_date = frm.doc.to_date; 
         reservation.activity = frm.doc.purpose_of_visit;
         reservation.guest_details = frm.doc.guest_details;
+        reservation.activities =frm.doc.activities;
         reservation.tent_selection = frm.doc.tent_selection;
         reservation.room_booking = frm.doc.room_booking;
         reservation.transport = frm.doc.transport_service;

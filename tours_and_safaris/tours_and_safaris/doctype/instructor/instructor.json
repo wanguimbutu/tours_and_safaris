@@ -7,7 +7,6 @@
  "engine": "InnoDB",
  "field_order": [
   "name1",
-  "employee_id",
   "section_break_efvn",
   "activity_levels"
  ],
@@ -17,12 +16,6 @@
    "fieldtype": "Data",
    "label": "Name",
    "unique": 1
-  },
-  {
-   "fieldname": "employee_id",
-   "fieldtype": "Link",
-   "label": "Employee ID",
-   "options": "Employee"
   },
   {
    "fieldname": "section_break_efvn",
@@ -37,7 +30,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-11 10:55:10.996479",
+ "modified": "2025-03-05 10:22:29.261784",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Instructor",

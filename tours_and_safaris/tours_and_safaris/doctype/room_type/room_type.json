@@ -8,7 +8,8 @@
  "field_order": [
   "room_type",
   "resident_rate",
-  "non_resident_rate"
+  "non_resident_rate",
+  "item_code"
  ],
  "fields": [
   {
@@ -26,11 +27,18 @@
    "fieldname": "non_resident_rate",
    "fieldtype": "Currency",
    "label": "Non Resident Rate"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"ACCOMMODATION\"]]",
+   "options": "Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-30 11:38:22.703044",
+ "modified": "2025-03-05 08:57:02.974848",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Room Type",

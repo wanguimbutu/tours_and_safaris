@@ -80,7 +80,7 @@ def calculate_total_cost(reservation_name):
 
     # Calculate accommodation costs
     if reservation.room_booking:
-        accommodation_cost += sum(room.price for room in reservation.room_booking)
+        accommodation_cost += sum(room.rate for room in reservation.room_booking)
 
     if reservation.tent_selection:
         accommodation_cost += sum(tent.qty * tent.price for tent in reservation.tent_selection)
@@ -115,8 +115,8 @@ def create_quotation(reservation_name):
     quotation = frappe.get_doc({
         "doctype": "Quotation",
         "customer": reservation.customer_name,
-        "custom_arrival_date": reservation.arrival_date,
-        "custom_depature_date": reservation.depature_date,
+        "arrival_date": reservation.arrival_date,
+        "depature_date": reservation.depature_date,
         "custom_reservation": reservation.name,
         "custom_no_of_people": reservation.no_of_people,
         "items": []
@@ -140,7 +140,7 @@ def create_quotation(reservation_name):
                 "item_name": room.room_name or "Room",
                 "description": f"Room Booking: {room.room_name or 'N/A'}",
                 "qty": 1,
-                "rate": room.price or 0
+                "rate": room.rate or 0
             })
 
     # Add tent selections

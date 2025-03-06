@@ -5,11 +5,20 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "reservation_name",
+  "column_break_zews",
+  "task_name",
+  "section_break_aepi",
   "equipment_name",
-  "quantity_used",
-  "task",
-  "activity",
-  "reservation",
+  "equipment_type",
+  "equipment_state",
+  "equipment_issue_and_return_section",
+  "date_issued",
+  "condition_on_issue",
+  "column_break_jdkj",
+  "date_returned",
+  "condition_on_return",
+  "number_of_damaged",
   "section_break_howe",
   "amended_from"
  ],
@@ -35,33 +44,76 @@
    "options": "Equipment"
   },
   {
-   "fieldname": "quantity_used",
-   "fieldtype": "Int",
-   "label": "Quantity Used"
+   "fieldname": "reservation_name",
+   "fieldtype": "Link",
+   "label": "Reservation Name",
+   "options": "Reservation"
   },
   {
-   "fieldname": "task",
+   "fieldname": "column_break_zews",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "task_name",
    "fieldtype": "Link",
-   "label": "Task ",
+   "label": "Task Name",
    "options": "Task"
   },
   {
-   "fieldname": "activity",
-   "fieldtype": "Link",
-   "label": "Activity",
-   "options": "Activity Type"
+   "fieldname": "section_break_aepi",
+   "fieldtype": "Section Break"
   },
   {
-   "fieldname": "reservation",
-   "fieldtype": "Link",
-   "label": "Reservation",
-   "options": "Reservation"
+   "fieldname": "equipment_type",
+   "fieldtype": "Data",
+   "label": "Equipment Type"
+  },
+  {
+   "fieldname": "equipment_state",
+   "fieldtype": "Read Only",
+   "label": "Equipment State"
+  },
+  {
+   "fieldname": "equipment_issue_and_return_section",
+   "fieldtype": "Section Break",
+   "label": "Equipment Issue and Return"
+  },
+  {
+   "fieldname": "date_issued",
+   "fieldtype": "Date",
+   "label": "Date Issued"
+  },
+  {
+   "fieldname": "condition_on_issue",
+   "fieldtype": "Select",
+   "label": "Condition on Issue",
+   "options": "\nGood\nBad/Damaged"
+  },
+  {
+   "fieldname": "column_break_jdkj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date_returned",
+   "fieldtype": "Date",
+   "label": "Date Returned"
+  },
+  {
+   "fieldname": "condition_on_return",
+   "fieldtype": "Select",
+   "label": "Condition on Return",
+   "options": "\nGood\nBad/Damaged"
+  },
+  {
+   "fieldname": "number_of_damaged",
+   "fieldtype": "Int",
+   "label": "Number of Damaged"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-02-26 10:17:30.952551",
+ "modified": "2025-03-05 15:37:38.462068",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment Log",

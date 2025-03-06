@@ -13,6 +13,7 @@
   "resident_rate",
   "non_resident_rate",
   "status",
+  "item_code",
   "section_break_atkp",
   "amenities"
  ],
@@ -67,11 +68,17 @@
    "fieldname": "non_resident_rate",
    "fieldtype": "Read Only",
    "label": "Non Resident Rate"
+  },
+  {
+   "fetch_from": "room_type.item_code",
+   "fieldname": "item_code",
+   "fieldtype": "Read Only",
+   "label": "Item Code"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-30 11:49:30.505238",
+ "modified": "2025-03-05 08:58:02.769870",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Rooms",

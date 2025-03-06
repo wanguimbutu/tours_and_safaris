@@ -13,7 +13,7 @@ class BookingInquiry(Document):
 @frappe.whitelist()
 def validate_booking_inquiry(doc, method):
     if doc.from_date and getdate(doc.from_date) < getdate(today()):
-         frappe.throw(_("From Date cannot be in the past. Please select a valid date."))
+         frappe.throw(("From Date cannot be in the past. Please select a valid date."))
          
 @frappe.whitelist()
 def validate_people_count(doc, method):

@@ -9,7 +9,15 @@
   "instructor_name",
   "level",
   "session_type",
-  "rate"
+  "rate",
+  "column_break_rmzp",
+  "from_date",
+  "to_date",
+  "amended_from",
+  "column_break_ujyg",
+  "activity",
+  "task",
+  "reservation"
  ],
  "fields": [
   {
@@ -27,6 +35,7 @@
    "options": "Qualification Type"
   },
   {
+   "fetch_from": "activity_rate.session",
    "fieldname": "session_type",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -38,18 +47,78 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Rate"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Instructor Allocation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "activity",
+   "fieldtype": "Link",
+   "label": "Activity",
+   "options": "Activity Type"
+  },
+  {
+   "fieldname": "column_break_rmzp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Datetime",
+   "label": "From Date"
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Datetime",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "column_break_ujyg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "task",
+   "fieldtype": "Link",
+   "label": "Task",
+   "options": "Task"
+  },
+  {
+   "fieldname": "reservation",
+   "fieldtype": "Link",
+   "label": "Reservation",
+   "options": "Reservation"
   }
  ],
  "index_web_pages_for_search": 1,
- "istable": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2025-02-11 16:15:11.875063",
+ "modified": "2025-03-06 14:49:42.188183",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Instructor Allocation",
  "owner": "Administrator",
- "permissions": [],
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }
