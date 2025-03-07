@@ -1,33 +1,32 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{activity_type}-{session}-{instructor_level}",
- "creation": "2025-02-05 15:49:51.939555",
+ "creation": "2025-03-07 09:58:42.135894",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "activity_type",
-  "session",
-  "instructor_level",
+  "activity",
+  "session_type",
+  "qualification",
   "rate"
  ],
  "fields": [
   {
-   "fieldname": "activity_type",
+   "fieldname": "activity",
    "fieldtype": "Link",
-   "label": "Activity Type",
+   "label": "Activity",
    "options": "Activity Type"
   },
   {
-   "fieldname": "session",
+   "fieldname": "session_type",
    "fieldtype": "Link",
-   "label": "Session",
+   "label": "Session Type",
    "options": "Session Type"
   },
   {
-   "fieldname": "instructor_level",
+   "fieldname": "qualification",
    "fieldtype": "Link",
-   "label": "Instructor Level",
+   "label": "Qualification",
    "options": "Qualification Type"
   },
   {
@@ -38,11 +37,10 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-05 16:13:51.462655",
+ "modified": "2025-03-07 10:02:12.917886",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
- "name": "Activity Rate List",
- "naming_rule": "Expression",
+ "name": "Instructor Rate",
  "owner": "Administrator",
  "permissions": [
   {

@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestActivityRateList(FrappeTestCase):
+class TestInstructorAssignment(FrappeTestCase):
 	pass

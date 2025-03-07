@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class ActivityRateList(Document):
+class InstructorRate(Document):
 	pass

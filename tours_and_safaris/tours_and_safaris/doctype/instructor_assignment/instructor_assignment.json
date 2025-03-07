@@ -17,7 +17,9 @@
   "column_break_ujyg",
   "activity",
   "task",
-  "reservation"
+  "reservation",
+  "section_break_hmbp",
+  "instructor_suggestions"
  ],
  "fields": [
   {
@@ -53,7 +55,7 @@
    "fieldtype": "Link",
    "label": "Amended From",
    "no_copy": 1,
-   "options": "Instructor Allocation",
+   "options": "Instructor Assignment",
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
@@ -93,15 +95,25 @@
    "fieldtype": "Link",
    "label": "Reservation",
    "options": "Reservation"
+  },
+  {
+   "fieldname": "section_break_hmbp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "instructor_suggestions",
+   "fieldtype": "Table",
+   "label": "Instructor Suggestions",
+   "options": "Instructor Suggestions"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-06 14:49:42.188183",
+ "modified": "2025-03-07 10:06:52.393706",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
- "name": "Instructor Allocation",
+ "name": "Instructor Assignment",
  "owner": "Administrator",
  "permissions": [
   {
