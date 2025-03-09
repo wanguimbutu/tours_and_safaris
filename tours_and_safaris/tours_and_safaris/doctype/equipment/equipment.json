@@ -12,9 +12,12 @@
   "initial_state",
   "frequency",
   "quantity",
+  "capacity",
   "next_check_date",
   "inspection_frequency",
   "notify_date",
+  "column_break_lqix",
+  "is_group",
   "uploads_section",
   "image",
   "optional_info_section",
@@ -144,11 +147,27 @@
    "fieldname": "image",
    "fieldtype": "Attach",
    "label": "Image"
+  },
+  {
+   "fieldname": "capacity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Capacity"
+  },
+  {
+   "fieldname": "column_break_lqix",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_group",
+   "fieldtype": "Check",
+   "label": "Is Group"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-19 09:55:50.186253",
+ "modified": "2025-03-09 11:50:02.505228",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment",

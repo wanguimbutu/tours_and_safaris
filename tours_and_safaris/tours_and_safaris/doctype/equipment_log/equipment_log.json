@@ -15,8 +15,10 @@
   "equipment_issue_and_return_section",
   "date_issued",
   "condition_on_issue",
+  "quantity_issued",
   "column_break_jdkj",
   "date_returned",
+  "quantity_returned",
   "condition_on_return",
   "number_of_damaged",
   "section_break_howe",
@@ -108,12 +110,22 @@
    "fieldname": "number_of_damaged",
    "fieldtype": "Int",
    "label": "Number of Damaged"
+  },
+  {
+   "fieldname": "quantity_issued",
+   "fieldtype": "Int",
+   "label": "Quantity Issued"
+  },
+  {
+   "fieldname": "quantity_returned",
+   "fieldtype": "Int",
+   "label": "Quantity Returned"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-05 15:37:38.462068",
+ "modified": "2025-03-09 12:30:19.318296",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment Log",
