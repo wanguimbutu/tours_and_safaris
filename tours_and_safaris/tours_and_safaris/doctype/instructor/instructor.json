@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "name1",
+  "supplier",
   "section_break_efvn",
   "activity_levels"
  ],
@@ -26,11 +27,18 @@
    "fieldtype": "Table",
    "label": "Activity Levels",
    "options": "Instructor Activity Level"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Supplier",
+   "options": "Supplier"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-05 10:22:29.261784",
+ "modified": "2025-03-11 11:24:18.523802",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Instructor",

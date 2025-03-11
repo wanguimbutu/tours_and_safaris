@@ -4,6 +4,8 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import getdate, now_datetime
+from datetime import datetime
+
 
 class Reservation(Document):
     def on_submit(self):
@@ -43,18 +45,18 @@ class Reservation(Document):
         """Remove availability record if reservation is canceled."""
         frappe.db.delete("Availability", {"reservation": self.name})
 
-    def before_save(self):
+   # def before_save(self):
         """Automatically update no_of_people, no_of_adults, and no_of_children based on guest_details."""
         
-        if self.guest_details:
-            no_of_people = len(self.guest_details)
-            no_of_adults = sum(1 for guest in self.guest_details if int(guest.age) >= 18)
-            no_of_children = no_of_people - no_of_adults  # Remaining guests are children
+        #if self.guest_details:
+            #no_of_people = len(self.guest_details)
+           # no_of_adults = sum(1 for guest in self.guest_details if int(guest.age) >= 18)
+            #no_of_children = no_of_people - no_of_adults  # Remaining guests are children
             
             # Overwrite fields
-            self.no_of_people = no_of_people
-            self.no_of_adults = no_of_adults
-            self.no_of_children = no_of_children
+           # self.no_of_people = no_of_people
+            #self.no_of_adults = no_of_adults
+           # self.no_of_children = no_of_children
 
 
 @frappe.whitelist()
@@ -181,8 +183,6 @@ def create_quotation(reservation_name):
 
 @frappe.whitelist()
 def update_room_availability(doc, method=None):
-    """Update room availability status based on reservation status."""
-    
     if not doc.room_booking:
         return  
 
@@ -192,25 +192,47 @@ def update_room_availability(doc, method=None):
     elif doc.status == "Confirmed Reservation":
         room_status = "Booked"
 
+    # Ensure dates exist
+    if not doc.arrival_date or not doc.depature_date:
+        frappe.throw("Arrival Date and Departure Date cannot be empty.")
+
+    # Convert datetime to date format
+    arrival_date = getdate(doc.arrival_date)
+    depature_date = getdate(doc.depature_date)
+
     if room_status:
         for room in doc.room_booking:
-            # Find availability records for the room in the given date range
-            availability_records = frappe.get_all(
-                "Availability",
-                filters={
-                    "room": room.room_number,  
-                    "date": ["between", [doc.arrival_date, doc.depature_date]]
-                },
-                fields=["name"]
-            )
+            if not room.room_name:
+                frappe.log_error(f"Missing room_name in room_booking: {room}", "Room Availability Error")
+                continue  # Skip to the next room
 
-            
-            for record in availability_records:
-                availability_doc = frappe.get_doc("Availability", record.name)
-                availability_doc.status = room_status
-                availability_doc.save()
-                availability_doc.submit()
-                frappe.db.commit()  
+            frappe.logger().info(f"Fetching availability for room {room.room_name} from {arrival_date} to {depature_date}")
+
+            try:
+                # Fetch availability records using SQL (with parameterized queries)
+                availability_records = frappe.db.sql("""
+                    SELECT name 
+                    FROM `tabAvailability`
+                    WHERE room = %(room)s 
+                    AND date BETWEEN %(start_date)s AND %(end_date)s
+                    ORDER BY modified DESC
+                """, {
+                    "room": room.room_name,
+                    "start_date": arrival_date,
+                    "end_date": depature_date
+                }, as_dict=True)
+
+                for record in availability_records:
+                    availability_doc = frappe.get_doc("Availability", record["name"])
+                    availability_doc.status = room_status
+                    availability_doc.save()
+                
+                frappe.db.commit()
+
+            except Exception as e:
+                frappe.log_error(f"Error updating room availability: {str(e)}", "Room Availability Error")
+
+
 @frappe.whitelist()
 def get_check_in_status(reservation_name):
     """Check if the reservation has been checked in and return its status"""
