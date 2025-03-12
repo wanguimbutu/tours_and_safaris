@@ -1,6 +1,6 @@
 frappe.ui.form.on("Reservation", {
     refresh: function (frm) {
-        calculate_total_cost(frm);
+       // calculate_total_cost(frm);
         toggle_accommodation_fields(frm);
 
         if (frm.doc.accommodation_type === "Rooms") {
@@ -103,18 +103,6 @@ frappe.ui.form.on("Reservation", {
             }, __("Actions"));
         }
     },
-    activity: function (frm) {
-        if (frm.doc.activity === "Safari") {
-            frm.set_df_property("safari_section", "hidden", 0);
-            frm.set_df_property("mtkenya_section", "hidden", 1);
-        } else if (frm.doc.activity === "Mt.Kenya") {
-            frm.set_df_property("mtkenya_section", "hidden", 0);
-            frm.set_df_property("safari_section", "hidden", 1);
-        } else {
-            frm.set_df_property("safari_section", "hidden", 1);
-            frm.set_df_property("mtkenya_section", "hidden", 1);
-        }
-    },
 
     accommodation_needed: function (frm) {
         toggle_accommodation_fields(frm);
@@ -132,22 +120,6 @@ frappe.ui.form.on("Reservation", {
         toggle_accommodation_fields(frm);
     },
 
-    start_date: function (frm) {
-        console.log("Start Date Changed");
-        populate_safari_reservation(frm);
-    },
-    end_date: function (frm) {
-        console.log("End Date Changed");
-        populate_safari_reservation(frm);
-    },
-    safari_reservation_add: function (frm) {
-        console.log("Row added to safari_reservation");
-        populate_activities_from_safari(frm);
-    },
-    safari_reservation_remove: function (frm) {
-        console.log("Row removed from safari_reservation");
-        populate_activities_from_safari(frm);
-    },
     
     depature_date: function (frm) {
         if (frm.doc.depature_date) {
@@ -185,7 +157,7 @@ frappe.ui.form.on("Reservation", {
     room_booking_remove: function (frm, cdt, cdn) {
         let row = locals[cdt][cdn];
         remove_room_from_calendar(frm, row);
-    },
+    }, 
 
     status: function (frm) {
         if (frm.doc.status === "Confirmed Reservation") {
@@ -193,24 +165,31 @@ frappe.ui.form.on("Reservation", {
         }
     },
 
-    validate: function (frm) {
+    /*validate: function (frm) {
         calculate_total_cost(frm);
-    }
+    }*/
 });
 
 
 
-function calculate_total_cost(frm) {
-    if (!frm.doc.name) return;
+/*function calculate_total_cost(frm) {
+    if (!frm.doc.booking_inquiry) return;
 
     frappe.call({
-        method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.calculate_total_cost",
-        args: { reservation_name: frm.doc.name },
+        method: "frappe.client.get_value",
+        args: {
+            doctype: "Booking Inquiry",
+            filters: { name: frm.doc.booking_inquiry },
+            fieldname: "proposed_cost"
+        },
         callback: function(response) {
-            frm.set_value("proposed_total_cost", response.message);
+            if (response.message) {
+                frm.set_value("proposed_total_cost", response.message.proposed_total_cost);
+            }
         }
     });
 }
+*/
 
 function fetch_available_rooms(frm) {
     if (!frm.doc.arrival_date || !frm.doc.depature_date || !frm.doc.room_type) return;
@@ -287,61 +266,3 @@ function toggle_accommodation_fields(frm) {
     frm.set_df_property("room_booking", "hidden", !frm.doc.rooms);
     frm.set_df_property("tent_selection", "hidden", !frm.doc.tents);
 }
-
-
-function populate_safari_reservation(frm) {
-    if (!frm.doc.start_date || !frm.doc.end_date) {
-    
-        return;
-    }
-
-    let start = frappe.datetime.str_to_obj(frm.doc.start_date);
-    let end = frappe.datetime.str_to_obj(frm.doc.end_date);
-
-    if (start > end) {
-        frappe.msgprint("Start Date must be before End Date.");
-        return;
-    }
-
-    console.log("Populating safari reservation...");
-    frm.clear_table("safari_reservation");
-
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        let row = frm.add_child("safari_reservation");
-        row.day = frappe.datetime.obj_to_str(d);
-        row.adventure = "";  // Initially blank, user will select
-        console.log(`Added row: Day=${row.day}, Adventure= (empty)`);
-    }
-
-    frm.refresh_field("safari_reservation");
-}
-
-function populate_activities_from_safari(frm) {
-    console.log("Populating activities table...");
-    frm.clear_table("activities");
-
-    let hasActivities = false;
-
-    frm.doc.safari_reservation.forEach(row => {
-        if (row.adventure && row.adventure.trim() !== "") {  
-            let activity_row = frm.add_child("activities");
-            activity_row.activity_name = row.adventure;
-            console.log(`Added Activity: ${row.adventure}`);
-            hasActivities = true;
-        }
-    });
-
-    if (!hasActivities) {
-        console.log("No valid adventure values found in safari_reservation.");
-    }
-
-    frm.refresh_field("activities");
-}
-
-frappe.ui.form.on("Safari Reservation", {
-    adventure: function (frm, cdt, cdn) {
-        let row = locals[cdt][cdn];  
-        console.log(`Adventure swad for ${row.day}: ${row.adventure}`); 
-        populate_activities_from_safari(frm);
-    }
-});

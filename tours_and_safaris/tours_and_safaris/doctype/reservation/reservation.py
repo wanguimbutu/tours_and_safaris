@@ -130,19 +130,19 @@ def create_quotation(reservation_name):
             quotation.append("items", {
                 "item_code": activity.item_code,
                 "item_name": activity.activity_name,
-                "qty": 1,  
+                "qty": activity.qty,  
                 "rate": activity.cost or 0
             })
 
     # Add room bookings
-    if reservation.room_booking:
-        for room in reservation.room_booking:
+    if reservation.room_type_booking:
+        for room in reservation.room_type_booking:
             quotation.append("items", {
                 "item_code": "ACCOMMODATION",
-                "item_name": room.room_name or "Room",
-                "description": f"Room Booking: {room.room_name or 'N/A'}",
-                "qty": 1,
-                "rate": room.rate or 0
+                "item_name": room.room_type or "Room",
+                "description": f"Room Booking: {room.room_type or 'N/A'}",
+                "qty": room.qty or 1,
+                "rate": room.price or 0
             })
 
     # Add tent selections

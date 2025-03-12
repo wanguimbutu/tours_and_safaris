@@ -6,7 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "reservartion_type_section",
-  "activity",
+  "column_break_cqrm",
   "column_break_allb",
   "amended_from",
   "booking_inquiry",
@@ -28,23 +28,12 @@
   "no_of_adults",
   "no_of_children",
   "column_break_vkqs",
-  "safari_section",
-  "destination",
-  "start_date",
-  "end_date",
-  "safari_reservation",
-  "column_break_qxyf",
-  "start_point",
-  "end_point",
-  "mtkenya_section",
-  "package_name",
-  "column_break_txvz",
-  "provider_name",
   "proposed_activities_section",
   "activities",
   "accommodation_section",
   "accommodation_needed",
   "rooms",
+  "room_type_booking",
   "room_booking",
   "tents",
   "tent_selection",
@@ -83,14 +72,6 @@
    "fieldname": "reservartion_type_section",
    "fieldtype": "Section Break",
    "label": "Reservartion Type"
-  },
-  {
-   "fieldname": "activity",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "label": "Activity",
-   "options": "\nCamping - Sagana\nMt.Kenya\nSafari\nWalk In",
-   "reqd": 1
   },
   {
    "fieldname": "column_break_allb",
@@ -163,32 +144,6 @@
    "show_dashboard": 1
   },
   {
-   "fieldname": "safari_section",
-   "fieldtype": "Section Break",
-   "label": "Safari"
-  },
-  {
-   "fieldname": "destination",
-   "fieldtype": "Data",
-   "label": "Destination"
-  },
-  {
-   "fieldname": "column_break_qxyf",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "mtkenya_section",
-   "fieldtype": "Section Break",
-   "label": "Mt.Kenya"
-  },
-  {
-   "fieldname": "package_name",
-   "fieldtype": "Link",
-   "label": "Package Name",
-   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Mountain Climbing\"]]",
-   "options": "Item"
-  },
-  {
    "fieldname": "proposed_activities_section",
    "fieldtype": "Section Break",
    "label": "Proposed Activities"
@@ -234,23 +189,6 @@
   {
    "fieldname": "column_break_wqdw",
    "fieldtype": "Column Break"
-  },
-  {
-   "bold": 1,
-   "fieldname": "proposed_total_cost",
-   "fieldtype": "Currency",
-   "label": "Proposed Total Cost",
-   "non_negative": 1
-  },
-  {
-   "fieldname": "column_break_txvz",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "provider_name",
-   "fieldtype": "Link",
-   "label": "Provider Name",
-   "options": "Service Providers"
   },
   {
    "fetch_from": "customer_name.customer_name",
@@ -327,32 +265,6 @@
    "options": "Diet"
   },
   {
-   "fieldname": "start_point",
-   "fieldtype": "Data",
-   "label": "Start Point"
-  },
-  {
-   "fieldname": "end_point",
-   "fieldtype": "Data",
-   "label": "End Point"
-  },
-  {
-   "fieldname": "start_date",
-   "fieldtype": "Datetime",
-   "label": "Start Date"
-  },
-  {
-   "fieldname": "end_date",
-   "fieldtype": "Datetime",
-   "label": "End Date"
-  },
-  {
-   "fieldname": "safari_reservation",
-   "fieldtype": "Table",
-   "label": "Safari Reservation",
-   "options": "Safari Reservation"
-  },
-  {
    "fieldname": "arrival_date",
    "fieldtype": "Datetime",
    "in_list_view": 1,
@@ -389,12 +301,27 @@
    "fieldname": "tents",
    "fieldtype": "Check",
    "label": "Tents"
+  },
+  {
+   "fieldname": "column_break_cqrm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "room_type_booking",
+   "fieldtype": "Table",
+   "label": "Room Type Booking",
+   "options": "Room Type Booking"
+  },
+  {
+   "fieldname": "proposed_total_cost",
+   "fieldtype": "Currency",
+   "label": "Proposed Total Cost"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-03 10:46:43.815443",
+ "modified": "2025-03-12 14:41:03.536707",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

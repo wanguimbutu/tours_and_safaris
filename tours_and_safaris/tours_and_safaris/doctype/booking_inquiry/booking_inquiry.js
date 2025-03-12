@@ -162,12 +162,13 @@ function create_reservation(frm) {
         reservation.guest_details = frm.doc.guest_details;
         reservation.activities =frm.doc.activities;
         reservation.tent_selection = frm.doc.tent_selection;
-        reservation.room_booking = frm.doc.room_booking;
+        reservation.room_type_booking = frm.doc.room_booking;
         reservation.transport = frm.doc.transport_service;
         reservation.accommodation_needed = frm.doc.accommodation_needed;
         reservation.rooms = frm.doc.rooms;
         reservation.tents = frm.doc.tents;
         reservation.dietary_requirements = frm.doc.dietary_preferences;
+        reservation.proposed_total_cost = frm.doc.proposed_cost;
 
         frappe.set_route("Form", "Reservation", reservation.name);
     });

@@ -37,6 +37,7 @@
   "transport_required",
   "transport_service",
   "meals_and_menu_section",
+  "meals_required",
   "diet_preferences",
   "section_break_xphs",
   "hired_service",
@@ -324,12 +325,18 @@
    "fieldtype": "Currency",
    "label": "Proposed Cost",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "meals_required",
+   "fieldtype": "Check",
+   "label": "Meals Required"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-12 10:46:35.258092",
+ "modified": "2025-03-12 11:59:16.193703",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
