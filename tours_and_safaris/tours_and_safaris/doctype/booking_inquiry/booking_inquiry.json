@@ -23,8 +23,6 @@
   "no_of_people",
   "no_of_adults",
   "no_of_children",
-  "section_break_ktci",
-  "purpose_of_visit",
   "section_break_fbqu",
   "guest_details",
   "section_break_apsj",
@@ -42,6 +40,10 @@
   "diet_preferences",
   "section_break_xphs",
   "hired_service",
+  "section_break_weje",
+  "column_break_akgb",
+  "column_break_xkxr",
+  "proposed_cost",
   "section_break_yhuz",
   "status",
   "follow_up_tab",
@@ -127,16 +129,6 @@
    "fieldname": "no_of_children",
    "fieldtype": "Int",
    "label": "No. of Children"
-  },
-  {
-   "fieldname": "section_break_ktci",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "purpose_of_visit",
-   "fieldtype": "Select",
-   "label": "Purpose of Visit",
-   "options": "\nCamping - Sagana\nSafari\nMt.Kenya\nCorporate - Team Building\nTeam Building\nAdventure Trips"
   },
   {
    "fieldname": "section_break_fbqu",
@@ -267,7 +259,7 @@
    "fieldname": "room_booking",
    "fieldtype": "Table",
    "label": "Room Booking",
-   "options": "Inquiry Room Booking"
+   "options": "Room Type Booking"
   },
   {
    "fieldname": "section_break_yhuz",
@@ -314,12 +306,30 @@
    "hidden": 1,
    "label": "Workflow State",
    "options": "Workflow"
+  },
+  {
+   "fieldname": "section_break_weje",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_akgb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_xkxr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "proposed_cost",
+   "fieldtype": "Currency",
+   "label": "Proposed Cost",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-06 10:24:35.696727",
+ "modified": "2025-03-12 10:46:35.258092",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",

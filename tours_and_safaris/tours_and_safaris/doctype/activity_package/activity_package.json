@@ -8,8 +8,10 @@
  "field_order": [
   "activity_group",
   "activity_name",
+  "qty",
   "cost",
-  "item_code"
+  "item_code",
+  "amount"
  ],
  "fields": [
   {
@@ -40,12 +42,23 @@
    "fieldname": "item_code",
    "fieldtype": "Data",
    "label": "Item Code"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-03 11:16:40.080460",
+ "modified": "2025-03-12 11:17:37.994143",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Package",

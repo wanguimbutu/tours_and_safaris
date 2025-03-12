@@ -96,7 +96,12 @@ frappe.ui.form.on('Booking Inquiry', {
     },
     transport_required: function(frm){
         toggle_transport_option(frm);
+    },
+    no_of_people: function(frm) {
+        update_qty_fields(frm);
+        calculate_total_cost(frm);
     }
+
 }); 
 
 function toggle_tables(frm) {
@@ -154,7 +159,6 @@ function create_reservation(frm) {
         reservation.no_of_children = frm.doc.no_of_children;
         reservation.arrival_date = frm.doc.from_date;  
         reservation.depature_date = frm.doc.to_date; 
-        reservation.activity = frm.doc.purpose_of_visit;
         reservation.guest_details = frm.doc.guest_details;
         reservation.activities =frm.doc.activities;
         reservation.tent_selection = frm.doc.tent_selection;
@@ -190,14 +194,14 @@ function set_as_lost(frm) {
 
 function handle_reservation_creation(frm) {
     if (frm.doc.new_customer) {
-        // If it's a new customer, first convert the Lead to a Customer
+        
         convert_lead_to_customer(frm.doc.customer_name, function(customer_name) {
-            frm.set_value("customer_name", customer_name); // Update Booking Inquiry
-            frm.save();  // Save the form after updating
-            create_reservation(frm); // Now create the reservation
+            frm.set_value("customer_name", customer_name); 
+            frm.save();  
+            create_reservation(frm); 
         });
     } else {
-        // If it's an existing customer, directly create the reservation
+        
         create_reservation(frm);
     }
 }
@@ -230,6 +234,47 @@ function disable_form_actions(frm) {
     frm.clear_custom_buttons();  
     frm.refresh_fields();
 }
+function update_qty_fields(frm) {
+    let people_count = frm.doc.no_of_people || 0;
+    console.log("Updating qty fields. People count:", people_count);
+
+    if (frm.doc.activities) {
+        frm.doc.activities.forEach(activity => {
+            activity.qty = people_count;
+            activity.amount = (activity.cost || 0) * people_count;
+            console.log(`Updated Activity: Qty = ${activity.qty}, Cost = ${activity.cost}, Amount = ${activity.amount}`);
+        });
+    }
+
+    if (frm.doc.room_booking) {
+        frm.doc.room_booking.forEach(room => {
+            room.qty = people_count;
+            room.amount = (room.price || 0) * people_count;
+            console.log(`Updated Room: Qty = ${room.qty}, Price = ${room.price}, Amount = ${room.amount}`);
+        });
+    }
+
+    if (frm.doc.hired_service) {
+        frm.doc.hired_service.forEach(service => {
+            service.qty = people_count;
+            service.amount = (service.price || 0) * people_count;
+            console.log(`Updated Service: Qty = ${service.qty}, Price = ${service.price}, Amount = ${service.amount}`);
+        });
+    }
+
+    if (frm.doc.tent_selection) {
+        frm.doc.tent_selection.forEach(tent => {
+            tent.qty = people_count;
+            tent.amount = (tent.price || 0) * people_count;
+            console.log(`Updated Tent: Qty = ${tent.qty}, Price = ${tent.price}, Amount = ${tent.amount}`);
+        });
+    }
+
+    frm.refresh_field("activities");
+    frm.refresh_field("room_booking");
+    frm.refresh_field("hired_service");
+    frm.refresh_field("tent_selection");
+}
 
 frappe.ui.form.on("Activities", {
     activity_group: function (frm, cdt, cdn) {
@@ -246,4 +291,119 @@ frappe.ui.form.on("Activities", {
         }
     }
 });
+frappe.ui.form.on("Activity Package", {
+    activities_add: function(frm, cdt, cdn) {
+        update_row_qty(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    },
+    qty: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    },
+    cost: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    }
+});
 
+frappe.ui.form.on("Room Type Booking", {
+    room_booking_add: function(frm, cdt, cdn) {
+        update_row_qty(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    },
+    qty: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    },
+    cost: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    }
+});
+
+frappe.ui.form.on("Reservation Services",{
+    hired_service_add: function(frm,cdt,cdn){
+        update_row_qty(frm,cdt,cdn);
+        calculate_total_cost(frm);
+    },
+    qty: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    },
+    cost: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    }
+});
+
+frappe.ui.form.on("Tent Selection",{
+    tent_selection_add: function(frm,cdt,cdn){
+        update_row_qty(frm,cdt,cdn);
+        calculate_total_cost(frm);
+    },
+    qty: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    },
+    cost: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    }
+});
+
+function update_row_qty(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    row.qty = frm.doc.no_of_people || 0;
+    row.amount = (row.cost || 0) * row.qty;
+    frm.refresh_field(cdt);
+}
+
+// Calculate row amount (qty * cost)
+function calculate_row_amount(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    row.amount = (row.qty || 0) * (row.cost || 0);
+    frm.refresh_field(cdt);
+}
+
+function calculate_total_cost(frm) {
+    let total_cost = 0;
+
+    console.log("Calculating Total Cost...");
+
+    if (frm.doc.activities) {
+        frm.doc.activities.forEach(activity => {
+            let row_total = (activity.qty || 0) * (activity.cost || 0);
+            console.log(`Activity Row: Qty = ${activity.qty}, Cost = ${activity.cost}, Row Total = ${row_total}`);
+            total_cost += row_total;
+        });
+    }
+
+    if (frm.doc.room_booking) {
+        frm.doc.room_booking.forEach(room => {
+            let row_total = (room.qty || 0) * (room.price || 0);
+            console.log(`Room Row: Qty = ${room.qty}, Price = ${room.price}, Row Total = ${row_total}`);
+            total_cost += row_total;
+        });
+    }
+
+    if (frm.doc.hired_service) {
+        frm.doc.hired_service.forEach(service => {
+            let row_total = (service.qty || 0) * (service.price || 0);
+            console.log(`Hired Service Row: Qty = ${service.qty}, Price = ${service.price}, Row Total = ${row_total}`);
+            total_cost += row_total;
+        });
+    }
+
+    if (frm.doc.tent_selection) {
+        frm.doc.tent_selection.forEach(tent => {
+            let row_total = (tent.qty || 0) * (tent.price || 0);
+            console.log(`Tent Row: Qty = ${tent.qty}, Price = ${tent.price}, Row Total = ${row_total}`);
+            total_cost += row_total;
+        });
+    }
+
+    console.log("Final Calculated Total Cost:", total_cost);
+
+    frm.set_value("proposed_cost", total_cost);
+    frm.refresh_field("proposed_cost");
+}
