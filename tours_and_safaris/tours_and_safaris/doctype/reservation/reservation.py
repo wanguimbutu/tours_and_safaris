@@ -174,7 +174,13 @@ def create_quotation(reservation_name):
                 "qty": 1,
                 "rate": service.price or 0
             })
-
+    if reservation.meals:
+        for meals in reservation.meals:
+            quotation.append("items", {
+                "item_code": meals.meal_type,
+                "qty": meals.qty or 1,
+                "rate": meals.cost or 0
+            })
     
     quotation.insert(ignore_permissions=True)
     

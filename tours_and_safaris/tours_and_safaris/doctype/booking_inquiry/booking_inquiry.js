@@ -19,6 +19,7 @@ frappe.ui.form.on('Booking Inquiry', {
                     set_as_lost(frm);
                 }, __("Actions"));
             }
+            toggle_meals_table(frm);
         }
         if (!frm.is_new()) {  // Show button only if the document is saved
             frm.add_custom_button(__('Download PDF'), function() {
@@ -100,8 +101,11 @@ frappe.ui.form.on('Booking Inquiry', {
     no_of_people: function(frm) {
         update_qty_fields(frm);
         calculate_total_cost(frm);
-    }
+    },
 
+    meals_required: function(frm){
+        toggle_meals_table(frm);
+    }
 }); 
 
 function toggle_tables(frm) {
@@ -134,6 +138,10 @@ function toggle_accommodation_options(frm) {
     }
 
     frm.refresh_fields();
+}
+
+function toggle_meals_table(frm) {
+    frm.set_df_property("meals", "hidden", !frm.doc.meals_required);
 }
 
 function toggle_transport_option(frm){
@@ -169,6 +177,7 @@ function create_reservation(frm) {
         reservation.tents = frm.doc.tents;
         reservation.dietary_requirements = frm.doc.dietary_preferences;
         reservation.proposed_total_cost = frm.doc.proposed_cost;
+        reservation.meals = frm.doc.meals;
 
         frappe.set_route("Form", "Reservation", reservation.name);
     });
@@ -270,11 +279,20 @@ function update_qty_fields(frm) {
             console.log(`Updated Tent: Qty = ${tent.qty}, Price = ${tent.price}, Amount = ${tent.amount}`);
         });
     }
+    
+    if(frm.doc.meals){
+        frm.doc.meals.forEach(meals =>{
+            meals.qty =people_count;
+            meals.amount =(meals.cost || 0) * people_count;
+            console.log(`Updated Meals: Qty = ${meals.qty}, Cost = ${meals.cost}, Amount = ${meals.amount}`);
+        })
+    }
 
     frm.refresh_field("activities");
     frm.refresh_field("room_booking");
     frm.refresh_field("hired_service");
     frm.refresh_field("tent_selection");
+    frm.refresh_field("meals");
 }
 
 frappe.ui.form.on("Activities", {
@@ -352,6 +370,21 @@ frappe.ui.form.on("Tent Selection",{
     }
 });
 
+frappe.ui.form.on("Meals",{
+    meals_add:function(frm,cdt,cdn){
+        update_row_qty(frm,cdt,cdn);
+        calculate_total_cost(frm);
+    },
+    qty: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    },
+    cost: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    }
+})
+
 function update_row_qty(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
     row.qty = frm.doc.no_of_people || 0;
@@ -399,6 +432,13 @@ function calculate_total_cost(frm) {
         frm.doc.tent_selection.forEach(tent => {
             let row_total = (tent.qty || 0) * (tent.price || 0);
             console.log(`Tent Row: Qty = ${tent.qty}, Price = ${tent.price}, Row Total = ${row_total}`);
+            total_cost += row_total;
+        });
+    }
+    if(frm.doc.meals){
+        frm.doc.meals.forEach(meals =>{
+            let row_total = (meals.qty || 0) * (meals.cost || 0);
+            console.log(`Meals Row: Qty = ${meals.qty}, Cost = ${meals.cost}, Row Total = ${row_total}`);
             total_cost += row_total;
         });
     }

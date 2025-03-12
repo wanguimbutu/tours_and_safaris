@@ -40,6 +40,7 @@
   "section_break_guea",
   "hired_services",
   "dietary_requirements_section",
+  "meals",
   "dietary_requirements",
   "transport_section",
   "transport",
@@ -316,12 +317,18 @@
    "fieldname": "proposed_total_cost",
    "fieldtype": "Currency",
    "label": "Proposed Total Cost"
+  },
+  {
+   "fieldname": "meals",
+   "fieldtype": "Table",
+   "label": "Meals",
+   "options": "Meal Inquiry"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-12 14:41:03.536707",
+ "modified": "2025-03-12 15:43:12.979277",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

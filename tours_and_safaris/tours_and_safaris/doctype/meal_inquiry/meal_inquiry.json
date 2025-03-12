@@ -1,0 +1,48 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-12 15:36:30.956232",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "meal_type",
+  "qty",
+  "cost"
+ ],
+ "fields": [
+  {
+   "fieldname": "meal_type",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Meal Type",
+   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Meals\"]]",
+   "options": "Item"
+  },
+  {
+   "fetch_from": "meal_type.standard_rate",
+   "fieldname": "cost",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Cost",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "label": "Qty"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-12 15:54:58.672986",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Meal Inquiry",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
