@@ -26,22 +26,23 @@
    "label": "Qty"
   },
   {
+   "fetch_from": "room_type.resident_rate",
    "fieldname": "price",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Price",
-   "read_only": 1
+   "label": "Rate"
   },
   {
    "fieldname": "amount",
    "fieldtype": "Currency",
+   "in_list_view": 1,
    "label": "Amount"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-12 11:16:58.888123",
+ "modified": "2025-03-20 11:32:15.048706",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Room Type Booking",

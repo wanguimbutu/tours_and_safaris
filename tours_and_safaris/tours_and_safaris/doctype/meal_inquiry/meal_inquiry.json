@@ -24,7 +24,7 @@
    "fieldname": "cost",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Cost",
+   "label": "Rate",
    "read_only": 1
   },
   {
@@ -36,7 +36,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-12 15:54:58.672986",
+ "modified": "2025-03-20 11:13:16.277210",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Meal Inquiry",

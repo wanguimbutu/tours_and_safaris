@@ -7,6 +7,7 @@
  "field_order": [
   "inquiry_details_tab",
   "section_break_eot3",
+  "series",
   "inquiry_date",
   "workflow_state",
   "column_break_etvu",
@@ -14,8 +15,9 @@
   "existing_customer",
   "lead_name",
   "first_name",
-  "customer_name",
+  "customer",
   "amended_from",
+  "customer_name",
   "section_break_bfyy",
   "from_date",
   "to_date",
@@ -45,7 +47,7 @@
   "section_break_weje",
   "column_break_akgb",
   "column_break_xkxr",
-  "proposed_cost",
+  "proposed_total_cost",
   "section_break_yhuz",
   "status",
   "follow_up_tab",
@@ -118,6 +120,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "default": "1",
    "fieldname": "no_of_people",
    "fieldtype": "Int",
    "label": "No. of People"
@@ -233,11 +236,10 @@
    "options": "Lead"
   },
   {
-   "allow_on_submit": 1,
+   "fetch_from": "customer.customer_name",
    "fieldname": "customer_name",
-   "fieldtype": "Link",
-   "label": "Customer Name",
-   "options": "Customer"
+   "fieldtype": "Read Only",
+   "label": "Customer Name"
   },
   {
    "default": "0",
@@ -322,12 +324,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "proposed_cost",
-   "fieldtype": "Currency",
-   "label": "Proposed Cost",
-   "read_only": 1
-  },
-  {
    "default": "0",
    "fieldname": "meals_required",
    "fieldtype": "Check",
@@ -338,12 +334,35 @@
    "fieldtype": "Table",
    "label": "Meals",
    "options": "Meal Inquiry"
+  },
+  {
+   "fieldname": "proposed_total_cost",
+   "fieldtype": "Currency",
+   "label": "Proposed Total Cost",
+   "read_only": 1
+  },
+  {
+   "fieldname": "series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "no_copy": 1,
+   "options": "BIN-.YYYY.-",
+   "print_hide": 1,
+   "reqd": 1,
+   "set_only_once": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-12 15:42:12.432485",
+ "modified": "2025-03-20 10:16:37.126109",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",

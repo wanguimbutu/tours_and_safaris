@@ -54,7 +54,7 @@ frappe.ui.form.on('Booking Inquiry', {
                 let lead = frappe.model.get_new_doc('Lead');
 
                 
-                lead.first_name = frm.doc.customer_name || '';
+                lead.first_name = frm.doc.customer || '';
                 lead.source = 'Booking Inquiry';
 
     
@@ -75,6 +75,13 @@ frappe.ui.form.on('Booking Inquiry', {
             frappe.msgprint("From Date cannot be in the past.");
         
             frm.set_value("from_date", frappe.datetime.get_today());
+        }
+    },
+    to_date:function(frm){
+        if(frm.doc.to_date && frappe.datetime.get_diff(frm.doc.to_date, frm.doc.from_date) < 0){
+            frappe.msgprint("To Date cannot be earlier than From Date.");
+
+            frm.set_value("to_date", frm.doc.from_date);
         }
     },
 
@@ -160,7 +167,7 @@ function create_reservation(frm) {
         let reservation = frappe.model.get_new_doc("Reservation");
 
         reservation.booking_inquiry = frm.doc.name;
-        reservation.customer_name = frm.doc.customer_name;
+        reservation.customer = frm.doc.customer;
         reservation.status = "Reserved";
         reservation.no_of_people = frm.doc.no_of_people; 
         reservation.no_of_adults = frm.doc.no_of_adults;
@@ -176,7 +183,7 @@ function create_reservation(frm) {
         reservation.rooms = frm.doc.rooms;
         reservation.tents = frm.doc.tents;
         reservation.dietary_requirements = frm.doc.dietary_preferences;
-        reservation.proposed_total_cost = frm.doc.proposed_cost;
+        reservation.proposed_total_cost = frm.doc.proposed_total_cost;
         reservation.meals = frm.doc.meals;
 
         frappe.set_route("Form", "Reservation", reservation.name);
@@ -205,8 +212,8 @@ function set_as_lost(frm) {
 function handle_reservation_creation(frm) {
     if (frm.doc.new_customer) {
         
-        convert_lead_to_customer(frm.doc.customer_name, function(customer_name) {
-            frm.set_value("customer_name", customer_name); 
+        convert_lead_to_customer(frm.doc.customer, function(customer) {
+            frm.set_value("customer", customer); 
             frm.save();  
             create_reservation(frm); 
         });
@@ -222,7 +229,7 @@ function convert_lead_to_customer(lead_name, callback) {
         args: {
             doc: {
                 doctype: "Customer",
-                customer_name: lead_name
+                customer: lead_name
             }
         },
         callback: function(res) {
@@ -385,6 +392,21 @@ frappe.ui.form.on("Meals",{
     }
 })
 
+frappe.ui.form.on("Transport Service", {
+    transport_service_add: function(frm, cdt, cdn) {
+        update_row_qty(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    },
+    qty: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    },
+    cost: function(frm, cdt, cdn) {
+        calculate_row_amount(frm, cdt, cdn);
+        calculate_total_cost(frm);
+    }
+});
+
 function update_row_qty(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
     row.qty = frm.doc.no_of_people || 0;
@@ -392,12 +414,22 @@ function update_row_qty(frm, cdt, cdn) {
     frm.refresh_field(cdt);
 }
 
-// Calculate row amount (qty * cost)
 function calculate_row_amount(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
-    row.amount = (row.qty || 0) * (row.cost || 0);
-    frm.refresh_field(cdt);
+
+    let qty = row.qty || 0;
+    let cost = row.cost || row.price || row.rate || row.price_per_unit || 0;  // Try different possible field names
+
+    let amount = qty * cost;
+
+    console.log(`Before Update: Tent Row: Qty = ${qty}, Price = ${cost}, Amount = ${amount}`);
+
+    // Ensure the amount is set properly
+    frappe.model.set_value(cdt, cdn, "amount", amount);
+
+    console.log(`After Update: Tent Row: Qty = ${qty}, Price = ${cost}, Amount = ${amount}`);
 }
+
 
 function calculate_total_cost(frm) {
     let total_cost = 0;
@@ -445,6 +477,6 @@ function calculate_total_cost(frm) {
 
     console.log("Final Calculated Total Cost:", total_cost);
 
-    frm.set_value("proposed_cost", total_cost);
-    frm.refresh_field("proposed_cost");
+    frm.set_value("proposed_total_cost", total_cost);
+    frm.refresh_field("proposed_total_cost");
 }
