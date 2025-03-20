@@ -8,7 +8,9 @@
  "field_order": [
   "transport_name",
   "vehicle_name",
-  "price"
+  "qty",
+  "price",
+  "amount"
  ],
  "fields": [
   {
@@ -22,7 +24,8 @@
    "fieldname": "price",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Rate"
+   "label": "Rate",
+   "non_negative": 1
   },
   {
    "fieldname": "vehicle_name",
@@ -30,12 +33,26 @@
    "in_list_view": 1,
    "label": "Vehicle Name",
    "options": "Vehicle"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty",
+   "non_negative": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-20 11:12:39.161207",
+ "modified": "2025-03-20 14:45:20.905458",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Transport",

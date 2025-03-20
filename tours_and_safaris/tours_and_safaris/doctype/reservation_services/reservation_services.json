@@ -35,13 +35,14 @@
   {
    "fieldname": "amount",
    "fieldtype": "Currency",
+   "in_list_view": 1,
    "label": "Amount"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-20 11:14:24.350773",
+ "modified": "2025-03-20 14:52:53.886758",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation Services",

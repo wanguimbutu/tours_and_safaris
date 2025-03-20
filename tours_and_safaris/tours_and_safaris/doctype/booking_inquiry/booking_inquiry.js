@@ -331,21 +331,39 @@ frappe.ui.form.on("Activity Package", {
         calculate_total_cost(frm);
     }
 });
-
 frappe.ui.form.on("Room Type Booking", {
-    room_booking_add: function(frm, cdt, cdn) {
-        update_row_qty(frm, cdt, cdn);
-        calculate_total_cost(frm);
+    price: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        console.log("DEBUG: Row Data -", row);
+
+        let qty = row.qty || 0;
+        let price = row.price || 0;
+
+        console.log(`DEBUG: Qty = ${qty}, Price = ${price}`);
+
+        let amount = qty * price;
+        console.log(`DEBUG: Calculated Amount = ${amount}`);
+
+        frappe.model.set_value(cdt, cdn, "amount", amount);
+        frm.refresh_field("room_booking");
     },
     qty: function(frm, cdt, cdn) {
-        calculate_row_amount(frm, cdt, cdn);
-        calculate_total_cost(frm);
-    },
-    cost: function(frm, cdt, cdn) {
-        calculate_row_amount(frm, cdt, cdn);
-        calculate_total_cost(frm);
+        let row = locals[cdt][cdn];
+
+        let qty = row.qty || 0;
+        let price = row.price || 0;
+
+        console.log(`DEBUG: Qty = ${qty}, Price = ${price}`);
+
+        let amount = qty * price;
+        console.log(`DEBUG: Calculated Amount = ${amount}`);
+
+        frappe.model.set_value(cdt, cdn, "amount", amount);
+        frm.refresh_field("room_booking");
     }
 });
+
 
 frappe.ui.form.on("Reservation Services",{
     hired_service_add: function(frm,cdt,cdn){
@@ -353,11 +371,11 @@ frappe.ui.form.on("Reservation Services",{
         calculate_total_cost(frm);
     },
     qty: function(frm, cdt, cdn) {
-        calculate_row_amount(frm, cdt, cdn);
+        calculate_price_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
     },
-    cost: function(frm, cdt, cdn) {
-        calculate_row_amount(frm, cdt, cdn);
+    price: function(frm, cdt, cdn) {
+        calculate_price_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
     }
 });
@@ -368,16 +386,16 @@ frappe.ui.form.on("Tent Selection",{
         calculate_total_cost(frm);
     },
     qty: function(frm, cdt, cdn) {
-        calculate_row_amount(frm, cdt, cdn);
+        calculate_price_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
     },
-    cost: function(frm, cdt, cdn) {
-        calculate_row_amount(frm, cdt, cdn);
+    price: function(frm, cdt, cdn) {
+        calculate_price_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
     }
 });
 
-frappe.ui.form.on("Meals",{
+frappe.ui.form.on("Meal Inquiry",{
     meals_add:function(frm,cdt,cdn){
         update_row_qty(frm,cdt,cdn);
         calculate_total_cost(frm);
@@ -386,23 +404,23 @@ frappe.ui.form.on("Meals",{
         calculate_row_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
     },
-    cost: function(frm, cdt, cdn) {
+    price: function(frm, cdt, cdn) {
         calculate_row_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
     }
 })
 
-frappe.ui.form.on("Transport Service", {
+frappe.ui.form.on("Transport", {
     transport_service_add: function(frm, cdt, cdn) {
         update_row_qty(frm, cdt, cdn);
         calculate_total_cost(frm);
     },
     qty: function(frm, cdt, cdn) {
-        calculate_row_amount(frm, cdt, cdn);
+        calculate_price_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
     },
-    cost: function(frm, cdt, cdn) {
-        calculate_row_amount(frm, cdt, cdn);
+    price: function(frm, cdt, cdn) {
+        calculate_price_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
     }
 });
@@ -414,22 +432,18 @@ function update_row_qty(frm, cdt, cdn) {
     frm.refresh_field(cdt);
 }
 
+// Calculate row amount (qty * cost)
 function calculate_row_amount(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
-
-    let qty = row.qty || 0;
-    let cost = row.cost || row.price || row.rate || row.price_per_unit || 0;  // Try different possible field names
-
-    let amount = qty * cost;
-
-    console.log(`Before Update: Tent Row: Qty = ${qty}, Price = ${cost}, Amount = ${amount}`);
-
-    // Ensure the amount is set properly
-    frappe.model.set_value(cdt, cdn, "amount", amount);
-
-    console.log(`After Update: Tent Row: Qty = ${qty}, Price = ${cost}, Amount = ${amount}`);
+    row.amount = (row.qty || 0) * (row.cost || 0);
+    frm.refresh_field(cdt);
 }
 
+function calculate_price_amount(frm,cdt,cdn){
+    let row = locals[cdt][cdn];
+    row.amount = (row.qty || 0) * (row.price || 0);
+    frm.refresh_field(cdt);
+}
 
 function calculate_total_cost(frm) {
     let total_cost = 0;

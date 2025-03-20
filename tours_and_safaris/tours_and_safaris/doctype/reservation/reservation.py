@@ -440,3 +440,4 @@ def complete_maintenance(maintenance_log_name):
     frappe.db.commit()
 
     return {"message": "Maintenance completed, room is now available for booking."}
+
