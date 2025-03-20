@@ -302,6 +302,20 @@ function update_qty_fields(frm) {
     frm.refresh_field("meals");
 }
 
+function validate_qty(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    let max_people = frm.doc.no_of_people || 0;
+
+    if (row.qty > max_people) {
+        frappe.msgprint(__("Quantity cannot exceed No of People (" + max_people + ")"));
+        row.qty = max_people;
+        frm.refresh_field(cdt);
+    }
+
+    calculate_row_amount(frm, cdt, cdn);
+    calculate_total_cost(frm);
+}
+
 frappe.ui.form.on("Activities", {
     activity_group: function (frm, cdt, cdn) {
         let row = locals[cdt][cdn];
@@ -325,6 +339,7 @@ frappe.ui.form.on("Activity Package", {
     qty: function(frm, cdt, cdn) {
         calculate_row_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
+        validate_qty(frm, cdt, cdn);
     },
     cost: function(frm, cdt, cdn) {
         calculate_row_amount(frm, cdt, cdn);
@@ -360,6 +375,7 @@ frappe.ui.form.on("Room Type Booking", {
         console.log(`DEBUG: Calculated Amount = ${amount}`);
 
         frappe.model.set_value(cdt, cdn, "amount", amount);
+        
         frm.refresh_field("room_booking");
     }
 });
@@ -388,6 +404,7 @@ frappe.ui.form.on("Tent Selection",{
     qty: function(frm, cdt, cdn) {
         calculate_price_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
+        validate_qty(frm, cdt, cdn);
     },
     price: function(frm, cdt, cdn) {
         calculate_price_amount(frm, cdt, cdn);
@@ -403,6 +420,7 @@ frappe.ui.form.on("Meal Inquiry",{
     qty: function(frm, cdt, cdn) {
         calculate_row_amount(frm, cdt, cdn);
         calculate_total_cost(frm);
+        validate_qty(frm,cdt,cdn);
     },
     price: function(frm, cdt, cdn) {
         calculate_row_amount(frm, cdt, cdn);
