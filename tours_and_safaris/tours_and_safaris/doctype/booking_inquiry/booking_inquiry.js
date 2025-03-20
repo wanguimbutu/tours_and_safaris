@@ -112,7 +112,8 @@ frappe.ui.form.on('Booking Inquiry', {
 
     meals_required: function(frm){
         toggle_meals_table(frm);
-    }
+    },
+    
 }); 
 
 function toggle_tables(frm) {
@@ -375,7 +376,7 @@ frappe.ui.form.on("Room Type Booking", {
         console.log(`DEBUG: Calculated Amount = ${amount}`);
 
         frappe.model.set_value(cdt, cdn, "amount", amount);
-        
+
         frm.refresh_field("room_booking");
     }
 });

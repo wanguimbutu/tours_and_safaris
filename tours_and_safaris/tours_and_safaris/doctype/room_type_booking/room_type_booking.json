@@ -9,7 +9,8 @@
   "room_type",
   "qty",
   "price",
-  "amount"
+  "amount",
+  "item_code"
  ],
  "fields": [
   {
@@ -37,12 +38,19 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Amount"
+  },
+  {
+   "fetch_from": "room_type.item_code",
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "options": "Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-20 11:32:15.048706",
+ "modified": "2025-03-20 16:29:00.684796",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Room Type Booking",

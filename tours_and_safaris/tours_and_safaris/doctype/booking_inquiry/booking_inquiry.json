@@ -16,8 +16,9 @@
   "lead_name",
   "first_name",
   "customer",
-  "amended_from",
   "customer_name",
+  "billing_currency",
+  "amended_from",
   "section_break_bfyy",
   "from_date",
   "to_date",
@@ -357,12 +358,18 @@
    "fieldtype": "Link",
    "label": "Customer",
    "options": "Customer"
+  },
+  {
+   "fetch_from": "customer.default_currency",
+   "fieldname": "billing_currency",
+   "fieldtype": "Read Only",
+   "label": "Billing Currency"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-20 10:16:37.126109",
+ "modified": "2025-03-20 16:34:39.779596",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
