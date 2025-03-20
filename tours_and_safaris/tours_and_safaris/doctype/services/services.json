@@ -7,7 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "service_name",
-  "price"
+  "price",
+  "item_code"
  ],
  "fields": [
   {
@@ -20,11 +21,17 @@
    "fieldname": "price",
    "fieldtype": "Currency",
    "label": "Price"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "options": "Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-30 11:58:14.269522",
+ "modified": "2025-03-20 12:58:29.073007",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Services",

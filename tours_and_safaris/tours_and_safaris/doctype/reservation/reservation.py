@@ -138,7 +138,7 @@ def create_quotation(reservation_name):
     if reservation.room_type_booking:
         for room in reservation.room_type_booking:
             quotation.append("items", {
-                "item_code": "ACCOMMODATION",
+                "item_code": room.item_code,
                 "item_name": room.room_type or "Room",
                 "description": f"Room Booking: {room.room_type or 'N/A'}",
                 "qty": room.qty or 1,
@@ -160,7 +160,7 @@ def create_quotation(reservation_name):
     if reservation.transport:
         for transport in reservation.transport:
             quotation.append("items", {
-                "item_code": "TRANSPORT",
+                "item_code": transport.item_code,
                 "item_name": transport.transport_name or "Transport",
                 "qty": 1,
                 "rate": transport.price or 0
@@ -169,7 +169,7 @@ def create_quotation(reservation_name):
     if reservation.hired_services:
         for service in reservation.hired_services:
             quotation.append("items", {
-                "item_code": "SERVICE",
+                "item_code": service.item_code,
                 "item_name": service.service_name or "Service",
                 "qty": 1,
                 "rate": service.price or 0
