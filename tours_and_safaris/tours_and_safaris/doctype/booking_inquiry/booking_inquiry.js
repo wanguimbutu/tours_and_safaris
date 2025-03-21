@@ -378,7 +378,7 @@ function calculate_total_amount(frm) {
     let total = 0;
 
     // List of tables to sum amounts from
-    let tables = ['activities', 'tent_selection','room_type_booking','hired_services','meals','trasnport'];
+    let tables = ['activities', 'tent_selection','room_type_booking','hired_services','meals','trasnport_service'];
 
     tables.forEach(table => {
         (frm.doc[table] || []).forEach(row => {
