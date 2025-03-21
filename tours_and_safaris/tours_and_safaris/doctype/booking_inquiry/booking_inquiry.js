@@ -107,8 +107,7 @@ frappe.ui.form.on('Booking Inquiry', {
         toggle_transport_option(frm);
     },
     no_of_people: function(frm) {
-        update_qty_fields(frm);
-        calculate_total_cost(frm);
+        //calculate_total_cost(frm);
         validate_people_count(frm);
     },
     no_of_adults: function(frm){
@@ -189,7 +188,7 @@ function create_reservation(frm) {
         let reservation = frappe.model.get_new_doc("Reservation");
 
         reservation.booking_inquiry = frm.doc.name;
-        reservation.customer_name = frm.doc.customer;
+        reservation.customer = frm.doc.customer;
         reservation.status = "Reserved";
         reservation.no_of_people = frm.doc.no_of_people; 
         reservation.no_of_adults = frm.doc.no_of_adults;
@@ -273,7 +272,56 @@ function disable_form_actions(frm) {
     frm.clear_custom_buttons();  
     frm.refresh_fields();
 }
+/*function update_qty_fields(frm) {
+    let people_count = frm.doc.no_of_people || 0;
+    console.log("Updating qty fields. People count:", people_count);
 
+    if (frm.doc.activities) {
+        frm.doc.activities.forEach(activity => {
+            activity.qty = people_count;
+            activity.amount = (activity.cost || 0) * people_count;
+            console.log(`Updated Activity: Qty = ${activity.qty}, Cost = ${activity.cost}, Amount = ${activity.amount}`);
+        });
+    }
+
+    if (frm.doc.room_booking) {
+        frm.doc.room_booking.forEach(room => {
+            room.qty = people_count;
+            room.amount = (room.price || 0) * people_count;
+            console.log(`Updated Room: Qty = ${room.qty}, Price = ${room.price}, Amount = ${room.amount}`);
+        });
+    }
+
+    if (frm.doc.hired_service) {
+        frm.doc.hired_service.forEach(service => {
+            service.qty = people_count;
+            service.amount = (service.price || 0) * people_count;
+            console.log(`Updated Service: Qty = ${service.qty}, Price = ${service.price}, Amount = ${service.amount}`);
+        });
+    }
+
+    if (frm.doc.tent_selection) {
+        frm.doc.tent_selection.forEach(tent => {
+            tent.qty = people_count;
+            tent.amount = (tent.price || 0) * people_count;
+            console.log(`Updated Tent: Qty = ${tent.qty}, Price = ${tent.price}, Amount = ${tent.amount}`);
+        });
+    }
+    
+    if(frm.doc.meals){
+        frm.doc.meals.forEach(meals =>{
+            meals.qty =people_count;
+            meals.amount =(meals.cost || 0) * people_count;
+            console.log(`Updated Meals: Qty = ${meals.qty}, Cost = ${meals.cost}, Amount = ${meals.amount}`);
+        })
+    }
+
+    frm.refresh_field("activities");
+    frm.refresh_field("room_booking");
+    frm.refresh_field("hired_service");
+    frm.refresh_field("tent_selection");
+    frm.refresh_field("meals");
+}
 
 function validate_qty(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
@@ -304,6 +352,7 @@ frappe.ui.form.on("Activities", {
         }
     }
 });
+*/
 function update_amount(frm, cdt, cdn, table_name) {
     let row = locals[cdt][cdn];
 
@@ -314,7 +363,7 @@ function update_amount(frm, cdt, cdn, table_name) {
         frappe.model.set_value(cdt, cdn, 'qty', no_of_people);
         return;
     }
-
+    
     if (row.qty && row.rate) {
         frappe.model.set_value(cdt, cdn, 'amount', row.qty * row.rate);
     } else {
@@ -329,7 +378,7 @@ function calculate_total_amount(frm) {
     let total = 0;
 
     // List of tables to sum amounts from
-    let tables = ['activities', 'tent_selection','room_booking','hired_services','meals','transport'];
+    let tables = ['activities', 'tent_selection','room_type_booking','hired_services','meals','trasnport'];
 
     tables.forEach(table => {
         (frm.doc[table] || []).forEach(row => {
