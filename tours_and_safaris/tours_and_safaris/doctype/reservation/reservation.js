@@ -2,6 +2,7 @@ frappe.ui.form.on("Reservation", {
     refresh: function (frm) {
        // calculate_total_cost(frm);
         toggle_accommodation_fields(frm);
+        calculate_total_amount(frm);
 
         if (frm.doc.accommodation_type === "Rooms") {
             frm.set_df_property("room_booking", "hidden", 0);
@@ -103,7 +104,36 @@ frappe.ui.form.on("Reservation", {
             }, __("Actions"));
         }
     },
+    arrival_date: function(frm) {
+        let today = frappe.datetime.get_today();
 
+        if (frm.doc.arrival_date && frm.doc.arrival_date < today) {
+            frappe.msgprint(__('Arrival Date cannot be before today.'));
+            frm.set_value('arrival_date', ''); 
+        }
+        fetch_available_rooms(frm);
+    },
+
+    depature_date: function(frm) {
+        if (frm.doc.depature_date && frm.doc.arrival_date && frm.doc.depature_date < frm.doc.arrival_date) {
+            frappe.msgprint(__('Departure Date cannot be before Arrival Date.'));
+            frm.set_value('depature_date', ''); 
+        }
+        fetch_available_rooms(frm);
+    },
+
+    no_of_people: function(frm){
+        validate_people_count(frm);
+    },
+
+    no_of_adults:function(frm){
+        validate_people_count(frm);
+    },
+
+    no_of_children:function(frm){
+        validate_people_count(frm);
+    },
+    
     accommodation_needed: function (frm) {
         toggle_accommodation_fields(frm);
     },
@@ -120,28 +150,7 @@ frappe.ui.form.on("Reservation", {
         toggle_accommodation_fields(frm);
     },
 
-    
-    depature_date: function (frm) {
-        if (frm.doc.depature_date) {
-            frm.set_value("end_date",frm.doc.depature_date);
-        }
-    },
-
-    arrival_date: function (frm){
-        if(frm.doc.arrival_date){
-        let date_only = frapppe.datetime.get_date(frm.doc.arrival_date)
-            frm.set_value("start_date", date_only);
-        }
-    }, 
-    
     room_type: function (frm) {
-        fetch_available_rooms(frm);
-    },
-
-    arrival_date: function (frm) {
-        fetch_available_rooms(frm);
-    },
-    depature_date: function (frm) {
         fetch_available_rooms(frm);
     },
 
@@ -190,6 +199,59 @@ frappe.ui.form.on("Reservation", {
     });
 }
 */
+
+function update_amount(frm, cdt, cdn, table_name) {
+    let row = locals[cdt][cdn];
+
+    if (row.qty && row.rate) {
+        frappe.model.set_value(cdt, cdn, 'amount', row.qty * row.rate);
+    } else {
+        frappe.model.set_value(cdt, cdn, 'amount', 0);
+    }
+
+    calculate_total_amount(frm);
+}
+
+// Function to calculate total amount from all relevant tables
+function calculate_total_amount(frm) {
+    let total = 0;
+
+    // List of tables to sum amounts from
+    let tables = ['activities', 'tent_selection','room_type_booking','hired_services','meals','trasnport'];
+
+    tables.forEach(table => {
+        (frm.doc[table] || []).forEach(row => {
+            total += row.amount || 0;
+        });
+    });
+
+    frm.set_value('proposed_total_cost', total); // Assuming 'total_amount' is the total field
+}
+
+// Attach the update function dynamically to multiple tables
+['Activity Package', 'Tent Selection','Meal Inquiry','Room Type Booking','Reservation Services','Transport'].forEach(table_name => {
+    frappe.ui.form.on(table_name, {
+        qty: function(frm, cdt, cdn) {
+            update_amount(frm, cdt, cdn, table_name);
+        },
+        rate: function(frm, cdt, cdn) {
+            update_amount(frm, cdt, cdn, table_name);
+        }
+    });
+});
+
+function validate_people_count(frm) {
+    let total_people = frm.doc.no_of_people;
+    let adults = frm.doc.no_of_adults;
+    let children = frm.doc.no_of_children;
+
+    if (total_people && adults !== undefined && children !== undefined) {
+        if (total_people !== (adults + children)) {
+            frappe.msgprint(__('Total People must be equal to the sum of Adults and Children.'));
+            frm.set_value('no_of_people', '');
+        }
+    }
+}
 
 function fetch_available_rooms(frm) {
     if (!frm.doc.arrival_date || !frm.doc.depature_date || !frm.doc.room_type) return;

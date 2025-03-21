@@ -1,13 +1,14 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "naming_series:",
  "creation": "2025-02-22 10:00:29.543639",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "inquiry_details_tab",
   "section_break_eot3",
-  "series",
+  "naming_series",
   "inquiry_date",
   "workflow_state",
   "column_break_etvu",
@@ -45,6 +46,8 @@
   "diet_preferences",
   "section_break_xphs",
   "hired_service",
+  "remarks_section",
+  "remarks",
   "section_break_weje",
   "column_break_akgb",
   "column_break_xkxr",
@@ -343,16 +346,6 @@
    "read_only": 1
   },
   {
-   "fieldname": "series",
-   "fieldtype": "Select",
-   "label": "Series",
-   "no_copy": 1,
-   "options": "BIN-.YYYY.-",
-   "print_hide": 1,
-   "reqd": 1,
-   "set_only_once": 1
-  },
-  {
    "allow_on_submit": 1,
    "fieldname": "customer",
    "fieldtype": "Link",
@@ -364,15 +357,36 @@
    "fieldname": "billing_currency",
    "fieldtype": "Read Only",
    "label": "Billing Currency"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "no_copy": 1,
+   "options": "BIN-.YYYY.-",
+   "print_hide": 1,
+   "reqd": 1,
+   "set_only_once": 1
+  },
+  {
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-20 16:34:39.779596",
+ "modified": "2025-03-21 08:48:35.118182",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {

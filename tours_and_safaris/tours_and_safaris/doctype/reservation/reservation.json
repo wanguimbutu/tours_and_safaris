@@ -340,7 +340,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-20 16:38:47.782591",
+ "modified": "2025-03-21 08:49:49.340871",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
@@ -372,5 +372,6 @@
    "color": "Green",
    "title": "Confirmed Reservation"
   }
- ]
+ ],
+ "track_changes": 1
 }

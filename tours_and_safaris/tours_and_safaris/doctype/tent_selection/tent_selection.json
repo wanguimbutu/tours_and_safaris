@@ -8,8 +8,9 @@
  "field_order": [
   "tent_type",
   "qty",
-  "price",
-  "amount"
+  "rate",
+  "amount",
+  "item_code"
  ],
  "fields": [
   {
@@ -26,24 +27,31 @@
    "label": "Qty"
   },
   {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount"
+  },
+  {
    "fetch_from": "tent_type.rate",
-   "fieldname": "price",
+   "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Rate",
    "non_negative": 1
   },
   {
-   "fieldname": "amount",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Amount"
+   "fetch_from": "tent_type.item_code",
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "options": "Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-20 12:31:05.122574",
+ "modified": "2025-03-21 11:25:48.119228",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Tent Selection",
