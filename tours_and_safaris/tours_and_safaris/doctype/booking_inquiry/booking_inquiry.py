@@ -8,8 +8,7 @@ from collections import Counter
 
 
 class BookingInquiry(Document):
-	pass
-
+    pass
 @frappe.whitelist()
 def validate_booking_inquiry(doc, method):
     if doc.from_date and getdate(doc.from_date) < getdate(today()):
@@ -67,3 +66,53 @@ def update_diet_preferences(doc, method):
             "dietary_preference": preference,
             "total_people": count
         })
+
+@frappe.whitelist()
+def validate(doc, method):
+    # Ensure we only apply exchange rate conversion when necessary
+    if doc.billing_currency and doc.billing_currency != "KES" and doc.exchange_rate:
+        for row in doc.activities:
+            if not row.get("original_rate"):  # Store original rate once
+                row.original_rate = row.rate  # Save the original KES rate
+            
+            row.rate = row.original_rate / doc.exchange_rate  # Apply conversion
+            row.currency = doc.billing_currency  
+
+        for row in doc.tent_selection:
+            if not row.get("original_rate"):
+                row.original_rate = row.rate  
+            
+            row.rate = row.original_rate / doc.exchange_rate  
+            row.currency = doc.billing_currency  
+        
+        for row in doc.room_booking:
+            if not row.get("original_rate"):
+                row.original_rate = row.rate  
+            
+            row.rate = row.original_rate / doc.exchange_rate  
+            row.currency = doc.billing_currency
+
+        for row in doc.meals:
+            if not row.get("original_rate"):
+                row.original_rate = row.rate  
+            
+            row.rate = row.original_rate / doc.exchange_rate  
+            row.currency = doc.billing_currency
+
+        for row in doc.hired_service:
+            if not row.get("original_rate"):
+                row.original_rate = row.rate  
+            
+            row.rate = row.original_rate / doc.exchange_rate  
+            row.currency = doc.billing_currency
+
+        for row in doc.transport_service:
+            if not row.get("original_rate"):
+                row.original_rate = row.rate  
+            
+            row.rate = row.original_rate / doc.exchange_rate  
+            row.currency = doc.billing_currency
+
+        # Recalculate total amount correctly
+        doc.proposed_total_cost = sum(row.amount for row in doc.activities) + \
+                                  sum(row.amount for row in doc.tent_selection)

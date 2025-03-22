@@ -9,6 +9,7 @@
   "tent_type",
   "qty",
   "rate",
+  "base_rate",
   "amount",
   "item_code"
  ],
@@ -33,7 +34,6 @@
    "label": "Amount"
   },
   {
-   "fetch_from": "tent_type.rate",
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -46,12 +46,18 @@
    "fieldtype": "Link",
    "label": "Item Code",
    "options": "Item"
+  },
+  {
+   "fetch_from": "tent_type.rate",
+   "fieldname": "base_rate",
+   "fieldtype": "Float",
+   "label": "Base Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-21 11:25:48.119228",
+ "modified": "2025-03-22 11:50:51.421056",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Tent Selection",

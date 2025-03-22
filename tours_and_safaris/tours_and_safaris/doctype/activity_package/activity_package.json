@@ -11,7 +11,9 @@
   "qty",
   "rate",
   "amount",
-  "item_code"
+  "item_code",
+  "original_rate",
+  "converted_amount"
  ],
  "fields": [
   {
@@ -55,12 +57,22 @@
    "in_list_view": 1,
    "label": "Rate",
    "non_negative": 1
+  },
+  {
+   "fieldname": "converted_amount",
+   "fieldtype": "Currency",
+   "label": "Converted Amount"
+  },
+  {
+   "fieldname": "original_rate",
+   "fieldtype": "Currency",
+   "label": "Original Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-21 10:41:20.227626",
+ "modified": "2025-03-22 14:13:29.051933",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Package",
