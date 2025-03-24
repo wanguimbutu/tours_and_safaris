@@ -116,7 +116,7 @@ def create_quotation(reservation_name):
     # Proceed with creating a new quotation
     quotation = frappe.get_doc({
         "doctype": "Quotation",
-        "customer": reservation.customer,  # Ensure this field is correctly mapped
+        "customer": reservation.customer_name,  # Ensure this field is correctly mapped
         "party_name": reservation.customer_name,
         "arrival_date": reservation.arrival_date,
         "depature_date": reservation.depature_date,
