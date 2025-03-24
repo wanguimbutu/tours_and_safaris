@@ -116,7 +116,7 @@ def apply_exchange_rate_conversion(doc, method):
             ] for row in table if hasattr(row, "amount")
         )
 
-        # Mark as converted to prevent double conversion
+        
         doc.exchange_applied = True  
         frappe.msgprint("Exchange rate conversion applied and locked.")
 
