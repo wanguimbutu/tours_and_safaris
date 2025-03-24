@@ -9,6 +9,7 @@ from collections import Counter
 
 class BookingInquiry(Document):
     pass
+
 @frappe.whitelist()
 def validate_booking_inquiry(doc, method):
     if doc.from_date and getdate(doc.from_date) < getdate(today()):
@@ -71,8 +72,7 @@ def update_diet_preferences(doc, method):
 def validate(doc, method):
     frappe.msgprint(f"Starting validation - Billing Currency: {doc.billing_currency}, Exchange Rate: {doc.exchange_rate}")
 
-    if not doc.billing_currency or not doc.exchange_rate:
-        frappe.throw("Billing Currency and Exchange Rate must be set.")
+    
 
     if doc.billing_currency != "KES":
         frappe.msgprint("Applying exchange rate conversion...")
