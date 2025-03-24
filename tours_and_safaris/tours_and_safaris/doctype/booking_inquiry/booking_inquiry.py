@@ -67,56 +67,101 @@ def update_diet_preferences(doc, method):
             "dietary_preference": preference,
             "total_people": count
         })
+@frappe.whitelist()
+def apply_exchange_rate_conversion(doc, method):
+    """Ensure exchange rate conversion applies only once before inserting."""
+    
+    # If already converted, do nothing
+    if doc.get("exchange_applied"):  
+        frappe.msgprint("Exchange rate already applied, skipping conversion.")
+        return
+
+    if doc.billing_currency and doc.billing_currency != "KES":
+        frappe.msgprint(f"Applying exchange rate conversion for {doc.billing_currency}")
+
+        def convert_rates(rows):
+            for row in rows:
+                # Store original rate if not already set
+                if not row.get("original_rate"):
+                    row.original_rate = row.rate  # Keep the fetched rate
+
+                # Convert using the original rate and store a backup
+                row.converted_rate = row.original_rate / doc.exchange_rate  
+                row.rate = row.converted_rate  # Ensure rate stays converted
+                row.currency = doc.billing_currency  
+
+                # Ensure amount updates correctly
+                if hasattr(row, "amount") and hasattr(row, "qty"):
+                    row.amount = row.rate * row.qty
+                elif hasattr(row, "amount"):
+                    row.amount = row.rate  
+
+        # Apply to all relevant child tables
+        convert_rates(doc.activities)
+        convert_rates(doc.tent_selection)
+        convert_rates(doc.room_booking)
+        convert_rates(doc.meals)
+        convert_rates(doc.hired_service)
+        convert_rates(doc.transport_service)
+
+        # Update total cost
+        doc.proposed_total_cost = sum(
+            row.amount for table in [
+                doc.activities,
+                doc.tent_selection,
+                doc.room_booking,
+                doc.meals,
+                doc.hired_service,
+                doc.transport_service
+            ] for row in table if hasattr(row, "amount")
+        )
+
+        # Mark as converted to prevent double conversion
+        doc.exchange_applied = True  
+        frappe.msgprint("Exchange rate conversion applied and locked.")
 
 @frappe.whitelist()
-def validate(doc, method):
-    frappe.msgprint(f"Starting validation - Billing Currency: {doc.billing_currency}, Exchange Rate: {doc.exchange_rate}")
+def prevent_rate_reset(doc, method):
+    """Ensure that converted rates are retained before submission."""
+    if doc.billing_currency and doc.billing_currency != "KES":
+        frappe.msgprint("Ensuring converted rates are retained before submission.")
 
-    
+        def retain_converted_rates(rows):
+            for row in rows:
+                # If converted_rate exists, force rate to stay converted
+                if row.get("converted_rate"):
+                    row.rate = row.converted_rate
+                    row.currency = doc.billing_currency  
 
-    if doc.billing_currency != "KES":
-        frappe.msgprint("Applying exchange rate conversion...")
+        retain_converted_rates(doc.activities)
+        retain_converted_rates(doc.tent_selection)
+        retain_converted_rates(doc.room_booking)
+        retain_converted_rates(doc.meals)
+        retain_converted_rates(doc.hired_service)
+        retain_converted_rates(doc.transport_service)
 
-        for row in doc.activities:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency  
+        frappe.msgprint("Converted rates retained successfully.")
 
-        for row in doc.tent_selection:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency
+@frappe.whitelist()
+def lock_rates_after_fetch(doc, method):
+    """Prevent ERPNext from resetting rates after fetching standard prices."""
+    if doc.billing_currency and doc.billing_currency != "KES":
+        frappe.msgprint("Locking converted rates to prevent overwrite.")
 
-        for row in doc.room_booking:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency
+        def lock_rates(rows):
+            for row in rows:
+                if row.get("converted_rate"):
+                    row.rate = row.converted_rate  
+                   # row.currency = doc.billing_currency  
+                    row.db_set("rate", row.converted_rate)  
+                    #row.db_set("currency", doc.billing_currency)  
 
-        for row in doc.meals:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency
+        lock_rates(doc.activities)
+        lock_rates(doc.tent_selection)
+        lock_rates(doc.room_booking)
+        lock_rates(doc.meals)
+        lock_rates(doc.hired_service)
+        lock_rates(doc.transport_service)
 
-        for row in doc.hired_service:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency
+        frappe.msgprint("Rates locked.")
 
-        for row in doc.transport_service:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency
-    
-
-        # Recalculate the total amount
-        doc.proposed_total_cost = sum(row.amount for row in doc.activities) + sum(row.amount for row in doc.tent_selection)
-
-        frappe.msgprint("Final total cost updated.")
-
-    frappe.msgprint("Validation completed successfully.")

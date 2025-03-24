@@ -116,12 +116,13 @@ def create_quotation(reservation_name):
     # Proceed with creating a new quotation
     quotation = frappe.get_doc({
         "doctype": "Quotation",
-        "customer": reservation.customer_name,  # Ensure this field is correctly mapped
+        "customer": reservation.customer_name,  
         "party_name": reservation.customer_name,
         "arrival_date": reservation.arrival_date,
         "depature_date": reservation.depature_date,
         "custom_reservation": reservation.name,
         "custom_no_of_people": reservation.no_of_people,
+        "currency":reservation.billing_currency,
         "items": []
     })
 
@@ -132,7 +133,7 @@ def create_quotation(reservation_name):
                 "item_code": activity.item_code,
                 "item_name": activity.activity_name,
                 "qty": activity.qty,  
-                "rate": activity.cost or 0
+                "rate": activity.rate or 0
             })
 
     # Add room bookings
@@ -143,7 +144,7 @@ def create_quotation(reservation_name):
                 "item_name": room.room_type or "Room",
                 "description": f"Room Booking: {room.room_type or 'N/A'}",
                 "qty": room.qty or 1,
-                "rate": room.price or 0
+                "rate": room.rate or 0
             })
 
     # Add tent selections
@@ -154,7 +155,7 @@ def create_quotation(reservation_name):
                 "item_name": tent.tent_type or "Tent",
                 "description": f"Tent: {tent.tent_type or 'N/A'}",
                 "qty": tent.qty or 1,
-                "rate": tent.price or 0
+                "rate": tent.rate or 0
             })
 
     # Add transport costs
@@ -164,7 +165,7 @@ def create_quotation(reservation_name):
                 "item_code": transport.item_code,
                 "item_name": transport.transport_name or "Transport",
                 "qty": 1,
-                "rate": transport.price or 0
+                "rate": transport.rate or 0
             })
     
     if reservation.hired_services:
@@ -173,14 +174,14 @@ def create_quotation(reservation_name):
                 "item_code": service.item_code,
                 "item_name": service.service_name or "Service",
                 "qty": 1,
-                "rate": service.price or 0
+                "rate": service.rate or 0
             })
     if reservation.meals:
         for meals in reservation.meals:
             quotation.append("items", {
                 "item_code": meals.meal_type,
                 "qty": meals.qty or 1,
-                "rate": meals.cost or 0
+                "rate": meals.rate or 0
             })
     
     quotation.insert(ignore_permissions=True)
@@ -442,61 +443,78 @@ def complete_maintenance(maintenance_log_name):
 
     return {"message": "Maintenance completed, room is now available for booking."}
 
+
 @frappe.whitelist()
-def validate(doc, method):
-    frappe.msgprint(f"Starting validation - Billing Currency: {doc.billing_currency}, Exchange Rate: {doc.exchange_rate}")
+def apply_exchange_rate_conversion(doc, method):
+    """Ensure exchange rate conversion applies only once before inserting."""
+    
+    # If already converted, do nothing
+    if doc.get("exchange_applied"):  
+        frappe.msgprint("Exchange rate already applied, skipping conversion.")
+        return
 
-    if not doc.billing_currency or not doc.exchange_rate:
-        frappe.throw("Billing Currency and Exchange Rate must be set.")
+    if doc.billing_currency and doc.billing_currency != "KES":
+        frappe.msgprint(f"Applying exchange rate conversion for {doc.billing_currency}")
 
-    if doc.billing_currency != "KES":
-        frappe.msgprint("Applying exchange rate conversion...")
+        def convert_rates(rows):
+            for row in rows:
+                # Store original rate if not already set
+                if not row.get("original_rate"):
+                    row.original_rate = row.rate  # Keep the fetched rate
 
-        for row in doc.activities:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency  
-        frappe.msgprint("Converted activities.")
+                # Convert using the original rate and store a backup
+                row.converted_rate = row.original_rate / doc.exchange_rate  
+                row.rate = row.converted_rate  # Ensure rate stays converted
+                row.currency = doc.billing_currency  
 
-        for row in doc.tent_selection:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency
-        frappe.msgprint("Converted tent selection.")
+                # Ensure amount updates correctly
+                if hasattr(row, "amount") and hasattr(row, "qty"):
+                    row.amount = row.rate * row.qty
+                elif hasattr(row, "amount"):
+                    row.amount = row.rate  
 
-        for row in doc.room_booking:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency
-        frappe.msgprint("Converted room bookings.")
+        # Apply to all relevant child tables
+        convert_rates(doc.activities)
+        convert_rates(doc.tent_selection)
+        convert_rates(doc.room_booking)
+        convert_rates(doc.meals)
+        convert_rates(doc.hired_services)
+        convert_rates(doc.transport_service)
 
-        for row in doc.meals:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency
-        frappe.msgprint("Converted meals.")
+        # Update total cost
+        doc.proposed_total_cost = sum(
+            row.amount for table in [
+                doc.activities,
+                doc.tent_selection,
+                doc.room_booking,
+                doc.meals,
+                doc.hired_services,
+                doc.transport_service
+            ] for row in table if hasattr(row, "amount")
+        )
 
-        for row in doc.hired_service:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency
-        frappe.msgprint("Converted hired services.")
+        # Mark as converted to prevent double conversion
+        doc.exchange_applied = True  
+        
 
-        for row in doc.transport_service:
-            if not row.get("original_rate"):
-                row.original_rate = row.rate
-            row.rate = row.original_rate / doc.exchange_rate
-            row.currency = doc.billing_currency
-        frappe.msgprint("Converted transport services.")
+@frappe.whitelist()
+def prevent_rate_reset(doc, method):
+    """Ensure that converted rates are retained before submission."""
+    if doc.billing_currency and doc.billing_currency != "KES":
+        frappe.msgprint("Ensuring converted rates are retained before submission.")
 
-        # Recalculate the total amount
-        doc.proposed_total_cost = sum(row.amount for row in doc.activities) + sum(row.amount for row in doc.tent_selection)
+        def retain_converted_rates(rows):
+            for row in rows:
+                # If converted_rate exists, force rate to stay converted
+                if row.get("converted_rate"):
+                    row.rate = row.converted_rate
+                    row.currency = doc.billing_currency  
 
-        frappe.msgprint("Final total cost updated.")
+        retain_converted_rates(doc.activities)
+        retain_converted_rates(doc.tent_selection)
+        retain_converted_rates(doc.room_booking)
+        retain_converted_rates(doc.meals)
+        retain_converted_rates(doc.hired_services)
+        retain_converted_rates(doc.transport_service)
 
-    frappe.msgprint("Validation completed successfully.")
+        

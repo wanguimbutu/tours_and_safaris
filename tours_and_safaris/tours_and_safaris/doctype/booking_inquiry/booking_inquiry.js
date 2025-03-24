@@ -209,7 +209,7 @@ function create_reservation(frm) {
         reservation.activities =frm.doc.activities;
         reservation.tent_selection = frm.doc.tent_selection;
         reservation.room_type_booking = frm.doc.room_booking;
-        reservation.transport = frm.doc.transport_service;
+        reservation.transport_service = frm.doc.transport_service;
         reservation.accommodation_needed = frm.doc.accommodation_needed;
         reservation.rooms = frm.doc.rooms;
         reservation.tents = frm.doc.tents;
@@ -218,7 +218,7 @@ function create_reservation(frm) {
         reservation.meals = frm.doc.meals;
         reservation.exchange_rate = frm.doc.exchange_rate;
         reservation.billing_currency = frm.doc.billing_currency;
-
+        reservation.remarks = frm.doc.remarks;
         frappe.set_route("Form", "Reservation", reservation.name);
     });
 }
