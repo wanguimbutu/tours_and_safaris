@@ -79,6 +79,8 @@ def apply_exchange_rate_conversion(doc, method):
     if doc.billing_currency and doc.billing_currency != "KES":
         frappe.msgprint(f"Applying exchange rate conversion for {doc.billing_currency}")
 
+        
+
         def convert_rates(rows):
             for row in rows:
                 # Store original rate if not already set
