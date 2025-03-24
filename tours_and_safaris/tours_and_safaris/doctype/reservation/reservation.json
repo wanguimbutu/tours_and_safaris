@@ -18,6 +18,7 @@
   "billing_currency",
   "customer_email",
   "customer_group",
+  "exchange_rate",
   "kitlist",
   "column_break_rddc",
   "arrival_date",
@@ -45,7 +46,9 @@
   "meals",
   "dietary_requirements",
   "transport_section",
-  "transport",
+  "transport_service",
+  "section_break_vqzr",
+  "remarks",
   "cost_section",
   "column_break_stiu",
   "status",
@@ -209,12 +212,6 @@
    "label": "Transport"
   },
   {
-   "fieldname": "transport",
-   "fieldtype": "Table",
-   "label": "Transport",
-   "options": "Transport"
-  },
-  {
    "fieldname": "tent_selection",
    "fieldtype": "Table",
    "label": "Tent Selection",
@@ -232,12 +229,6 @@
    "fieldname": "section_break_guea",
    "fieldtype": "Section Break",
    "label": "Services"
-  },
-  {
-   "fieldname": "hired_services",
-   "fieldtype": "Table",
-   "label": "Hired Services",
-   "options": "Reservation Services"
   },
   {
    "allow_on_submit": 1,
@@ -310,6 +301,7 @@
    "options": "Room Type Booking"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "proposed_total_cost",
    "fieldtype": "Currency",
    "label": "Proposed Total Cost"
@@ -335,12 +327,38 @@
    "fieldname": "billing_currency",
    "fieldtype": "Read Only",
    "label": "Billing Currency"
+  },
+  {
+   "fieldname": "exchange_rate",
+   "fieldtype": "Currency",
+   "label": "Exchange Rate"
+  },
+  {
+   "fieldname": "transport_service",
+   "fieldtype": "Table",
+   "label": "Transport",
+   "options": "Transport"
+  },
+  {
+   "fieldname": "hired_services",
+   "fieldtype": "Table",
+   "label": "Hired Services",
+   "options": "Reservation Services"
+  },
+  {
+   "fieldname": "section_break_vqzr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-21 08:49:49.340871",
+ "modified": "2025-03-24 10:24:58.618139",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

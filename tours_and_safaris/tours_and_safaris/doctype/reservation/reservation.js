@@ -2,7 +2,13 @@ frappe.ui.form.on("Reservation", {
     refresh: function (frm) {
        // calculate_total_cost(frm);
         toggle_accommodation_fields(frm);
-        calculate_total_amount(frm);
+            calculate_total_amount(frm);
+            toggle_exchange_rate_field(frm);
+    
+            // 🔹 Ensure exchange rate is applied when converting from Booking Inquiry
+            if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES') {
+                recalculate_rates(frm);
+            }
 
         if (frm.doc.accommodation_type === "Rooms") {
             frm.set_df_property("room_booking", "hidden", 0);
@@ -121,6 +127,14 @@ frappe.ui.form.on("Reservation", {
         }
         fetch_available_rooms(frm);
     },
+    billing_currency: function(frm) {
+        toggle_exchange_rate_field(frm);
+        recalculate_rates(frm);
+    },
+
+    exchange_rate: function(frm) {
+        recalculate_rates(frm);
+    },
 
     no_of_people: function(frm){
         validate_people_count(frm);
@@ -200,8 +214,70 @@ frappe.ui.form.on("Reservation", {
 }
 */
 
+// Toggle exchange rate field visibility
+function toggle_exchange_rate_field(frm) {
+    if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES') {
+        frm.set_df_property('exchange_rate', 'reqd', 1); // Make required
+        frm.set_df_property('exchange_rate', 'hidden', 0); // Show field
+    } else {
+        frm.set_df_property('exchange_rate', 'reqd', 0); // Make optional
+        frm.set_df_property('exchange_rate', 'hidden', 1); // Hide field
+        frm.set_value('exchange_rate', 1); // Default to 1 when KES is used
+    }
+}
+
+function recalculate_rates(frm) {
+    // Prevent recalculation if the document is submitted
+    if (frm.doc.docstatus === 1) return;
+
+    if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES' && frm.doc.exchange_rate) {
+        let tables = ['activities', 'tent_selection', 'room_type_booking', 'hired_services', 'meals', 'transport_service'];
+
+        tables.forEach(table => {
+            (frm.doc[table] || []).forEach(row => {
+                // Only update if the rate hasn't been set already (prevents overwriting after submission)
+                if (row.original_rate && !row.converted_rate) { 
+                    let converted_rate = row.original_rate / frm.doc.exchange_rate;
+                    
+                    frappe.model.set_value(row.doctype, row.name, 'converted_rate', converted_rate);
+                    frappe.model.set_value(row.doctype, row.name, 'rate', converted_rate);
+                    frappe.model.set_value(row.doctype, row.name, 'currency', frm.doc.billing_currency);
+                }
+            });
+        });
+
+        calculate_total_amount(frm);
+    }
+}
+
+
 function update_amount(frm, cdt, cdn, table_name) {
     let row = locals[cdt][cdn];
+
+    // Validate qty against no_of_people
+    let no_of_people = frm.doc.no_of_people || 0;
+    if (row.qty > no_of_people) {
+        frappe.msgprint(__('Quantity cannot exceed the number of people.'));
+        frappe.model.set_value(cdt, cdn, 'qty', no_of_people);
+        return;
+    }
+
+    
+    // Only update rate if it exists (prevents infinite loop)
+    if (!row.rate) return;
+
+    // Store original rate only if not set before
+    if (!row.original_rate) {
+        frappe.model.set_value(cdt, cdn, 'original_rate', row.rate);
+    }
+
+    let rate = row.rate;
+    if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES' && frm.doc.exchange_rate) {
+        rate = row.original_rate / frm.doc.exchange_rate;
+        frappe.model.set_value(cdt, cdn, 'rate', rate);
+        frappe.model.set_value(cdt, cdn, 'currency', frm.doc.billing_currency);
+    }
+
 
     if (row.qty && row.rate) {
         frappe.model.set_value(cdt, cdn, 'amount', row.qty * row.rate);
@@ -212,12 +288,13 @@ function update_amount(frm, cdt, cdn, table_name) {
     calculate_total_amount(frm);
 }
 
+
 // Function to calculate total amount from all relevant tables
 function calculate_total_amount(frm) {
     let total = 0;
 
     // List of tables to sum amounts from
-    let tables = ['activities', 'tent_selection','room_type_booking','hired_services','meals','trasnport'];
+    let tables = ['activities', 'tent_selection','room_type_booking','hired_services','meals','transport'];
 
     tables.forEach(table => {
         (frm.doc[table] || []).forEach(row => {

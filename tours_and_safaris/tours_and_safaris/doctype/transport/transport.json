@@ -11,7 +11,8 @@
   "qty",
   "rate",
   "amount",
-  "item_code"
+  "item_code",
+  "converted_rate"
  ],
  "fields": [
   {
@@ -54,12 +55,17 @@
    "fieldtype": "Link",
    "label": "Item Code",
    "options": "Item"
+  },
+  {
+   "fieldname": "converted_rate",
+   "fieldtype": "Float",
+   "label": "Converted Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-21 12:14:06.702043",
+ "modified": "2025-03-24 10:07:21.703730",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Transport",

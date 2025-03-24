@@ -198,6 +198,7 @@ function create_reservation(frm) {
 
         reservation.booking_inquiry = frm.doc.name;
         reservation.customer = frm.doc.customer;
+        reservation.customer_name = frm.doc.customer;
         reservation.status = "Reserved";
         reservation.no_of_people = frm.doc.no_of_people; 
         reservation.no_of_adults = frm.doc.no_of_adults;
@@ -215,6 +216,8 @@ function create_reservation(frm) {
         reservation.dietary_requirements = frm.doc.dietary_preferences;
         reservation.proposed_total_cost = frm.doc.proposed_total_cost;
         reservation.meals = frm.doc.meals;
+        reservation.exchange_rate = frm.doc.exchange_rate;
+        reservation.billing_currency = frm.doc.billing_currency;
 
         frappe.set_route("Form", "Reservation", reservation.name);
     });

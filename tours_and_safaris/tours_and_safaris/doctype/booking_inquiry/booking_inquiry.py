@@ -69,50 +69,59 @@ def update_diet_preferences(doc, method):
 
 @frappe.whitelist()
 def validate(doc, method):
-    # Ensure we only apply exchange rate conversion when necessary
-    if doc.billing_currency and doc.billing_currency != "KES" and doc.exchange_rate:
+    frappe.msgprint(f"Starting validation - Billing Currency: {doc.billing_currency}, Exchange Rate: {doc.exchange_rate}")
+
+    if not doc.billing_currency or not doc.exchange_rate:
+        frappe.throw("Billing Currency and Exchange Rate must be set.")
+
+    if doc.billing_currency != "KES":
+        frappe.msgprint("Applying exchange rate conversion...")
+
         for row in doc.activities:
-            if not row.get("original_rate"):  # Store original rate once
-                row.original_rate = row.rate  # Save the original KES rate
-            
-            row.rate = row.original_rate / doc.exchange_rate  # Apply conversion
+            if not row.get("original_rate"):
+                row.original_rate = row.rate
+            row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency  
+        frappe.msgprint("Converted activities.")
 
         for row in doc.tent_selection:
             if not row.get("original_rate"):
-                row.original_rate = row.rate  
-            
-            row.rate = row.original_rate / doc.exchange_rate  
-            row.currency = doc.billing_currency  
-        
+                row.original_rate = row.rate
+            row.rate = row.original_rate / doc.exchange_rate
+            row.currency = doc.billing_currency
+        frappe.msgprint("Converted tent selection.")
+
         for row in doc.room_booking:
             if not row.get("original_rate"):
-                row.original_rate = row.rate  
-            
-            row.rate = row.original_rate / doc.exchange_rate  
+                row.original_rate = row.rate
+            row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency
+        frappe.msgprint("Converted room bookings.")
 
         for row in doc.meals:
             if not row.get("original_rate"):
-                row.original_rate = row.rate  
-            
-            row.rate = row.original_rate / doc.exchange_rate  
+                row.original_rate = row.rate
+            row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency
+        frappe.msgprint("Converted meals.")
 
         for row in doc.hired_service:
             if not row.get("original_rate"):
-                row.original_rate = row.rate  
-            
-            row.rate = row.original_rate / doc.exchange_rate  
+                row.original_rate = row.rate
+            row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency
+        frappe.msgprint("Converted hired services.")
 
         for row in doc.transport_service:
             if not row.get("original_rate"):
-                row.original_rate = row.rate  
-            
-            row.rate = row.original_rate / doc.exchange_rate  
+                row.original_rate = row.rate
+            row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency
+        frappe.msgprint("Converted transport services.")
 
-        # Recalculate total amount correctly
-        doc.proposed_total_cost = sum(row.amount for row in doc.activities) + \
-                                  sum(row.amount for row in doc.tent_selection)
+        # Recalculate the total amount
+        doc.proposed_total_cost = sum(row.amount for row in doc.activities) + sum(row.amount for row in doc.tent_selection)
+
+        frappe.msgprint("Final total cost updated.")
+
+    frappe.msgprint("Validation completed successfully.")
