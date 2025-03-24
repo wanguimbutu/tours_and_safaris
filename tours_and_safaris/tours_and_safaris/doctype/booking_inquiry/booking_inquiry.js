@@ -299,7 +299,7 @@ function toggle_exchange_rate_field(frm) {
 // Recalculate rates based on exchange rate
 function recalculate_rates(frm) {
     if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES' && frm.doc.exchange_rate) {
-        let tables = ['activities', 'tent_selection'];
+        let tables = ['activities', 'tent_selection', 'room_booking','transport_service', 'meals','hired_service'];
 
         tables.forEach(table => {
             (frm.doc[table] || []).forEach(row => {
