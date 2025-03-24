@@ -158,8 +158,8 @@ def create_quotation(reservation_name):
             })
 
     # Add transport costs
-    if reservation.transport:
-        for transport in reservation.transport:
+    if reservation.transport_service:
+        for transport in reservation.transport_service:
             quotation.append("items", {
                 "item_code": transport.item_code,
                 "item_name": transport.transport_name or "Transport",

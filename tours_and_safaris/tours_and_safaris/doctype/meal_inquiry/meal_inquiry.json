@@ -11,7 +11,8 @@
   "qty",
   "rate",
   "amount",
-  "converted_rate"
+  "converted_rate",
+  "original_rate"
  ],
  "fields": [
   {
@@ -52,12 +53,17 @@
    "fieldname": "converted_rate",
    "fieldtype": "Float",
    "label": "Converted Rate"
+  },
+  {
+   "fieldname": "original_rate",
+   "fieldtype": "Float",
+   "label": "Original Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-24 10:07:03.095833",
+ "modified": "2025-03-24 11:25:03.631229",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Meal Inquiry",

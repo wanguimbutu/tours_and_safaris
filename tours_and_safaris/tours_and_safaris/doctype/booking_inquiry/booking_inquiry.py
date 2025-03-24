@@ -82,42 +82,37 @@ def validate(doc, method):
                 row.original_rate = row.rate
             row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency  
-        frappe.msgprint("Converted activities.")
 
         for row in doc.tent_selection:
             if not row.get("original_rate"):
                 row.original_rate = row.rate
             row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency
-        frappe.msgprint("Converted tent selection.")
 
         for row in doc.room_booking:
             if not row.get("original_rate"):
                 row.original_rate = row.rate
             row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency
-        frappe.msgprint("Converted room bookings.")
 
         for row in doc.meals:
             if not row.get("original_rate"):
                 row.original_rate = row.rate
             row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency
-        frappe.msgprint("Converted meals.")
 
         for row in doc.hired_service:
             if not row.get("original_rate"):
                 row.original_rate = row.rate
             row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency
-        frappe.msgprint("Converted hired services.")
 
         for row in doc.transport_service:
             if not row.get("original_rate"):
                 row.original_rate = row.rate
             row.rate = row.original_rate / doc.exchange_rate
             row.currency = doc.billing_currency
-        frappe.msgprint("Converted transport services.")
+    
 
         # Recalculate the total amount
         doc.proposed_total_cost = sum(row.amount for row in doc.activities) + sum(row.amount for row in doc.tent_selection)
