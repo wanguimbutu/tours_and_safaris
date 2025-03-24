@@ -1,48 +1,31 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:transport_name",
- "creation": "2025-01-29 10:55:25.242031",
+ "creation": "2025-03-24 16:53:59.462333",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "transport_name",
-  "price",
-  "vehicle_name",
-  "item_code"
+  "rate"
  ],
  "fields": [
   {
    "fieldname": "transport_name",
    "fieldtype": "Data",
-   "label": "Transport Name",
-   "unique": 1
+   "label": "Transport Name"
   },
   {
-   "fieldname": "price",
+   "fieldname": "rate",
    "fieldtype": "Currency",
-   "label": "Price "
-  },
-  {
-   "fieldname": "vehicle_name",
-   "fieldtype": "Link",
-   "label": "Vehicle Name",
-   "options": "Vehicle"
-  },
-  {
-   "fieldname": "item_code",
-   "fieldtype": "Link",
-   "label": "Item Code",
-   "options": "Item"
+   "label": "Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-24 10:34:17.786683",
+ "modified": "2025-03-24 16:55:23.780026",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Transport Service",
- "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

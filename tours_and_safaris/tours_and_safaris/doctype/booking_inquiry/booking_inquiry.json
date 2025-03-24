@@ -178,12 +178,6 @@
    "label": "Transport Required"
   },
   {
-   "fieldname": "transport_service",
-   "fieldtype": "Table",
-   "label": "Transport Service",
-   "options": "Transport"
-  },
-  {
    "fieldname": "section_break_xphs",
    "fieldtype": "Section Break",
    "label": "Other Services"
@@ -406,12 +400,18 @@
    "fieldname": "currency_symbol",
    "fieldtype": "Data",
    "label": "Currency Symbol"
+  },
+  {
+   "fieldname": "transport_service",
+   "fieldtype": "Table",
+   "label": "Transport Service",
+   "options": "Transport"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-24 15:25:27.431029",
+ "modified": "2025-03-24 16:58:39.960493",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",

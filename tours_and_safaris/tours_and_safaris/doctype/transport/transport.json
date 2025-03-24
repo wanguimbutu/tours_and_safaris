@@ -1,19 +1,19 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-03-24 15:50:49.552679",
+ "creation": "2025-03-24 16:56:01.565177",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
   "transport_name",
   "vehicle_name",
+  "qty",
   "rate",
   "amount",
-  "item_code",
-  "converted_rate",
   "original_rate",
-  "qty"
+  "converted_rate",
+  "item_code"
  ],
  "fields": [
   {
@@ -31,6 +31,12 @@
    "options": "Vehicle"
   },
   {
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty"
+  },
+  {
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -40,36 +46,29 @@
    "fieldname": "amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Amount "
+   "label": "Amount"
+  },
+  {
+   "fieldname": "original_rate",
+   "fieldtype": "Currency",
+   "label": "Original Rate"
+  },
+  {
+   "fieldname": "converted_rate",
+   "fieldtype": "Currency",
+   "label": "Converted Rate"
   },
   {
    "fieldname": "item_code",
    "fieldtype": "Link",
    "label": "Item Code",
    "options": "Item"
-  },
-  {
-   "fieldname": "converted_rate",
-   "fieldtype": "Float",
-   "label": "Converted Rate"
-  },
-  {
-   "fieldname": "original_rate",
-   "fieldtype": "Float",
-   "label": "Original Rate"
-  },
-  {
-   "fieldname": "qty",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Qty",
-   "non_negative": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-24 16:15:28.489683",
+ "modified": "2025-03-24 16:58:11.409332",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Transport",
