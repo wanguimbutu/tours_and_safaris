@@ -5,6 +5,16 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "customer",
+  "customer_name",
+  "start_date",
+  "end_date",
+  "column_break_bqht",
+  "project_name",
+  "no_of_people",
+  "status",
+  "section_break_tdhg",
+  "activity_allocation_details",
   "section_break_gag4",
   "amended_from"
  ],
@@ -22,12 +32,64 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Read Only",
+   "label": "Customer Name"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fieldname": "column_break_bqht",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "project_name",
+   "fieldtype": "Link",
+   "label": "Project Name",
+   "options": "Project"
+  },
+  {
+   "fieldname": "no_of_people",
+   "fieldtype": "Int",
+   "label": "No of People"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nPending Allocation\nAllocated"
+  },
+  {
+   "fieldname": "section_break_tdhg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "activity_allocation_details",
+   "fieldtype": "Table",
+   "label": "Activity Allocation Details",
+   "options": "Activity Allocation Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-24 10:46:40.763329",
+ "modified": "2025-03-25 12:57:13.455256",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Allocation",

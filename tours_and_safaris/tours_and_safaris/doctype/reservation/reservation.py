@@ -450,7 +450,6 @@ def apply_exchange_rate_conversion(doc, method):
     
     # If already converted, do nothing
     if doc.get("exchange_applied"):  
-        frappe.msgprint("Exchange rate already applied, skipping conversion.")
         return
 
     if doc.billing_currency and doc.billing_currency != "KES":
@@ -501,7 +500,6 @@ def apply_exchange_rate_conversion(doc, method):
 def prevent_rate_reset(doc, method):
     """Ensure that converted rates are retained before submission."""
     if doc.billing_currency and doc.billing_currency != "KES":
-        frappe.msgprint("Ensuring converted rates are retained before submission.")
 
         def retain_converted_rates(rows):
             for row in rows:

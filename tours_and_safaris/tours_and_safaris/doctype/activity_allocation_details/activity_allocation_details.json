@@ -1,0 +1,86 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-25 12:19:18.462876",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "activity_date",
+  "activity_name",
+  "instructor",
+  "session",
+  "start_time",
+  "end_time",
+  "status",
+  "activity_report"
+ ],
+ "fields": [
+  {
+   "fieldname": "activity_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Activity Date"
+  },
+  {
+   "fieldname": "activity_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Activity Name",
+   "options": "Activity Type"
+  },
+  {
+   "fieldname": "instructor",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Instructor",
+   "options": "activity_name"
+  },
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Session",
+   "options": "Session Type"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Start Time"
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "End Time"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "\nScheduled\nCompleted"
+  },
+  {
+   "default": "0",
+   "fieldname": "activity_report",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Activity Report"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-25 17:14:43.024871",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Activity Allocation Details",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

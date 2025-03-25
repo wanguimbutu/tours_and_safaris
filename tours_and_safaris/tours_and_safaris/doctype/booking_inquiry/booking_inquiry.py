@@ -73,13 +73,9 @@ def apply_exchange_rate_conversion(doc, method):
     
     # If already converted, do nothing
     if doc.get("exchange_applied"):  
-        frappe.msgprint("Exchange rate already applied, skipping conversion.")
         return
 
     if doc.billing_currency and doc.billing_currency != "KES":
-        frappe.msgprint(f"Applying exchange rate conversion for {doc.billing_currency}")
-
-        
 
         def convert_rates(rows):
             for row in rows:
@@ -120,13 +116,11 @@ def apply_exchange_rate_conversion(doc, method):
 
         
         doc.exchange_applied = True  
-        frappe.msgprint("Exchange rate conversion applied and locked.")
 
 @frappe.whitelist()
 def prevent_rate_reset(doc, method):
     """Ensure that converted rates are retained before submission."""
     if doc.billing_currency and doc.billing_currency != "KES":
-        frappe.msgprint("Ensuring converted rates are retained before submission.")
 
         def retain_converted_rates(rows):
             for row in rows:
@@ -142,13 +136,12 @@ def prevent_rate_reset(doc, method):
         retain_converted_rates(doc.hired_service)
         retain_converted_rates(doc.transport_service)
 
-        frappe.msgprint("Converted rates retained successfully.")
+    
 
 @frappe.whitelist()
 def lock_rates_after_fetch(doc, method):
     """Prevent ERPNext from resetting rates after fetching standard prices."""
     if doc.billing_currency and doc.billing_currency != "KES":
-        frappe.msgprint("Locking converted rates to prevent overwrite.")
 
         def lock_rates(rows):
             for row in rows:
