@@ -37,13 +37,6 @@
    "non_negative": 1
   },
   {
-   "fetch_from": "meal_type.standard_rate",
-   "fieldname": "rate",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Rate"
-  },
-  {
    "fetch_from": "meal_type.item_name",
    "fieldname": "meal_name",
    "fieldtype": "Read Only",
@@ -58,12 +51,18 @@
    "fieldname": "original_rate",
    "fieldtype": "Float",
    "label": "Original Rate"
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-24 11:25:03.631229",
+ "modified": "2025-03-25 11:32:07.032598",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Meal Inquiry",

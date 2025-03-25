@@ -22,7 +22,6 @@
   "exchange_rate",
   "amended_from",
   "currency",
-  "currency_symbol",
   "section_break_bfyy",
   "from_date",
   "to_date",
@@ -397,11 +396,6 @@
    "options": "Currency"
   },
   {
-   "fieldname": "currency_symbol",
-   "fieldtype": "Data",
-   "label": "Currency Symbol"
-  },
-  {
    "fieldname": "transport_service",
    "fieldtype": "Table",
    "label": "Transport Service",
@@ -411,7 +405,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-24 16:58:39.960493",
+ "modified": "2025-03-25 10:55:28.363062",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
