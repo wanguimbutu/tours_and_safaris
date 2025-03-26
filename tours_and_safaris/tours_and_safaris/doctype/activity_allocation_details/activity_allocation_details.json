@@ -9,6 +9,7 @@
   "activity_date",
   "activity_name",
   "instructor",
+  "qualification",
   "session",
   "start_time",
   "end_time",
@@ -69,12 +70,17 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Activity Report"
+  },
+  {
+   "fieldname": "qualification",
+   "fieldtype": "Data",
+   "label": "Qualification"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-25 17:14:43.024871",
+ "modified": "2025-03-26 16:40:01.309330",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Allocation Details",

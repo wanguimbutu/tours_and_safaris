@@ -9,17 +9,17 @@ frappe.ui.form.on("Activity Allocation Details", {
             return;
         }
 
-        // Fetch the filtered instructors for the selected activity
         frappe.call({
             method: "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.get_instructors",
-            args: {
-                activity_name: row.activity_name
-            },
+            args: { activity_name: row.activity_name },
             callback: function (response) {
-                if (response.message && response.message.length > 0) {
-                    let instructors = response.message;
+                console.log("Instructor Response:", response.message); 
 
-                    // Create a Dialog with the fetched instructor list
+                if (response.message && response.message.length > 0) {
+                    let instructorOptions = response.message.map(
+                        inst => `${inst.instructor} (${inst.qualification || "No Qualification"})`
+                    );
+
                     let d = new frappe.ui.Dialog({
                         title: "Select Instructor",
                         fields: [
@@ -27,14 +27,21 @@ frappe.ui.form.on("Activity Allocation Details", {
                                 fieldtype: "Select",
                                 label: "Instructor",
                                 fieldname: "selected_instructor",
-                                options: [""].concat(instructors) // Add empty first option
+                                options: ["Select Instructor"].concat(instructorOptions)
                             }
                         ],
                         primary_action_label: "Select",
                         primary_action(values) {
                             if (values.selected_instructor) {
-                                // Set the selected instructor in the child table
-                                frappe.model.set_value(cdt, cdn, "instructor", values.selected_instructor);
+                                let selectedInstructor = response.message.find(inst => 
+                                    values.selected_instructor.startsWith(inst.instructor)
+                                );
+
+                                if (selectedInstructor) {
+                                    frappe.model.set_value(cdt, cdn, "instructor", selectedInstructor.instructor);
+                                    frappe.model.set_value(cdt, cdn, "qualification", selectedInstructor.qualification || "Not Specified");
+                                }
+
                                 d.hide();
                             } else {
                                 frappe.msgprint("Please select an instructor.");
@@ -46,11 +53,24 @@ frappe.ui.form.on("Activity Allocation Details", {
                 } else {
                     frappe.msgprint("No instructors found for this activity.");
                 }
-            },
-            error: function (err) {
-                console.error("API Error:", err);
             }
         });
+    },
+        
+    session: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn]; 
+
+        if (row.session === "PER SESSION") {
+            frappe.model.set_value(cdt, cdn, "start_time", "");
+            frappe.model.set_value(cdt, cdn, "end_time", ""); 
+            frappe.model.set_df_property("start_time", "read_only", 1);
+            frappe.model.set_df_property("end_time", "read_only", 1);
+        } else {
+            frappe.model.set_df_property("start_time", "read_only", 0);
+            frappe.model.set_df_property("end_time", "read_only", 0);
+        }
+        
+        frm.refresh_field("activity_allocation_details"); 
     }
 });
 
