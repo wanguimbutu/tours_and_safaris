@@ -14,8 +14,10 @@
  "fields": [
   {
    "fieldname": "room_type",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "label": "Room Type",
+   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Accomodation\"]]",
+   "options": "Item",
    "unique": 1
   },
   {
@@ -38,7 +40,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-05 08:57:02.974848",
+ "modified": "2025-03-26 10:56:07.846081",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Room Type",

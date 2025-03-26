@@ -162,18 +162,18 @@ def create_quotation(reservation_name):
     if reservation.transport_service:
         for transport in reservation.transport_service:
             quotation.append("items", {
-                "item_code": transport.item_code,
-                "item_name": transport.transport_name or "Transport",
-                "qty": 1,
+                "item_code": transport.transport_name,
+                "item_name":transport.item_name,
+                "qty": transport.qty,
                 "rate": transport.rate or 0
             })
     
     if reservation.hired_services:
         for service in reservation.hired_services:
             quotation.append("items", {
-                "item_code": service.item_code,
-                "item_name": service.service_name or "Service",
-                "qty": 1,
+                "item_code": service.service_name,
+                "item_name":service.name or "Service",
+                "qty": service.qty,
                 "rate": service.rate or 0
             })
     if reservation.meals:

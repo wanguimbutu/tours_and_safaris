@@ -7,9 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "room_type",
-  "room_name",
-  "rate",
-  "qty"
+  "room_name"
  ],
  "fields": [
   {
@@ -25,25 +23,12 @@
    "in_list_view": 1,
    "label": "Room Name",
    "options": "Rooms"
-  },
-  {
-   "fetch_from": "room_name.base_price",
-   "fieldname": "rate",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Rate"
-  },
-  {
-   "fieldname": "qty",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Qty"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-12 14:30:04.910005",
+ "modified": "2025-03-26 12:14:05.200457",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Inquiry Room Booking",
