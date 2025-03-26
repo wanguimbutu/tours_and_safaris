@@ -140,7 +140,7 @@ def create_quotation(reservation_name):
     if reservation.room_type_booking:
         for room in reservation.room_type_booking:
             quotation.append("items", {
-                "item_code": room.item_code,
+                "item_code": room.room_type,
                 "item_name": room.room_type or "Room",
                 "description": f"Room Booking: {room.room_type or 'N/A'}",
                 "qty": room.qty or 1,
