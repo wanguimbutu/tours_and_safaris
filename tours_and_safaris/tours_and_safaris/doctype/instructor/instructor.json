@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:name1",
  "creation": "2025-02-05 15:04:50.879888",
@@ -38,7 +39,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-11 11:24:18.523802",
+ "modified": "2025-03-27 10:34:21.772039",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Instructor",
@@ -60,5 +61,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "track_changes": 1
 }

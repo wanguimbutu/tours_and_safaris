@@ -319,18 +319,18 @@ function recalculate_rates(frm) {
 function update_amount(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
 
-    // Validate qty against no_of_people
+    let excluded_tables = ['meals', 'transport_service'];
+
     let no_of_people = frm.doc.no_of_people || 0;
-    if (row.qty > no_of_people) {
+    if (!excluded_tables.includes(row.parentfield) && row.qty > no_of_people) {
         frappe.msgprint(__('Quantity cannot exceed the number of people.'));
         frappe.model.set_value(cdt, cdn, 'qty', no_of_people);
         return;
     }
 
-    // Only update rate if it exists (prevents infinite loop)
+
     if (!row.rate) return;
 
-    // Store original rate only if not set before
     if (!row.original_rate) {
         frappe.model.set_value(cdt, cdn, 'original_rate', row.rate);
     }
@@ -342,17 +342,15 @@ function update_amount(frm, cdt, cdn) {
         frappe.model.set_value(cdt, cdn, 'currency', frm.doc.billing_currency);
     }
 
-    // Calculate amount
     let amount = row.qty && rate ? row.qty * rate : 0;
     frappe.model.set_value(cdt, cdn, 'amount', amount);
 
     calculate_total_amount(frm);
 }
 
-// Function to calculate total amount from all relevant tables
 function calculate_total_amount(frm) {
     let total = 0;
-    let tables = ['activities', 'tent_selection', 'room_booking','transport_service', 'meals','hired_service'];
+    let tables = ['activities', 'tent_selection', 'room_booking', 'transport_service', 'meals', 'hired_service'];
 
     tables.forEach(table => {
         (frm.doc[table] || []).forEach(row => {
@@ -360,11 +358,10 @@ function calculate_total_amount(frm) {
         });
     });
 
-    frm.set_value('proposed_total_cost', total); // Update total amount field
+    frm.set_value('proposed_total_cost', total); 
 }
 
-// Attach the update function dynamically to multiple tables
-['Activity Package', 'Tent Selection', 'Room Type Booking','Transport','Meal Inquiry','Reservation Services'].forEach(table_name => {
+['Activity Package', 'Tent Selection', 'Room Type Booking', 'Transport', 'Meal Inquiry', 'Reservation Services'].forEach(table_name => {
     frappe.ui.form.on(table_name, {
         qty: function(frm, cdt, cdn) {
             update_amount(frm, cdt, cdn);
@@ -374,6 +371,7 @@ function calculate_total_amount(frm) {
         }
     });
 });
+
 
 frappe.ui.form.on('Room Type Booking', {
     room_type: function(frm, cdt, cdn) {

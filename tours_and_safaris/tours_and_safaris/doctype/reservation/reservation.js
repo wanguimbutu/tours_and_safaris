@@ -251,18 +251,20 @@ function recalculate_rates(frm) {
 }
 
 
-function update_amount(frm, cdt, cdn, table_name) {
+function update_amount(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
 
-    // Validate qty against no_of_people
+    // Define tables that should not be restricted by number of people
+    let excluded_tables = ['meals', 'transport_service'];
+
+    // Validate qty against no_of_people (Only if not in excluded tables)
     let no_of_people = frm.doc.no_of_people || 0;
-    if (row.qty > no_of_people) {
+    if (!excluded_tables.includes(row.parentfield) && row.qty > no_of_people) {
         frappe.msgprint(__('Quantity cannot exceed the number of people.'));
         frappe.model.set_value(cdt, cdn, 'qty', no_of_people);
         return;
     }
 
-    
     // Only update rate if it exists (prevents infinite loop)
     if (!row.rate) return;
 
@@ -278,23 +280,17 @@ function update_amount(frm, cdt, cdn, table_name) {
         frappe.model.set_value(cdt, cdn, 'currency', frm.doc.billing_currency);
     }
 
-
-    if (row.qty && row.rate) {
-        frappe.model.set_value(cdt, cdn, 'amount', row.qty * row.rate);
-    } else {
-        frappe.model.set_value(cdt, cdn, 'amount', 0);
-    }
+    // Calculate amount
+    let amount = row.qty && rate ? row.qty * rate : 0;
+    frappe.model.set_value(cdt, cdn, 'amount', amount);
 
     calculate_total_amount(frm);
 }
 
-
 // Function to calculate total amount from all relevant tables
 function calculate_total_amount(frm) {
     let total = 0;
-
-    // List of tables to sum amounts from
-    let tables = ['activities', 'tent_selection','room_type_booking','hired_services','meals','transport_service'];
+    let tables = ['activities', 'tent_selection', 'room_booking', 'transport_service', 'meals', 'hired_service'];
 
     tables.forEach(table => {
         (frm.doc[table] || []).forEach(row => {
@@ -302,20 +298,21 @@ function calculate_total_amount(frm) {
         });
     });
 
-    frm.set_value('proposed_total_cost', total); // Assuming 'total_amount' is the total field
+    frm.set_value('proposed_total_cost', total); // Update total amount field
 }
 
 // Attach the update function dynamically to multiple tables
-['Activity Package', 'Tent Selection','Meal Inquiry','Room Type Booking','Reservation Services','Transport'].forEach(table_name => {
+['Activity Package', 'Tent Selection', 'Room Type Booking', 'Transport', 'Meal Inquiry', 'Reservation Services'].forEach(table_name => {
     frappe.ui.form.on(table_name, {
         qty: function(frm, cdt, cdn) {
-            update_amount(frm, cdt, cdn, table_name);
+            update_amount(frm, cdt, cdn);
         },
         rate: function(frm, cdt, cdn) {
-            update_amount(frm, cdt, cdn, table_name);
+            update_amount(frm, cdt, cdn);
         }
     });
 });
+
 
 function validate_people_count(frm) {
     let total_people = frm.doc.no_of_people;
