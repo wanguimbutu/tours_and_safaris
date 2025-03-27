@@ -15,8 +15,7 @@
   "column_break_bqht",
   "project_name",
   "task",
-  "no_of_people",
-  "total_people",
+  "custom_no_of_people",
   "status",
   "section_break_tdhg",
   "activity_allocation_details",
@@ -70,11 +69,6 @@
    "options": "Project"
   },
   {
-   "fieldname": "no_of_people",
-   "fieldtype": "Int",
-   "label": "No of People"
-  },
-  {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -105,15 +99,15 @@
    "options": "Task"
   },
   {
-   "fieldname": "total_people",
+   "fieldname": "custom_no_of_people",
    "fieldtype": "Int",
-   "label": "Total People"
+   "label": "No of People"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-27 14:26:32.829135",
+ "modified": "2025-03-28 02:27:02.607297",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Allocation",
