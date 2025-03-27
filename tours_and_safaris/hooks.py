@@ -70,7 +70,7 @@ scheduler_events = {
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/tours_and_safaris/css/tours_and_safaris.css"
-# app_include_js = "/assets/tours_and_safaris/js/tours_and_safaris.js"
+app_include_js = "/assets/tours_and_safaris/js/activity_allocation_list.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/tours_and_safaris/css/tours_and_safaris.css"

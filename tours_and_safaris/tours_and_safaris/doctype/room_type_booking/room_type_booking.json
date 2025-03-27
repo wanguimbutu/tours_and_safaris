@@ -7,10 +7,10 @@
  "engine": "InnoDB",
  "field_order": [
   "room_type",
+  "room_type_name",
   "qty",
   "rate",
   "amount",
-  "item_code",
   "converted_rate",
   "original_rate"
  ],
@@ -20,7 +20,8 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Room Type",
-   "options": "Room Type"
+   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Accomodation\"]]",
+   "options": "Item"
   },
   {
    "default": "1",
@@ -36,13 +37,6 @@
    "label": "Amount"
   },
   {
-   "fetch_from": "room_type.item_code",
-   "fieldname": "item_code",
-   "fieldtype": "Link",
-   "label": "Item Code",
-   "options": "Item"
-  },
-  {
    "fieldname": "converted_rate",
    "fieldtype": "Float",
    "label": "Converted Rate"
@@ -55,13 +49,21 @@
   {
    "fieldname": "rate",
    "fieldtype": "Currency",
+   "in_list_view": 1,
    "label": "Rate"
+  },
+  {
+   "fetch_from": "room_type.item_name",
+   "fieldname": "room_type_name",
+   "fieldtype": "Read Only",
+   "in_list_view": 1,
+   "label": "Room Type Name"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-26 17:17:27.804715",
+ "modified": "2025-03-27 23:10:59.745526",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Room Type Booking",
