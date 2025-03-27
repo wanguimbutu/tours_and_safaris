@@ -163,7 +163,7 @@ def create_quotation(reservation_name):
         for transport in reservation.transport_service:
             quotation.append("items", {
                 "item_code": transport.transport_name,
-                "item_name":transport.item_name,
+                "item_name": transport.item_name,
                 "qty": transport.qty,
                 "rate": transport.rate or 0
             })
@@ -172,10 +172,11 @@ def create_quotation(reservation_name):
         for service in reservation.hired_services:
             quotation.append("items", {
                 "item_code": service.service_name,
-                "item_name":service.name or "Service",
+                "item_name": service.name or "Service",
                 "qty": service.qty,
                 "rate": service.rate or 0
             })
+
     if reservation.meals:
         for meals in reservation.meals:
             quotation.append("items", {
@@ -185,9 +186,9 @@ def create_quotation(reservation_name):
             })
     
     quotation.insert(ignore_permissions=True)
-    
 
-    return quotation.name
+    return {"quotation_name": quotation.name, "url": f"/app/quotation/{quotation.name}"}
+
 
 @frappe.whitelist()
 def update_room_availability(doc, method=None):

@@ -53,9 +53,11 @@ frappe.ui.form.on("Reservation", {
                                     if (response.message) {
                                         frappe.msgprint({
                                             title: __("Success"),
-                                            message: `Quotation <a href="/app/quotation/${response.message}" target="_blank">${response.message}</a> created successfully.`,
+                                            message: `Quotation <a href="/app/quotation/${response.message.quotation_name}" target="_blank">${response.message.quotation_name}</a> created successfully.`,
                                             indicator: "green"
                                         });
+        
+                                        frappe.set_route("Form", "Quotation", response.message.quotation_name);
                                     }
                                 }
                             });
@@ -64,6 +66,7 @@ frappe.ui.form.on("Reservation", {
                 }
             });
         }
+        
 
         // Check-In Button Logic
         if (frm.doc.room_booking && frm.doc.room_booking.length > 0 && !frm.doc.checked_in) {
