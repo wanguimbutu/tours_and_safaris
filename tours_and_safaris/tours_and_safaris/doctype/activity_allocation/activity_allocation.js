@@ -2,6 +2,23 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Activity Allocation Details", {
+    after_save: function(frm) {
+        if (frm.doc.docstatus === 1 && frm.doc.task) {  // Ensure it's submitted
+            frappe.call({
+                method: "frappe.client.set_value",
+                args: {
+                    doctype: "Task",
+                    name: frm.doc.task,
+                    fieldname: "status",
+                    value: "Completed"
+                },
+                callback: function(response) {
+                    frappe.msgprint(`Task ${frm.doc.task} has been marked as Completed.`);
+                }
+            });
+        }
+    },
+
     activity_name: function (frm, cdt, cdn) {
         let row = locals[cdt][cdn];
 

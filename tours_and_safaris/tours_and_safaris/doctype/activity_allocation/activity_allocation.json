@@ -14,7 +14,9 @@
   "end_date",
   "column_break_bqht",
   "project_name",
+  "task",
   "no_of_people",
+  "total_people",
   "status",
   "section_break_tdhg",
   "activity_allocation_details",
@@ -95,12 +97,23 @@
    "label": "Series",
    "options": "ACT-ALLO-.YYYY.-",
    "reqd": 1
+  },
+  {
+   "fieldname": "task",
+   "fieldtype": "Link",
+   "label": "Task",
+   "options": "Task"
+  },
+  {
+   "fieldname": "total_people",
+   "fieldtype": "Int",
+   "label": "Total People"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-27 11:10:00.703926",
+ "modified": "2025-03-27 14:26:32.829135",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Allocation",
