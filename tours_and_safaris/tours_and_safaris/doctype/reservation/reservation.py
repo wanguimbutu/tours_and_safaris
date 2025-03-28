@@ -12,7 +12,7 @@ class Reservation(Document):
         """Create an availability record when a reservation is submitted."""
     
         if not self.room_booking and not self.tent_selection:
-            frappe.msgprint("Warning: No accommodation selected for this reservation.")  # Soft warning
+            frappe.logger().info("Warning: No accommodation selected for this reservation.")  # Soft warning
     
     # Process rooms
         for room in self.get("room_booking", []):
