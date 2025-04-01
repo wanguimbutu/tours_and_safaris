@@ -34,7 +34,7 @@ frappe.ui.form.on("Reservation", {
             frappe.call({
                 method: "frappe.client.get_list",
                 args: {
-                    doctype: "Quotation",
+                    doctype: "Sales Order",
                     filters: {
                         "custom_reservation": frm.doc.name,
                         "docstatus": 1  // Submitted quotations
@@ -43,21 +43,21 @@ frappe.ui.form.on("Reservation", {
                 },
                 callback: function(response) {
                     if (response.message && response.message.length > 0) {
-                        frm.remove_custom_button(__('Create Quotation'));
+                        frm.remove_custom_button(__('Create Sales Order'));
                     } else {
-                        frm.add_custom_button('Create Quotation', function () {
+                        frm.add_custom_button('Create Sales Order', function () {
                             frappe.call({
-                                method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.create_quotation",
+                                method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.create_sales_order",
                                 args: { reservation_name: frm.doc.name },
                                 callback: function (response) {
                                     if (response.message) {
                                         frappe.msgprint({
                                             title: __("Success"),
-                                            message: `Quotation <a href="/app/quotation/${response.message.quotation_name}" target="_blank">${response.message.quotation_name}</a> created successfully.`,
+                                            message: `Sales Order <a href="/app/sales-order/${response.message.sales_order_name}" target="_blank">${response.message.sales_order_name}</a> created successfully.`,
                                             indicator: "green"
                                         });
         
-                                        frappe.set_route("Form", "Quotation", response.message.quotation_name);
+                                        frappe.set_route("Form", "Sales Order", response.message.sales_order_name);
                                     }
                                 }
                             });
@@ -66,6 +66,7 @@ frappe.ui.form.on("Reservation", {
                 }
             });
         }
+        
         
 
         // Check-In Button Logic

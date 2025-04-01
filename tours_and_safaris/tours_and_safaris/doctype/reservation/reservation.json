@@ -13,6 +13,7 @@
   "column_break_allb",
   "amended_from",
   "booking_inquiry",
+  "quotation",
   "kyc_section",
   "customer_name",
   "customer",
@@ -353,12 +354,18 @@
    "fieldtype": "Table",
    "label": "Transport Service",
    "options": "Transport"
+  },
+  {
+   "fieldname": "quotation",
+   "fieldtype": "Link",
+   "label": "Quotation",
+   "options": "Quotation"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-27 11:07:23.707402",
+ "modified": "2025-04-01 15:09:43.427464",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

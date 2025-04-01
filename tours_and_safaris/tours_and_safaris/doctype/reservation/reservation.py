@@ -100,7 +100,7 @@ def calculate_total_cost(reservation_name):
     return total_cost
 
 @frappe.whitelist()
-def create_quotation(reservation_name):
+def create_sales_order(reservation_name):
     """Generate a quotation for a reservation."""
     reservation = frappe.get_doc("Reservation", reservation_name)
     
@@ -108,18 +108,18 @@ def create_quotation(reservation_name):
         frappe.throw("Please ensure the Customer Name field is filled in the Reservation.")
 
     # Check if a quotation already exists and is submitted
-    existing_quotation = frappe.get_all("Quotation", filters={"custom_reservation": reservation_name, "docstatus": 1}, fields=["name"])
+    existing_sales_order = frappe.get_all("Sales Order", filters={"custom_reservation": reservation_name, "docstatus": 1}, fields=["name"])
     
-    if existing_quotation:
-        frappe.throw("A quotation has already been created and submitted for this reservation.")
+    if existing_sales_order:
+        frappe.throw("A sales order has already been created and submitted for this reservation.")
 
     # Proceed with creating a new quotation
-    quotation = frappe.get_doc({
-        "doctype": "Quotation",
+    sales_order = frappe.get_doc({
+        "doctype": "Sales Order",
         "customer": reservation.customer_name,  
-        "party_name": reservation.customer_name,
         "arrival_date": reservation.arrival_date,
         "depature_date": reservation.depature_date,
+        "delivery_date":reservation.depature_date,
         "custom_reservation": reservation.name,
         "custom_no_of_people": reservation.no_of_people,
         "currency":reservation.billing_currency,
@@ -129,7 +129,7 @@ def create_quotation(reservation_name):
     # Add activities
     if reservation.activities:
         for activity in reservation.activities:
-            quotation.append("items", {
+            sales_order.append("items", {
                 "item_code": activity.item_code,
                 "item_name": activity.activity_name,
                 "qty": activity.qty,  
@@ -139,7 +139,7 @@ def create_quotation(reservation_name):
     # Add room bookings
     if reservation.room_type_booking:
         for room in reservation.room_type_booking:
-            quotation.append("items", {
+            sales_order.append("items", {
                 "item_code": room.room_type,
                 "item_name": room.room_type or "Room",
                 "description": f"Room Booking: {room.room_type or 'N/A'}",
@@ -150,7 +150,7 @@ def create_quotation(reservation_name):
     # Add tent selections
     if reservation.tent_selection:
         for tent in reservation.tent_selection:
-            quotation.append("items", {
+            sales_order.append("items", {
                 "item_code": tent.item_code,
                 "item_name": tent.tent_type or "Tent",
                 "description": f"Tent: {tent.tent_type or 'N/A'}",
@@ -161,7 +161,7 @@ def create_quotation(reservation_name):
     # Add transport costs
     if reservation.transport_service:
         for transport in reservation.transport_service:
-            quotation.append("items", {
+            sales_order.append("items", {
                 "item_code": transport.transport_name,
                 "item_name": transport.item_name,
                 "qty": transport.qty,
@@ -170,7 +170,7 @@ def create_quotation(reservation_name):
     
     if reservation.hired_services:
         for service in reservation.hired_services:
-            quotation.append("items", {
+            sales_order.append("items", {
                 "item_code": service.service_name,
                 "item_name": service.name or "Service",
                 "qty": service.qty,
@@ -179,15 +179,15 @@ def create_quotation(reservation_name):
 
     if reservation.meals:
         for meals in reservation.meals:
-            quotation.append("items", {
+            sales_order.append("items", {
                 "item_code": meals.meal_type,
                 "qty": meals.qty or 1,
                 "rate": meals.rate or 0
             })
     
-    quotation.insert(ignore_permissions=True)
+    sales_order.insert(ignore_permissions=True)
 
-    return {"quotation_name": quotation.name, "url": f"/app/quotation/{quotation.name}"}
+    return {"sales_order_name": sales_order.name, "url": f"/app/sales-order/{sales_order.name}"}
 
 
 @frappe.whitelist()

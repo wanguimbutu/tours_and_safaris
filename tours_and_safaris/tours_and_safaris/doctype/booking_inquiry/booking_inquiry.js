@@ -9,20 +9,45 @@ frappe.ui.form.on('Booking Inquiry', {
     refresh: function(frm) {
         calculate_total_amount(frm);
         toggle_exchange_rate_field(frm);
-        if (frm.doc.docstatus === 1) {  
-            if (frm.doc.status === "Lost") {
-                disable_form_actions(frm);
-            } else {
-                frm.add_custom_button(__('Create Reservation'), function() {
-                    create_reservation(frm);
-                }, __("Actions"));
+        toggle_meals_table(frm);
 
-                frm.add_custom_button(__('Set as Lost'), function() {
-                    set_as_lost(frm);
-                }, __("Actions"));
+            if (frm.doc.docstatus === 1) {
+                frappe.call({
+                    method: "frappe.client.get_list",
+                    args: {
+                        doctype: "Quotation",
+                        filters: {
+                            "custom_booking_inquiry": frm.doc.name,
+                            "docstatus": 1  
+                        },
+                        fields: ["name"]
+                    },
+                    callback: function(response) {
+                        if (response.message && response.message.length > 0) {
+                            frm.remove_custom_button(__('Create Quotation'));
+                        } else {
+                            frm.add_custom_button('Create Quotation', function () {
+                                frappe.call({
+                                    method: "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.create_quotation",
+                                    args: { inquiry_name: frm.doc.name },
+                                    callback: function (response) {
+                                        if (response.message) {
+                                            frappe.msgprint({
+                                                title: __("Success"),
+                                                message: `Quotation <a href="/app/quotation/${response.message.quotation_name}" target="_blank">${response.message.quotation_name}</a> created successfully.`,
+                                                indicator: "green"
+                                            });
+            
+                                            frappe.set_route("Form", "Quotation", response.message.quotation_name);
+                                        }
+                                    }
+                                });
+                            }, __("Actions"));
+                        }
+                    }
+                });
             }
-            toggle_meals_table(frm);
-        }
+            
         if (!frm.is_new()) {  // Show button only if the document is saved
             frm.add_custom_button(__('Download PDF'), function() {
                 var docname = frm.doc.name;
@@ -196,7 +221,7 @@ function toggle_transport_option(frm){
 }
 
 
-function create_reservation(frm) {
+/*function create_reservation(frm) {
     frappe.model.with_doctype("Reservation", function() {
         let reservation = frappe.model.get_new_doc("Reservation");
 
@@ -226,6 +251,7 @@ function create_reservation(frm) {
         frappe.set_route("Form", "Reservation", reservation.name);
     });
 }
+    */
 
 function set_as_lost(frm) {
     frappe.prompt([
