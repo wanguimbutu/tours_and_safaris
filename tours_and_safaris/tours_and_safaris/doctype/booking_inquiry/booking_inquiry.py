@@ -178,7 +178,7 @@ def create_quotation(inquiry_name):
     quotation = frappe.get_doc({
         "doctype": "Quotation",
         "quotation_to":"Customer",  
-        "party_name": inquiry.customer,
+        "party_name": inquiry.customer_name,
         "arrival_date": inquiry.from_date,
         "depature_date": inquiry.to_date,
         "custom_booking_inquiry": inquiry.name,
