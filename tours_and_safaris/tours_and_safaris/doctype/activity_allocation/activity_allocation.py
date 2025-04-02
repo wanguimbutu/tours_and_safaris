@@ -106,6 +106,7 @@ def allocate_instructor(doc, method):
         timesheet = frappe.get_doc({
             "doctype": "Timesheet",
             "employee": instructor,
+            "custom_instructor":instructor,
             "customer": doc.customer,
             "project": doc.project_name,
             "time_logs": time_logs
