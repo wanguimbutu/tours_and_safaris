@@ -183,6 +183,8 @@ def create_quotation(inquiry_name):
         "depature_date": inquiry.to_date,
         "custom_booking_inquiry": inquiry.name,
         "custom_no_of_people": inquiry.no_of_people,
+        "custom_no_of_adults":inquiry.no_of_adults,
+        "custom_no_of_children": inquiry.no_of_children,
         "currency":inquiry.billing_currency,
         "items": []
     })

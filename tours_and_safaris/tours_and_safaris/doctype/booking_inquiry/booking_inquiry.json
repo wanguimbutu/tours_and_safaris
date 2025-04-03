@@ -30,8 +30,6 @@
   "no_of_people",
   "no_of_adults",
   "no_of_children",
-  "section_break_fbqu",
-  "guest_details",
   "section_break_apsj",
   "activities",
   "section_break_untc",
@@ -58,6 +56,8 @@
   "total_base_amount",
   "section_break_yhuz",
   "status",
+  "guest_details_tab",
+  "guest_details",
   "follow_up_tab",
   "follow_up_date",
   "column_break_vlrv",
@@ -142,18 +142,6 @@
    "fieldname": "no_of_children",
    "fieldtype": "Int",
    "label": "No. of Children"
-  },
-  {
-   "fieldname": "section_break_fbqu",
-   "fieldtype": "Section Break",
-   "label": "Guest Details"
-  },
-  {
-   "allow_bulk_edit": 1,
-   "fieldname": "guest_details",
-   "fieldtype": "Table",
-   "label": "Guest Details",
-   "options": "Guest Details"
   },
   {
    "fieldname": "section_break_untc",
@@ -281,7 +269,8 @@
   },
   {
    "fieldname": "section_break_apsj",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Activities"
   },
   {
    "fieldname": "activities",
@@ -401,12 +390,24 @@
    "fieldtype": "Table",
    "label": "Transport Service",
    "options": "Transport"
+  },
+  {
+   "fieldname": "guest_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Guest Details"
+  },
+  {
+   "allow_bulk_edit": 1,
+   "fieldname": "guest_details",
+   "fieldtype": "Table",
+   "label": "Guest Details",
+   "options": "Guest Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-03-27 11:07:00.958726",
+ "modified": "2025-04-03 11:05:10.389852",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
