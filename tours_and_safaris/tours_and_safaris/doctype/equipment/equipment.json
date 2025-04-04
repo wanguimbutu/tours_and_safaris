@@ -1,173 +1,70 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:name1",
+ "autoname": "field:equipment_name",
  "creation": "2025-01-15 12:01:12.169851",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "record_section",
-  "name1",
-  "type",
-  "initial_state",
-  "frequency",
-  "quantity",
+  "naming_series",
+  "equipment_name",
+  "equipment_group",
+  "is_itemized",
+  "no_of_equipment",
   "capacity",
-  "next_check_date",
-  "inspection_frequency",
-  "notify_date",
-  "column_break_lqix",
-  "is_group",
-  "uploads_section",
-  "image",
-  "optional_info_section",
-  "category",
-  "manufacturer",
-  "weight",
-  "certifications",
-  "additional_manufacturer_details_section",
-  "part_number",
-  "lifespan",
-  "description",
-  "comments_section",
-  "comments"
+  "number_available",
+  "equipment_details"
  ],
  "fields": [
   {
-   "fieldname": "name1",
-   "fieldtype": "Data",
-   "label": "Name",
-   "unique": 1
-  },
-  {
-   "fieldname": "type",
-   "fieldtype": "Link",
-   "label": "Type",
-   "options": "Equipment Type Folder"
-  },
-  {
-   "fieldname": "initial_state",
-   "fieldtype": "Select",
-   "label": "Initial State",
-   "options": "\nMissing\nQuarantine\nMonitor - Safe for use\nRetired\nSafe for Use"
-  },
-  {
-   "fieldname": "frequency",
-   "fieldtype": "Select",
-   "label": "Frequency",
-   "options": "Yearly\nMonthly"
-  },
-  {
-   "fieldname": "quantity",
-   "fieldtype": "Int",
-   "label": "Quantity",
-   "non_negative": 1
-  },
-  {
-   "fieldname": "next_check_date",
-   "fieldtype": "Date",
-   "label": "Next Check Date"
-  },
-  {
-   "fieldname": "notify_date",
-   "fieldtype": "Date",
-   "label": "Notify Date"
-  },
-  {
-   "fieldname": "inspection_frequency",
-   "fieldtype": "Data",
-   "label": "Inspection Frequency"
-  },
-  {
-   "fieldname": "record_section",
-   "fieldtype": "Section Break",
-   "label": "Record"
-  },
-  {
-   "fieldname": "optional_info_section",
-   "fieldtype": "Section Break",
-   "label": "Optional Info"
-  },
-  {
-   "fieldname": "category",
-   "fieldtype": "Data",
-   "label": "Category"
-  },
-  {
-   "fieldname": "manufacturer",
-   "fieldtype": "Data",
-   "label": "Manufacturer"
-  },
-  {
-   "fieldname": "weight",
-   "fieldtype": "Data",
-   "label": "Weight"
-  },
-  {
-   "fieldname": "certifications",
-   "fieldtype": "Data",
-   "label": "Certifications"
-  },
-  {
-   "fieldname": "additional_manufacturer_details_section",
-   "fieldtype": "Section Break",
-   "label": "Additional Manufacturer Details"
-  },
-  {
-   "fieldname": "part_number",
-   "fieldtype": "Data",
-   "label": "Part Number"
-  },
-  {
-   "fieldname": "lifespan",
-   "fieldtype": "Data",
-   "label": "Lifespan"
-  },
-  {
-   "fieldname": "description",
-   "fieldtype": "Small Text",
-   "label": "Description"
-  },
-  {
-   "fieldname": "comments_section",
-   "fieldtype": "Section Break",
-   "label": "Comments"
-  },
-  {
-   "fieldname": "comments",
-   "fieldtype": "Small Text",
-   "label": "Comments"
-  },
-  {
-   "fieldname": "uploads_section",
-   "fieldtype": "Section Break",
-   "label": "Uploads"
-  },
-  {
-   "fieldname": "image",
-   "fieldtype": "Attach",
-   "label": "Image"
-  },
-  {
    "fieldname": "capacity",
    "fieldtype": "Int",
-   "in_list_view": 1,
    "label": "Capacity"
   },
   {
-   "fieldname": "column_break_lqix",
-   "fieldtype": "Column Break"
+   "fieldname": "naming_series",
+   "fieldtype": "Data",
+   "label": "Number Series"
+  },
+  {
+   "fieldname": "equipment_name",
+   "fieldtype": "Data",
+   "label": "Equipment Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "equipment_group",
+   "fieldtype": "Link",
+   "label": "Equipment Group",
+   "link_filters": "[[\"Item Group\",\"parent_item_group\",\"=\",\"Equipment\"]]",
+   "options": "Item Group"
   },
   {
    "default": "0",
-   "fieldname": "is_group",
+   "fieldname": "is_itemized",
    "fieldtype": "Check",
-   "label": "Is Group"
+   "label": "Is Itemized"
+  },
+  {
+   "fieldname": "no_of_equipment",
+   "fieldtype": "Int",
+   "label": "No of Equipment"
+  },
+  {
+   "fieldname": "number_available",
+   "fieldtype": "Int",
+   "label": "Number Available"
+  },
+  {
+   "fieldname": "equipment_details",
+   "fieldtype": "Table",
+   "label": "Equipment Details",
+   "options": "Equipment Serial Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-09 11:50:02.505228",
+ "modified": "2025-04-03 16:09:24.211745",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment",

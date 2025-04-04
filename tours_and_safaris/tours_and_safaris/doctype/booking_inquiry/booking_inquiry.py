@@ -186,6 +186,9 @@ def create_quotation(inquiry_name):
         "custom_no_of_adults":inquiry.no_of_adults,
         "custom_no_of_children": inquiry.no_of_children,
         "currency":inquiry.billing_currency,
+        "custom_accommodation_needed":inquiry.accommodation_needed,
+        "custom_rooms":inquiry.rooms,
+        "custom_tents":inquiry.tents,
         "items": []
     })
 

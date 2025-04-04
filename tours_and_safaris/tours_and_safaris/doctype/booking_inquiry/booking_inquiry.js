@@ -342,6 +342,40 @@ function recalculate_rates(frm) {
         calculate_total_amount(frm);
     }
 }
+
+// Function to fetch and set rate from price list
+function fetch_rate_from_price_list(frm, cdt, cdn, item_code, table) {
+    let row = locals[cdt][cdn];
+    if (!item_code) return;
+
+    frappe.call({
+        method: "frappe.client.get_value",
+        args: {
+            doctype: "Item Price",
+            filters: {
+                item_code: item_code,
+                price_list: "Standard Selling"
+            },
+            fieldname: ["price_list_rate"]
+        },
+        callback: function(response) {
+            if (response.message) {
+                let price_list_rate = response.message.price_list_rate || 0;
+
+                if (!row.original_rate) {
+                    frappe.model.set_value(cdt, cdn, "original_rate", price_list_rate);
+                }
+
+                if (!row.rate || row.rate === row.original_rate) {
+                    frappe.model.set_value(cdt, cdn, "rate", price_list_rate);
+                }
+
+                update_amount(frm, cdt, cdn);
+            }
+        }
+    });
+}
+
 function update_amount(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
 
@@ -386,6 +420,43 @@ function calculate_total_amount(frm) {
 
     frm.set_value('proposed_total_cost', total); 
 }
+// Function to update Item Price when manually changed
+function update_price_list_rate(item_code, new_rate) {
+    frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+            doctype: "Item Price",
+            filters: { item_code: item_code, price_list: "Standard Selling" },
+            fields: ["name"]
+        },
+        callback: function(response) {
+            if (response.message.length > 0) {
+                let price_docname = response.message[0].name;
+                frappe.call({
+                    method: "frappe.client.set_value",
+                    args: {
+                        doctype: "Item Price",
+                        name: price_docname,
+                        fieldname: "price_list_rate",
+                        value: new_rate
+                    }
+                });
+            } else {
+                frappe.call({
+                    method: "frappe.client.insert",
+                    args: {
+                        doc: {
+                            doctype: "Item Price",
+                            price_list: "Standard Selling",
+                            item_code: item_code,
+                            price_list_rate: new_rate
+                        }
+                    }
+                });
+            }
+        }
+    });
+}
 
 ['Activity Package', 'Tent Selection', 'Room Type Booking', 'Transport', 'Meal Inquiry', 'Reservation Services'].forEach(table_name => {
     frappe.ui.form.on(table_name, {
@@ -397,6 +468,127 @@ function calculate_total_amount(frm) {
         }
     });
 });
+frappe.ui.form.on('Room Type Booking', {
+    room_type: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        if (!row) {
+            console.error("Row is missing in room_type.");
+            return;
+        }
+
+        let price_list = "Resident";
+        if (frm.doc.billing_currency && frm.doc.billing_currency !== "KES") {
+            price_list = "Non Resident";
+        }
+
+        console.log(" Fetching rate from:", price_list, "for Activity:", row.room_type);
+
+        if (row.rate && row.rate !== 0) {
+            console.log(" User modified rate:", row.rate);
+            return;
+        }
+
+        frappe.call({
+            method: "frappe.client.get_value",
+            args: {
+                doctype: "Item Price",
+                filters: {
+                    item_code: row.room_type,
+                    price_list: price_list
+                },
+                fieldname: ["price_list_rate"]
+            },
+            callback: function(response) {
+                console.log(" Response from Item Price:", response);
+
+                if (response.message) {
+                    if (response.message.price_list_rate) {
+                        let rate = response.message.price_list_rate;
+                        frappe.model.set_value(cdt, cdn, "original_rate", rate);
+                        frappe.model.set_value(cdt, cdn, "rate", rate);
+                        console.log("Price found:", rate, "for", row.room_type);
+                    } else {
+                        console.log(__(" No price found for {0} in {1}", [row.room_type, price_list]));
+                    }
+                } else {
+                    console.log(__("No response from Item Price API"));
+                }
+
+                update_amount(frm, cdt, cdn);
+            }
+        });
+    },
+
+    rate: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        if (!row.room_type || row.rate === row.original_rate) {
+            update_amount(frm, cdt, cdn);
+            return;
+        }
+
+        let price_list = "Resident";
+        if (frm.doc.billing_currency && frm.doc.billing_currency !== "KES") {
+            price_list = "Non Resident";
+        }
+
+        // Check if an Item Price exists
+        frappe.call({
+            method: "frappe.client.get_list",
+            args: {
+                doctype: "Item Price",
+                filters: {
+                    item_code: row.room_type,
+                    price_list: price_list
+                },
+                fields: ["name"]
+            },
+            callback: function(response) {
+                if (response.message.length > 0) {
+                    let price_docname = response.message[0].name;
+
+                    // Update existing price list entry
+                    frappe.call({
+                        method: "frappe.client.set_value",
+                        args: {
+                            doctype: "Item Price",
+                            name: price_docname,
+                            fieldname: "price_list_rate",
+                            value: row.rate
+                        },
+                        callback: () => {
+                            console.log(__("Price list updated for {0}", [row.room_type]));
+                        }
+                    });
+                } else {
+                    // Create new price list entry if not found
+                    frappe.call({
+                        method: "frappe.client.insert",
+                        args: {
+                            doc: {
+                                doctype: "Item Price",
+                                item_code: row.room_type,
+                                price_list: price_list,
+                                price_list_rate: row.rate
+                            }
+                        },
+                        callback: () => {
+                            console.log(__(" Price list entry created for {0}", [row.room_type]));
+                        }
+                    });
+                }
+            }
+        });
+
+        update_amount(frm, cdt, cdn);
+    },
+
+    qty: function(frm, cdt, cdn) {
+        update_amount(frm, cdt, cdn);
+    }
+});
+
 
 frappe.ui.form.on('Activity Package', {
     activity_name: function(frm, cdt, cdn) {
@@ -407,157 +599,255 @@ frappe.ui.form.on('Activity Package', {
             return;
         }
 
-        
-        let price_list = "Resident"; 
+        let price_list = "Resident";
         if (frm.doc.billing_currency && frm.doc.billing_currency !== "KES") {
             price_list = "Non Resident";
         }
 
-        console.log("🔍 Fetching rate from:", price_list, "for Activity:", row.activity_name);
+        console.log(" Fetching rate from:", price_list, "for Activity:", row.activity_name);
 
-    
         if (row.rate && row.rate !== 0) {
-            console.log("🔄 User modified rate:", row.rate);
-            return; 
-        }
-
-        frappe.call({
-            method: "frappe.client.get_value",
-            args: {
-                doctype: "Item Price",
-                filters: {
-                    item_name: row.activity_name,  
-                    price_list: price_list
-                },
-                fieldname: ["price_list_rate", "name"]
-            },
-            callback: function(response) {
-                console.log("🔄 Response from Item Price:", response);
-
-                if (response.message) {
-                    if (response.message.price_list_rate) {
-                        let rate = response.message.price_list_rate;
-                        frappe.model.set_value(cdt, cdn, "rate", rate);
-                        console.log(" Price found:", rate, "for", row.activity_name);
-                    } else {
-                        frappe.msgprint(__("⚠ No price found for {0} in {1}", [row.activity_name, price_list]));
-                    }
-                } else {
-                    frappe.msgprint(__("No response from Item Price API"));
-                }
-
-                update_amount(frm, cdt, cdn);
-            }
-        });
-    }
-});
-
-frappe.ui.form.on('Room Type Booking', {
-    room_type: function(frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
-
-        if (!row) {
-            console.error("Row is missing in meal_type.");
+            console.log("User modified rate:", row.rate);
             return;
         }
 
-        let price_list = "Resident"; 
-        if (frm.doc.billing_currency && frm.doc.billing_currency !== "KES") {
-            price_list = "Non Resident";
-        }
-
-        console.log("🔍 Fetching rate from:", price_list, "for Meal Type:", row.room_type);
-
-        if (row.rate && row.rate !== 0) {
-            console.log("🔄 User modified rate:", row.rate);
-            return; 
-        }
-
         frappe.call({
             method: "frappe.client.get_value",
             args: {
                 doctype: "Item Price",
                 filters: {
-                    item_code: row.room_type,  
+                    item_name: row.activity_name,
                     price_list: price_list
                 },
-                fieldname: ["price_list_rate", "name"]
+                fieldname: ["price_list_rate"]
             },
             callback: function(response) {
-                console.log("🔄 Response from Item Price:", response);
+                console.log(" Response from Item Price:", response);
 
                 if (response.message) {
                     if (response.message.price_list_rate) {
                         let rate = response.message.price_list_rate;
+                        frappe.model.set_value(cdt, cdn, "original_rate", rate);
                         frappe.model.set_value(cdt, cdn, "rate", rate);
-                        console.log(" Price found:", rate, "for", row.room_type);
+                        console.log(" Price found:", rate, "for", row.activity_name);
                     } else {
-                        frappe.msgprint(__("⚠ No price found for {0} in {1}", [row.room_type, price_list]));
+                        console.log(__("⚠ No price found for {0} in {1}", [row.activity_name, price_list]));
                     }
                 } else {
-                    frappe.msgprint(__("No response from Item Price API"));
+                    console.log(__("No response from Item Price API"));
                 }
 
-    
                 update_amount(frm, cdt, cdn);
             }
         });
+    },
+
+    rate: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        if (!row.activity_name || row.rate === row.original_rate) {
+            update_amount(frm, cdt, cdn);
+            return;
+        }
+
+        let price_list = "Resident";
+        if (frm.doc.billing_currency && frm.doc.billing_currency !== "KES") {
+            price_list = "Non Resident";
+        }
+
+        // Check if an Item Price exists
+        frappe.call({
+            method: "frappe.client.get_list",
+            args: {
+                doctype: "Item Price",
+                filters: {
+                    item_name: row.activity_name,
+                    price_list: price_list
+                },
+                fields: ["name"]
+            },
+            callback: function(response) {
+                if (response.message.length > 0) {
+                    let price_docname = response.message[0].name;
+
+                    // Update existing price list entry
+                    frappe.call({
+                        method: "frappe.client.set_value",
+                        args: {
+                            doctype: "Item Price",
+                            name: price_docname,
+                            fieldname: "price_list_rate",
+                            value: row.rate
+                        },
+                        callback: () => {
+                            console.log(__(" Price list updated for {0}", [row.activity_name]));
+                        }
+                    });
+                } else {
+                    // Create new price list entry if not found
+                    frappe.call({
+                        method: "frappe.client.insert",
+                        args: {
+                            doc: {
+                                doctype: "Item Price",
+                                item_name: row.activity_name,
+                                price_list: price_list,
+                                price_list_rate: row.rate
+                            }
+                        },
+                        callback: () => {
+                            console.log(__("Price list entry created for {0}", [row.activity_name]));
+                        }
+                    });
+                }
+            }
+        });
+
+        update_amount(frm, cdt, cdn);
+    },
+
+    qty: function(frm, cdt, cdn) {
+        update_amount(frm, cdt, cdn);
     }
 });
+
 
 
 frappe.ui.form.on('Meal Inquiry', {
     meal_type: function(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
+        fetch_rate_from_price_list(frm, cdt, cdn, row.meal_type, 'Meal Inquiry');
+    },
+    rate: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        if (row.rate !== row.original_rate) {
+            update_price_list_rate(row.meal_type, row.rate);
+        }
+        update_amount(frm, cdt, cdn);
+    },
+    qty: function(frm, cdt, cdn) {
+        update_amount(frm, cdt, cdn);
+    }
+});
+
+frappe.ui.form.on('Tent Selection', {
+    item_code: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
 
         if (!row) {
-            console.error("Row is missing in meal_type.");
+            console.error("Row is missing in item_code.");
             return;
         }
 
-        
-        let price_list = "Resident"; 
+        let price_list = "Resident";
         if (frm.doc.billing_currency && frm.doc.billing_currency !== "KES") {
             price_list = "Non Resident";
         }
 
-        console.log("🔍 Fetching rate from:", price_list, "for Meal Type:", row.room_type);
+        console.log(" Fetching rate from:", price_list, "for Activity:", row.item_code);
 
-    
         if (row.rate && row.rate !== 0) {
-            console.log("🔄 User modified rate:", row.rate);
-            return; 
+            console.log(" User modified rate:", row.rate);
+            return;
         }
 
-    
         frappe.call({
             method: "frappe.client.get_value",
             args: {
                 doctype: "Item Price",
                 filters: {
-                    item_code: row.meal_type,  
+                    item_code: row.item_code,
                     price_list: price_list
                 },
-                fieldname: ["price_list_rate", "name"]
+                fieldname: ["price_list_rate"]
             },
             callback: function(response) {
-                console.log("🔄 Response from Item Price:", response);
+                console.log(" Response from Item Price:", response);
 
                 if (response.message) {
                     if (response.message.price_list_rate) {
                         let rate = response.message.price_list_rate;
+                        frappe.model.set_value(cdt, cdn, "original_rate", rate);
                         frappe.model.set_value(cdt, cdn, "rate", rate);
-                        console.log(" Price found:", rate, "for", row.meal_type);
+                        console.log("Price found:", rate, "for", row.item_code);
                     } else {
-                        frappe.msgprint(__("⚠ No price found for {0} in {1}", [row.meal_type, price_list]));
+                        console.log(__("⚠ No price found for {0} in {1}", [row.item_code, price_list]));
                     }
                 } else {
-                    frappe.msgprint(__("No response from Item Price API"));
+                    console.log(__("No response from Item Price API"));
                 }
 
                 update_amount(frm, cdt, cdn);
             }
         });
+    },
+
+    rate: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        if (!row.item_code || row.rate === row.original_rate) {
+            update_amount(frm, cdt, cdn);
+            return;
+        }
+
+        let price_list = "Resident";
+        if (frm.doc.billing_currency && frm.doc.billing_currency !== "KES") {
+            price_list = "Non Resident";
+        }
+
+        // Check if an Item Price exists
+        frappe.call({
+            method: "frappe.client.get_list",
+            args: {
+                doctype: "Item Price",
+                filters: {
+                    item_code: row.item_code,
+                    price_list: price_list
+                },
+                fields: ["name"]
+            },
+            callback: function(response) {
+                if (response.message.length > 0) {
+                    let price_docname = response.message[0].name;
+
+                    // Update existing price list entry
+                    frappe.call({
+                        method: "frappe.client.set_value",
+                        args: {
+                            doctype: "Item Price",
+                            name: price_docname,
+                            fieldname: "price_list_rate",
+                            value: row.rate
+                        },
+                        callback: () => {
+                            console.log(__("Price list updated for {0}", [row.item_code]));
+                        }
+                    });
+                } else {
+                    // Create new price list entry if not found
+                    frappe.call({
+                        method: "frappe.client.insert",
+                        args: {
+                            doc: {
+                                doctype: "Item Price",
+                                item_name: row.activity_name,
+                                price_list: price_list,
+                                price_list_rate: row.rate
+                            }
+                        },
+                        callback: () => {
+                            console.log(__("Price list entry created for {0}", [row.activity_name]));
+                        }
+                    });
+                }
+            }
+        });
+
+        update_amount(frm, cdt, cdn);
+    },
+
+    qty: function(frm, cdt, cdn) {
+        update_amount(frm, cdt, cdn);
     }
 });
 
@@ -585,43 +875,3 @@ function set_price_list(frm) {
     }
 }
 
-
-function fetch_room_rate(frm, row, cdt, cdn) {
-    if (frm.doc.customer && row.room_type) {
-        frappe.call({
-            method: 'frappe.client.get_value',
-            args: {
-                doctype: 'Customer',
-                filters: { name: frm.doc.customer },
-                fieldname: 'default_currency'
-            },
-            callback: function(response) {
-                if (response.message) {
-                    let currency = response.message.default_currency;
-                    let price_list = currency === 'KES' ? 'Resident Price List' : 'Non-Resident Price List';
-
-                    // Fetch rate from Item Price
-                    frappe.call({
-                        method: 'frappe.client.get_value',
-                        args: {
-                            doctype: 'Item Price',
-                            filters: { 
-                                price_list: price_list,
-                                item_code: row.room_type
-                            },
-                            fieldname: 'price_list_rate'
-                        },
-                        callback: function(price_response) {
-                            if (price_response.message) {
-                                frappe.model.set_value(cdt, cdn, 'rate', price_response.message.price_list_rate);
-                                update_amount(frm, cdt, cdn);  // Call your working function here
-                            } else {
-                                frappe.msgprint(__('No rate found for this room type in ' + price_list));
-                            }
-                        }
-                    });
-                }
-            }
-        });
-    }
-}
