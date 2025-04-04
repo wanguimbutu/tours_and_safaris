@@ -133,7 +133,8 @@ def create_sales_order(reservation_name):
                 "item_code": activity.item_code,
                 "item_name": activity.activity_name,
                 "qty": activity.qty,  
-                "rate": activity.rate or 0
+                "rate": activity.rate or 0,
+                "prevdoc_docname":reservation.quotation
             })
 
     # Add room bookings
@@ -144,7 +145,8 @@ def create_sales_order(reservation_name):
                 "item_name": room.room_type or "Room",
                 "description": f"Room Booking: {room.room_type or 'N/A'}",
                 "qty": room.qty or 1,
-                "rate": room.rate or 0
+                "rate": room.rate or 0,
+                "prevdoc_docname":reservation.quotation
             })
 
     # Add tent selections
@@ -155,7 +157,8 @@ def create_sales_order(reservation_name):
                 "item_name": tent.tent_type or "Tent",
                 "description": f"Tent: {tent.tent_type or 'N/A'}",
                 "qty": tent.qty or 1,
-                "rate": tent.rate or 0
+                "rate": tent.rate or 0,
+                "prevdoc_docname":reservation.quotation
             })
 
     # Add transport costs
@@ -165,7 +168,8 @@ def create_sales_order(reservation_name):
                 "item_code": transport.transport_name,
                 "item_name": transport.item_name,
                 "qty": transport.qty,
-                "rate": transport.rate or 0
+                "rate": transport.rate or 0,
+                "prevdoc_docname":reservation.quotation
             })
     
     if reservation.hired_services:
@@ -174,7 +178,8 @@ def create_sales_order(reservation_name):
                 "item_code": service.service_name,
                 "item_name": service.name or "Service",
                 "qty": service.qty,
-                "rate": service.rate or 0
+                "rate": service.rate or 0,
+                "prevdoc_docname":reservation.quotation
             })
 
     if reservation.meals:
@@ -182,7 +187,8 @@ def create_sales_order(reservation_name):
             sales_order.append("items", {
                 "item_code": meals.meal_type,
                 "qty": meals.qty or 1,
-                "rate": meals.rate or 0
+                "rate": meals.rate or 0,
+                "prevdoc_docname":reservation.quotation
             })
     
     sales_order.insert(ignore_permissions=True)
