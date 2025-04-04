@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-03-12 15:36:30.956232",
+ "creation": "2025-04-04 11:07:20.781613",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -20,31 +20,21 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Meal Type",
-   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Meals\"]]",
    "options": "Item"
-  },
-  {
-   "default": "1",
-   "fieldname": "qty",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Qty"
   },
   {
    "fetch_from": "meal_type.item_name",
    "fieldname": "meal_name",
    "fieldtype": "Read Only",
+   "in_list_view": 1,
    "label": "Meal Name"
   },
   {
-   "fieldname": "converted_rate",
-   "fieldtype": "Float",
-   "label": "Converted Rate"
-  },
-  {
-   "fieldname": "original_rate",
-   "fieldtype": "Float",
-   "label": "Original Rate"
+   "fieldname": "qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Qty",
+   "non_negative": 1
   },
   {
    "fieldname": "rate",
@@ -57,17 +47,26 @@
    "fieldname": "amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Amount",
-   "non_negative": 1
+   "label": "Amount"
+  },
+  {
+   "fieldname": "converted_rate",
+   "fieldtype": "Currency",
+   "label": "Converted Rate"
+  },
+  {
+   "fieldname": "original_rate",
+   "fieldtype": "Currency",
+   "label": "Original Rate"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-03 11:06:42.694272",
+ "modified": "2025-04-04 11:09:59.526477",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
- "name": "Meal Inquiry",
+ "name": "Meal Details",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

@@ -458,7 +458,7 @@ function update_price_list_rate(item_code, new_rate) {
     });
 }
 
-['Activity Package', 'Tent Selection', 'Room Type Booking', 'Transport', 'Meal Inquiry', 'Reservation Services'].forEach(table_name => {
+['Activity Package', 'Tent Selection', 'Room Type Booking', 'Transport', 'Meal Details', 'Reservation Services'].forEach(table_name => {
     frappe.ui.form.on(table_name, {
         qty: function(frm, cdt, cdn) {
             update_amount(frm, cdt, cdn);
@@ -713,10 +713,10 @@ frappe.ui.form.on('Activity Package', {
 
 
 
-frappe.ui.form.on('Meal Inquiry', {
+frappe.ui.form.on('Meal Details', {
     meal_type: function(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
-        fetch_rate_from_price_list(frm, cdt, cdn, row.meal_type, 'Meal Inquiry');
+        fetch_rate_from_price_list(frm, cdt, cdn, row.meal_type, 'Meal Details');
     },
     rate: function(frm, cdt, cdn) {
         let row = locals[cdt][cdn];

@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class MealInquiry(Document):
+class MealDetails(Document):
 	pass
