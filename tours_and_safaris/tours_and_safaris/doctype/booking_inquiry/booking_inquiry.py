@@ -207,7 +207,7 @@ def create_quotation(inquiry_name):
         for room in inquiry.room_booking:
             quotation.append("items", {
                 "item_code": room.room_type,
-                "item_name": room.room_type or "Room",
+                "item_name": room.room_type_name or "Room",
                 "description": f"Room Booking: {room.room_type or 'N/A'}",
                 "qty": room.qty or 1,
                 "rate": room.rate or 0

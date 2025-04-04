@@ -294,7 +294,7 @@ function update_amount(frm, cdt, cdn) {
 // Function to calculate total amount from all relevant tables
 function calculate_total_amount(frm) {
     let total = 0;
-    let tables = ['activities', 'tent_selection', 'room_booking', 'transport_service', 'meals', 'hired_service'];
+    let tables = ['activities', 'tent_selection', 'room_booking','room_type_booking', 'transport_service', 'meals', 'hired_service'];
 
     tables.forEach(table => {
         (frm.doc[table] || []).forEach(row => {
@@ -536,7 +536,7 @@ function fetch_room_rate(frm, row, cdt, cdn) {
                                 frappe.model.set_value(cdt, cdn, 'rate', price_response.message.price_list_rate);
                                 update_amount(frm, cdt, cdn);  // Call your working function here
                             } else {
-                                frappe.msgprint(__('No rate found for this room type in ' + price_list));
+                                console.log(__('No rate found for this room type in ' + price_list));
                             }
                         }
                     });
@@ -672,10 +672,10 @@ frappe.ui.form.on('Room Type Booking', {
                         frappe.model.set_value(cdt, cdn, "rate", rate);
                         console.log("Price found:", rate, "for", row.room_type);
                     } else {
-                        frappe.msgprint(__(" No price found for {0} in {1}", [row.room_type, price_list]));
+                        console.log(__(" No price found for {0} in {1}", [row.room_type, price_list]));
                     }
                 } else {
-                    frappe.msgprint(__("No response from Item Price API"));
+                    console.log(__("No response from Item Price API"));
                 }
 
                 update_amount(frm, cdt, cdn);
@@ -752,7 +752,7 @@ function fetch_room_rate(frm, row, cdt, cdn) {
                                 frappe.model.set_value(cdt, cdn, 'rate', price_response.message.price_list_rate);
                                 update_amount(frm, cdt, cdn);  
                             } else {
-                                frappe.msgprint(__('No rate found for this room type in ' + price_list));
+                                console.log(__('No rate found for this room type in ' + price_list));
                             }
                         }
                     });

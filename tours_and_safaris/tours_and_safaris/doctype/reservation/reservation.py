@@ -142,7 +142,7 @@ def create_sales_order(reservation_name):
         for room in reservation.room_type_booking:
             sales_order.append("items", {
                 "item_code": room.room_type,
-                "item_name": room.room_type or "Room",
+                "item_name": room.room_type_name or "Room",
                 "description": f"Room Booking: {room.room_type or 'N/A'}",
                 "qty": room.qty or 1,
                 "rate": room.rate or 0,
@@ -398,7 +398,7 @@ def update_availability_status():
     reservation = frappe.get_doc("Reservation", reservation_id)
 
     if not reservation.room_booking:
-        frappe.throw("No rooms found for this reservation.")
+       frappe.logger().info ("No rooms found for this reservation.")
 
     for room in reservation.room_booking:
         room_name = room.room_name  # Ensure this field name matches in Room Booking
