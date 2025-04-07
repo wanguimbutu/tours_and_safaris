@@ -74,6 +74,20 @@ def allocate_instructor(doc, method):
                 "qualification": row.qualification
             })
 
+        # Handle Safety Kayaking Instructors if selected
+    for row in doc.activity_allocation_details:
+        if row.safety_kayak and row.safety_kayak_instructor:
+            instructor = row.safety_kayak_instructor
+            if instructor not in instructor_activities:
+                instructor_activities[instructor] = []
+
+        instructor_activities[instructor].append({
+            "activity_name": "Safety Kayaking",
+            "session": "Per Session",  # Always per session
+            "qualification": row.kayaker_qualification
+        })
+
+
     if not instructor_activities:
         frappe.throw("No instructor assigned in Activity Allocation Details.")
 

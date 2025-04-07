@@ -11,10 +11,13 @@
   "instructor",
   "qualification",
   "session",
+  "session_type",
   "start_time",
   "end_time",
   "status",
-  "activity_report"
+  "safety_kayak",
+  "safety_kayak_instructor",
+  "kayaker_qualification"
  ],
  "fields": [
   {
@@ -65,22 +68,39 @@
    "options": "\nScheduled\nCompleted"
   },
   {
-   "default": "0",
-   "fieldname": "activity_report",
-   "fieldtype": "Check",
-   "in_list_view": 1,
-   "label": "Activity Report"
-  },
-  {
    "fieldname": "qualification",
    "fieldtype": "Data",
    "label": "Qualification"
+  },
+  {
+   "fieldname": "session_type",
+   "fieldtype": "Select",
+   "label": "Session Type",
+   "options": "\nAM\nPM"
+  },
+  {
+   "default": "0",
+   "fieldname": "safety_kayak",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Safety Kayak"
+  },
+  {
+   "fieldname": "safety_kayak_instructor",
+   "fieldtype": "Link",
+   "label": "Safety Kayak Instructor",
+   "options": "Instructor"
+  },
+  {
+   "fieldname": "kayaker_qualification",
+   "fieldtype": "Data",
+   "label": "Kayaker Qualification"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-26 16:40:01.309330",
+ "modified": "2025-04-07 15:41:53.664720",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Allocation Details",
