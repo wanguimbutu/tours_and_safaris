@@ -221,7 +221,11 @@ app_include_js = "/assets/tours_and_safaris/js/activity_allocation_list.js"
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "tours_and_safaris.event.get_events"
 # }
-#
+override_doctype_dashboards = {
+    "Booking Inquiry": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry_dashboard.get_data",
+    "Reservation": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation_dashboard.get_data"
+}
+
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps
@@ -285,4 +289,3 @@ app_include_js = "/assets/tours_and_safaris/js/activity_allocation_list.js"
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
-

@@ -58,7 +58,7 @@
   "proposed_total_cost",
   "guest_details_tab",
   "guest_details",
-  "dashboard_tab"
+  "connections_tab"
  ],
  "fields": [
   {
@@ -144,12 +144,6 @@
    "fieldtype": "Table",
    "label": "Guest Details",
    "options": "Guest Details"
-  },
-  {
-   "fieldname": "dashboard_tab",
-   "fieldtype": "Tab Break",
-   "label": "Dashboard",
-   "show_dashboard": 1
   },
   {
    "fieldname": "proposed_activities_section",
@@ -360,12 +354,18 @@
    "fieldtype": "Table",
    "label": "Meals",
    "options": "Meal Details"
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-04 11:11:41.605350",
+ "modified": "2025-04-08 11:18:23.525437",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
