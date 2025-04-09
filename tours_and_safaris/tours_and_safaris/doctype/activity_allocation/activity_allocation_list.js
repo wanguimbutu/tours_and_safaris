@@ -1,7 +1,7 @@
 frappe.listview_settings['Activity Allocation'] = {
     onload: function (listview) {
         listview.page.add_inner_button(__('📅 Calendar View'), function () {
-            window.location.href = "/app/activity-allocation/view/calendar/Instructor%20Allocation";
+            window.location.href = "/app/activity-calendar-event/view/calendar/activity%20allocation";
         });
     },
 
@@ -9,7 +9,7 @@ frappe.listview_settings['Activity Allocation'] = {
 
     formatters: {
         calendar_icon: function (value, df, doc) {
-            return `<a href="/app/activity-allocation/view/calendar/Instructor%20Allocation" title="View in Calendar">
+            return `<a href="/app/activity-calendar-event/view/calendar/activity%20allocation" title="View in Calendar">
                         <i class="fa fa-calendar" style="font-size: 16px; color: #007bff;"></i>
                     </a>`;
         }
