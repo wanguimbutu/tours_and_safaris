@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+import random
 
 
 class ActivityAllocation(Document):
@@ -34,7 +35,6 @@ def get_instructors(activity_name):
 
     frappe.logger().info(f"Fetched from Instructor: {instructors}")
 
-    # Map instructor IDs to their names
     instructor_map = {inst["instructor_id"]: inst["instructor_name"] for inst in instructors}
 
     final_instructors = [
@@ -74,18 +74,17 @@ def allocate_instructor(doc, method):
                 "qualification": row.qualification
             })
 
-        # Handle Safety Kayaking Instructors if selected
     for row in doc.activity_allocation_details:
-        if row.safety_kayak and row.safety_kayak_instructor:
+        if getattr(row, "safety_kayak", False) and getattr(row, "safety_kayak_instructor", None):
             instructor = row.safety_kayak_instructor
             if instructor not in instructor_activities:
                 instructor_activities[instructor] = []
 
-        instructor_activities[instructor].append({
-            "activity_name": "Safety Kayaking",
-            "session": "Per Session",  # Always per session
-            "qualification": row.kayaker_qualification
-        })
+            instructor_activities[instructor].append({
+                "activity_name": "Safety Kayaking",
+                "session": "Per Session",  
+                "qualification": row.kayaker_qualification or "Unspecified"
+            })
 
 
     if not instructor_activities:
@@ -114,7 +113,8 @@ def allocate_instructor(doc, method):
                 "project": doc.project_name,
                 "hours": 1,  
                 "is_billable": 1,  
-                "billing_rate": rate  
+                "billing_rate": rate,
+                
             })
 
         timesheet = frappe.get_doc({
@@ -128,3 +128,65 @@ def allocate_instructor(doc, method):
 
         timesheet.insert(ignore_permissions=True)
         frappe.msgprint(f"Timesheet {timesheet.name} created for Instructor {instructor} with rate {rate}.")
+
+
+color_palette = [
+    "#FF5733", "#33C3FF", "#85FF33", "#FFC300", "#DAF7A6",
+    "#C70039", "#900C3F", "#581845", "#00BCD4", "#8BC34A"
+]
+
+def get_random_color_for_instructor(instructor):
+    cache_key = f"instructor_color::{instructor}"
+    cached_color = frappe.cache().get_value(cache_key)
+    if cached_color:
+        return cached_color
+    new_color = random.choice(color_palette)
+    frappe.cache().set_value(cache_key, new_color)
+    return new_color
+
+import frappe
+import random
+from frappe.utils import get_datetime
+
+def process_activity_calendar_events(doc, method=None):
+    color_map = {}
+
+    for detail in doc.activity_allocation_details:
+        if not detail.instructor:
+            continue
+
+        if detail.instructor not in color_map:
+            color_map[detail.instructor] = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+
+        new_start = get_datetime(f"{detail.activity_date} {detail.start_time}")
+        new_end = get_datetime(f"{detail.activity_date} {detail.end_time}")
+
+        overlapping = frappe.db.exists(
+            "Activity Calendar Event",
+            {
+                "instructor": detail.instructor,
+                "activity_date": detail.activity_date,
+                "docstatus": 1,
+                "start_time": ("<", new_end.time()),
+                "end_time": (">", new_start.time()),
+            }
+        )
+
+        if overlapping:
+            frappe.throw(f"Instructor {detail.instructor} is already booked on {detail.activity_date} between {detail.start_time} and {detail.end_time}.")
+
+        event = frappe.new_doc("Activity Calendar Event")
+        event.activity_allocation = doc.name
+        event.activity_date = detail.activity_date
+        event.start_time = detail.start_time
+        event.end_time = detail.end_time
+        event.instructor = detail.instructor
+        event.activity_name = detail.activity_name
+        event.session = detail.session
+        event.session_period = detail.session_period
+        event.customer = doc.customer
+        event.no_of_people = doc.custom_no_of_people,
+        event.color = color_map[detail.instructor]
+
+        event.insert(ignore_permissions=True)
+        event.submit()

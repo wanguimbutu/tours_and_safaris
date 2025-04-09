@@ -1,0 +1,124 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-09 10:29:12.092856",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "activity_allocation",
+  "start_time",
+  "end_time",
+  "instructor",
+  "activity_name",
+  "session",
+  "session_period",
+  "safety_kayak_instructor",
+  "safety_kayak",
+  "qualification",
+  "amended_from",
+  "no_of_people",
+  "color"
+ ],
+ "fields": [
+  {
+   "fieldname": "activity_allocation",
+   "fieldtype": "Link",
+   "label": "Activity Allocation",
+   "options": "Activity Allocation"
+  },
+  {
+   "fieldname": "start_time",
+   "fieldtype": "Datetime",
+   "label": "Start Time"
+  },
+  {
+   "fieldname": "end_time",
+   "fieldtype": "Datetime",
+   "label": "End TIme"
+  },
+  {
+   "fieldname": "instructor",
+   "fieldtype": "Data",
+   "label": "Instructor"
+  },
+  {
+   "fieldname": "activity_name",
+   "fieldtype": "Link",
+   "label": "Activity Name",
+   "options": "Activity Type"
+  },
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "label": "Session",
+   "options": "Session Type"
+  },
+  {
+   "fieldname": "session_period",
+   "fieldtype": "Select",
+   "label": "Session Period"
+  },
+  {
+   "fieldname": "safety_kayak_instructor",
+   "fieldtype": "Data",
+   "label": "Safety Kayak Instructor"
+  },
+  {
+   "default": "0",
+   "fieldname": "safety_kayak",
+   "fieldtype": "Check",
+   "label": "Safety Kayak"
+  },
+  {
+   "fieldname": "qualification",
+   "fieldtype": "Link",
+   "label": "Qualification",
+   "options": "Qualification Type"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Activity Calendar Event",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "no_of_people",
+   "fieldtype": "Int",
+   "label": "No of People"
+  },
+  {
+   "fieldname": "color",
+   "fieldtype": "Color",
+   "label": "Color"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-04-09 15:22:53.333114",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Activity Calendar Event",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

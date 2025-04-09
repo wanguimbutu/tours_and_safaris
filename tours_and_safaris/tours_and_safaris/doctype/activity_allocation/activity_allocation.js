@@ -120,152 +120,6 @@ frappe.ui.form.on("Activity Allocation Details", {
     activity_name: function (frm, cdt, cdn) {
         let row = locals[cdt][cdn];
 
-        if (!row.activity_name || activityDialogOpen) return;
-
-        activityDialogOpen = true;
-
-        frappe.call({
-            method: "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.get_instructors",
-            args: { activity_name: row.activity_name },
-            callback: function (response) {
-                if (response.message && response.message.length > 0) {
-                    let options = response.message.map(inst => ({
-                        label: `${inst.instructor} (${inst.qualification || "No Qualification"})`,
-                        value: inst.instructor
-                    }));
-
-                    let d = new frappe.ui.Dialog({
-                        title: "Select Instructors",
-                        fields: [
-                            {
-                                fieldtype: "MultiCheck",
-                                label: "Instructors",
-                                fieldname: "selected_instructors",
-                                options: options
-                            }
-                        ],
-                        primary_action_label: "Assign",
-                        primary_action(values) {
-                            const selected = values.selected_instructors || [];
-                            if (selected.length === 0) {
-                                frappe.msgprint("Please select at least one instructor.");
-                                return;
-                            }
-
-                            const fullList = response.message;
-                            selected.forEach((instructor, index) => {
-                                const match = fullList.find(i => i.instructor === instructor);
-                                if (!match) return;
-
-                                if (index === 0) {
-                                    frappe.model.set_value(cdt, cdn, "instructor", match.instructor);
-                                    frappe.model.set_value(cdt, cdn, "qualification", match.qualification || "Not Specified");
-                                } else {
-                                    let newRow = frappe.model.add_child(frm.doc, "Activity Allocation Details", "activity_allocation_details");
-                                    frappe.model.set_value(newRow.doctype, newRow.name, "activity_name", row.activity_name);
-                                    frappe.model.set_value(newRow.doctype, newRow.name, "session", row.session);
-                                    frappe.model.set_value(newRow.doctype, newRow.name, "instructor", match.instructor);
-                                    frappe.model.set_value(newRow.doctype, newRow.name, "qualification", match.qualification || "Not Specified");
-                                }
-                            });
-
-                            frm.refresh_field("activity_allocation_details");
-                            d.hide();
-                        },
-                        onhide(){
-                            activityDialogOpen =false;
-                        },
-                    });
-
-                    d.show();
-                } else {
-                    activityDialogOpen = false;
-                    frappe.msgprint("No instructors found for this activity.");
-                }
-            },
-            error:()=>{
-                activityDialogOpen = false;
-            },
-        });
-    },
-
-
-    safety_kayaking: function (frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
-        if (!row.safety_kayaking || safetyDialogOpen) return;
-
-        safetyDialogOpen = true;
-
-        frappe.call({
-            method: "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.get_instructors",
-            args: { activity_name: "Safety Kayaking" },
-            callback: function (response) {
-                if (response.message && response.message.length > 0) {
-                    let options = response.message.map(inst => ({
-                        label: `${inst.instructor} (${inst.qualification || "No Qualification"})`,
-                        value: inst.instructor
-                    }));
-
-                    let d = new frappe.ui.Dialog({
-                        title: "Select Safety Kayaking Instructors",
-                        fields: [
-                            {
-                                fieldtype: "MultiCheck",
-                                label: "Safety Kayak Instructors",
-                                fieldname: "selected_instructors",
-                                options: options
-                            }
-                        ],
-                        primary_action_label: "Assign",
-                        primary_action(values) {
-                            const selected = values.selected_instructors || [];
-                            if (selected.length === 0) {
-                                frappe.msgprint("Please select at least one instructor.");
-                                return;
-                            }
-
-                            const fullList = response.message;
-                            selected.forEach((instructor, index) => {
-                                const match = fullList.find(i => i.instructor === instructor);
-                                if (!match) return;
-
-                                if (index === 0) {
-                                    frappe.model.set_value(cdt, cdn, "safety_kayaking_instructor", match.instructor);
-                                    frappe.model.set_value(cdt, cdn, "kayaker_qualification", match.qualification || "Not Specified");
-                                } else {
-                                    let newRow = frappe.model.add_child(frm.doc, "Activity Allocation Details", "activity_allocation_details");
-                                    frappe.model.set_value(newRow.doctype, newRow.name, "activity_name", row.activity_name);
-                                    frappe.model.set_value(newRow.doctype, newRow.name, "session", row.session);
-                                    frappe.model.set_value(newRow.doctype, newRow.name, "safety_kayaking", 1);
-                                    frappe.model.set_value(newRow.doctype, newRow.name, "safety_kayaking_instructor", match.instructor);
-                                    frappe.model.set_value(newRow.doctype, newRow.name, "kayaker_qualification", match.qualification || "Not Specified");
-                                }
-                            });
-
-                            frm.refresh_field("activity_allocation_details");
-                            d.hide();
-                        },
-                        onhide(){
-                            safetyDialogOpen = false;
-                        }
-                    });
-
-                    d.show();
-                } else {
-                    safetyDialogOpen = false;
-                    frappe.msgprint("No instructors found for Safety Kayaking.");
-                }
-            },
-            error:()=>{
-                safetyDialogOpen = false;
-            }
-        });
-    }
-});
-frappe.ui.form.on("Activity Allocation Details", {
-    activity_name: function (frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
-
         if (!row.activity_name) return;
 
         frappe.call({
@@ -387,5 +241,52 @@ frappe.ui.form.on("Activity Allocation Details", {
                 }
             }
         });
+    },
+    session: function(frm, cdt, cdn) {
+        set_session_times(frm, cdt, cdn);
+    },
+    session_period: function(frm, cdt, cdn) {
+        set_session_times(frm, cdt, cdn);
+    },
+    activity_date: function(frm, cdt, cdn) {
+        set_session_times(frm, cdt, cdn);
     }
 });
+
+function set_session_times(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+
+    if (!row.activity_date || !row.session) return;
+
+    const session = row.session;
+    const period = (row.session_period || '');
+
+    // Time definitions
+    const times = {
+        am: ['08:00:00', '12:30:00'],
+        pm: ['13:30:00', '17:30:00'],
+        full_day: ['08:00:00', '17:30:00']
+    };
+
+    if (session === 'HALF DAY') {
+        if (period === 'AM') {
+            [row.start_time, row.end_time] = times.am.map(t => combine_date_time(row.activity_date, t));
+        } else if (period === 'PM') {
+            [row.start_time, row.end_time] = times.pm.map(t => combine_date_time(row.activity_date, t));
+        }
+    } else if (session === 'FULL DAY' || session === 'ALL DAY') {
+        [row.start_time, row.end_time] = times.full_day.map(t => combine_date_time(row.activity_date, t));
+    } else if (session === 'PER SESSION') {
+        if (period === 'AM') {
+            [row.start_time, row.end_time] = times.am.map(t => combine_date_time(row.activity_date, t));
+        } else if (period === 'PM') {
+            [row.start_time, row.end_time] = times.pm.map(t => combine_date_time(row.activity_date, t));
+        }
+    }
+
+    frm.refresh_field('activity_allocation_details');
+}
+
+function combine_date_time(date_str, time_str) {
+    return `${frappe.datetime.obj_to_str(frappe.datetime.str_to_obj(date_str)).split(" ")[0]} ${time_str}`;
+}
