@@ -141,10 +141,11 @@ def allocate_instructor(doc, method):
             time_logs.append({
                 "activity_type": activity["activity_name"],
                 "project": doc.project_name,
-                "hours": 1,  
+                "billing_hours": 1,  
                 "is_billable": 1,  
                 "billing_rate": rate,
-                
+                "from_time": f" {row.start_time}",
+                "to_time": f"{row.end_time}",
             })
 
         timesheet = frappe.get_doc({
@@ -153,6 +154,7 @@ def allocate_instructor(doc, method):
             "custom_instructor":instructor,
             "customer": doc.customer,
             "project": doc.project_name,
+            "custom_activity_allocation":doc.name,
             "time_logs": time_logs
         })
 
