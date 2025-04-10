@@ -124,7 +124,11 @@ frappe.ui.form.on("Activity Allocation Details", {
 
         frappe.call({
             method: "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.get_instructors",
-            args: { activity_name: row.activity_name },
+            args: { activity_name: row.activity_name,
+                activity_date: row.activity_date,
+                start_time: row.start_time,
+                end_time: row.end_time
+            },
             callback: function (response) {
                 if (response.message && response.message.length > 0) {
                     let options = response.message.map(inst => ({
@@ -174,7 +178,7 @@ frappe.ui.form.on("Activity Allocation Details", {
 
                     d.show();
                 } else {
-                    frappe.msgprint("No instructors found for this activity.");
+                    frappe.msgprint("No available instructors found for this activity.");
                 }
             }
         });
@@ -250,6 +254,40 @@ frappe.ui.form.on("Activity Allocation Details", {
     },
     activity_date: function(frm, cdt, cdn) {
         set_session_times(frm, cdt, cdn);
+    },
+    activity_date: function (frm, cdt, cdn) {
+        const child = locals[cdt][cdn];
+        const start_date = frm.doc.start_date;
+        const end_date = frm.doc.end_date;
+
+        if (child.activity_date && start_date && end_date) {
+            const selected = frappe.datetime.str_to_obj(child.activity_date);
+            const start = frappe.datetime.str_to_obj(start_date);
+            const end = frappe.datetime.str_to_obj(end_date);
+
+            if (selected < start || selected > end) {
+                frappe.msgprint(__('Activity Date must be between Start Date and End Date of the allocation.'));
+                frappe.model.set_value(cdt, cdn, 'activity_date', '');
+            }
+        }
+    },
+    instructor: function (frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+
+        // Only act if this is a newly added instructor row
+        if (row.__islocal && row.instructor) {
+            // Copy reference fields from the first non-empty row (could be the one just above)
+            const reference_row = frm.doc.activity_allocation_details.find(r => r.activity_date && r.session && r.session_period);
+
+            if (reference_row) {
+                row.activity_date = reference_row.activity_date;
+                row.session = reference_row.session;
+                row.session_period = reference_row.session_period;
+                row.start_time = reference_row.start_time;
+                row.end_time = reference_row.end_time;
+                frm.refresh_field("activity_allocation_details");
+            }
+        }
     }
 });
 

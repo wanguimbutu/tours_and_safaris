@@ -7,16 +7,16 @@
  "engine": "InnoDB",
  "field_order": [
   "activity_date",
+  "session",
+  "session_period",
   "activity_name",
   "instructor",
   "qualification",
-  "session",
-  "session_period",
+  "safety_kayak",
   "safety_kayak_instructor",
   "start_time",
   "end_time",
   "status",
-  "safety_kayak",
   "kayaker_qualification"
  ],
  "fields": [
@@ -29,6 +29,7 @@
   {
    "fieldname": "activity_name",
    "fieldtype": "Link",
+   "in_global_search": 1,
    "in_list_view": 1,
    "label": "Activity Name",
    "options": "Activity Type"
@@ -94,6 +95,7 @@
   {
    "fieldname": "session_period",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Session period",
    "options": "\nAM\nPM"
   }
@@ -101,7 +103,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-09 08:47:29.519931",
+ "modified": "2025-04-10 11:12:23.014213",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Allocation Details",

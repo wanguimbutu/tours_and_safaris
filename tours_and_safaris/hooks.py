@@ -34,10 +34,12 @@ doc_events = {
         "before_insert": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.apply_exchange_rate_conversion",
         "before_save": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.prevent_rate_reset",
     },
-     "Activity Allocation": {
-        "on_submit": "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.allocate_instructor",
-        "on_submit":"tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.process_activity_calendar_events"
-    }
+    "Activity Allocation": {
+    "on_submit": [
+        "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.allocate_instructor",
+        "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.process_activity_calendar_events"
+    ]
+}
 }
 
 
