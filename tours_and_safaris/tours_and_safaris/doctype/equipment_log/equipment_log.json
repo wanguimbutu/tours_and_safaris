@@ -21,6 +21,10 @@
   "quantity_returned",
   "condition_on_return",
   "number_of_damaged",
+  "section_break_sdvj",
+  "itemized_equipment_issue",
+  "section_break_dprd",
+  "unitemized_equipment_issue",
   "section_break_howe",
   "amended_from"
  ],
@@ -121,12 +125,32 @@
    "fieldname": "quantity_returned",
    "fieldtype": "Int",
    "label": "Quantity Returned"
+  },
+  {
+   "fieldname": "section_break_sdvj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "itemized_equipment_issue",
+   "fieldtype": "Table",
+   "label": "itemized Equipment Issue",
+   "options": "Itemized Equipment Issue"
+  },
+  {
+   "fieldname": "section_break_dprd",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "unitemized_equipment_issue",
+   "fieldtype": "Table",
+   "label": "Unitemized Equipment Issue",
+   "options": "Unitemized Equipment Issue"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-07 11:24:38.341793",
+ "modified": "2025-04-11 12:05:35.533115",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment Log",

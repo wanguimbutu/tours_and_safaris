@@ -1,20 +1,16 @@
 // Copyright (c) 2025, wanguimbutu and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Equipment", {
- 	refresh(frm) {
-        toggle_itemized_field(frm);
- 	},
-    is_itemized:function(frm){
-        toggle_itemized_field(frm);
-    }
+frappe.ui.form.on('Equipment', {
+    onload: function(frm) {
+        toggle_equipment_details(frm);  // ensures it's hidden initially
+    },
 
- });
-function toggle_itemized_field(frm){
-    if(frm.doc.is_itemized === 1){
-        frm.set.df.property("equipment_details","hidden", 0);
+    is_itemized: function(frm) {
+        toggle_equipment_details(frm);
     }
-    else{
-        frm.set.df.property("equipment_details","hidden", 1);
-    }
+});
+
+function toggle_equipment_details(frm) {
+    frm.set_df_property('equipment_details', 'hidden', !frm.doc.is_itemized);
 }
