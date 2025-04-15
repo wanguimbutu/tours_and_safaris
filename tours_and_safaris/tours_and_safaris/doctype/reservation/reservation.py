@@ -122,6 +122,8 @@ def create_sales_order(reservation_name):
         "delivery_date":reservation.depature_date,
         "custom_reservation": reservation.name,
         "custom_no_of_people": reservation.no_of_people,
+        "custom_no_of_adults":reservation.no_of_adults,
+        "custom_no_of_children":reservation.no_of_children,
         "currency":reservation.billing_currency,
         "items": []
     })

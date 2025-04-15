@@ -13,7 +13,8 @@
   "no_of_equipment",
   "capacity",
   "number_available",
-  "equipment_details"
+  "equipment_details",
+  "dashboard_tab"
  ],
  "fields": [
   {
@@ -60,11 +61,17 @@
    "fieldtype": "Table",
    "label": "Equipment Details",
    "options": "Equipment Serial Details"
+  },
+  {
+   "fieldname": "dashboard_tab",
+   "fieldtype": "Tab Break",
+   "label": "Dashboard",
+   "show_dashboard": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-03 16:09:24.211745",
+ "modified": "2025-04-15 15:14:08.331570",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment",

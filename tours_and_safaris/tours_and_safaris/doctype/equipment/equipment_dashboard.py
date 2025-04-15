@@ -4,12 +4,12 @@ def get_data(data=None):
     return {
         "fieldname": "name", 
         "non_standard_fieldnames": {
-            "Sales Order": "custom_reservation",  
+            "Equipment Log": "equipment_name",  
         },
         "transactions": [
             {
                 "label": _("Linked Documents"),
-                "items": ["Sales Order"]
+                "items": ["Equipment Log"]
             }
         ]
     }
