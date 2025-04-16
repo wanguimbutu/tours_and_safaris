@@ -14,6 +14,7 @@
   "amended_from",
   "booking_inquiry",
   "quotation",
+  "calendar_info",
   "kyc_section",
   "customer_name",
   "customer",
@@ -116,6 +117,7 @@
   {
    "fieldname": "no_of_people",
    "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "No. of People"
   },
   {
@@ -196,6 +198,7 @@
    "fetch_from": "customer_name.customer_name",
    "fieldname": "customer",
    "fieldtype": "Read Only",
+   "in_list_view": 1,
    "label": "Customer"
   },
   {
@@ -360,12 +363,19 @@
    "fieldtype": "Tab Break",
    "label": "Connections",
    "show_dashboard": 1
+  },
+  {
+   "fieldname": "calendar_info",
+   "fieldtype": "Read Only",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Calendar Info"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-08 11:18:23.525437",
+ "modified": "2025-04-16 12:29:45.537456",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

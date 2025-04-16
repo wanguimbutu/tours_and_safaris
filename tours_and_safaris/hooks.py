@@ -32,7 +32,9 @@ doc_events = {
     },
     "Reservation": {
         "before_insert": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.apply_exchange_rate_conversion",
-        "before_save": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.prevent_rate_reset",
+        "before_save":[ "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.prevent_rate_reset",
+                       "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_calendar_info"
+        ]
     },
     "Activity Allocation": {
     "on_submit": [
