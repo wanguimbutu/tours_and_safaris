@@ -60,3 +60,26 @@ class EquipmentLog(Document):
             except Exception as e:
                 frappe.log_error(frappe.get_traceback(), "Failed to update Task status")
                 frappe.throw(f"Could not update Task {self.task_name}: {e}")
+        
+        if not self.packing_list:
+            return
+
+        # Fetch the linked Packing List document
+        packing_list = frappe.get_doc("Packing List", self.packing_list)
+
+        for item in self.itemized_equipment_issue:
+            packing_list.append("trip_equipment", {
+                "equipment_name": item.equipment_name,
+                "serial_number": item.serial_number,
+                "equipment_log": self.name
+            })
+        
+        for item in self.unitemized_equipment_issue:
+            packing_list.append("general_equipment",{
+                "equipment_name": item.equipment_name,
+                "quantity": item.quantity_issued,
+            })
+
+        packing_list.save(ignore_permissions=True)
+        frappe.msgprint(f"Packing List '{packing_list.name}' updated with equipment from Equipment Log '{self.name}'.")
+

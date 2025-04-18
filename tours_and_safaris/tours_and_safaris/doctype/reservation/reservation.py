@@ -528,4 +528,4 @@ def prevent_rate_reset(doc, method):
 @frappe.whitelist()
 def update_calendar_info(doc, method):
     if doc.customer and doc.no_of_people:
-        doc.calendar_info = f"{doc.customer} ({doc.no_of_people})"
+        doc.calendar_info = f"{doc.customer} ({doc.no_of_people}) adults:({doc.no_of_adults}) children:({doc.no_of_children})"

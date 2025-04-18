@@ -222,3 +222,9 @@ def process_activity_calendar_events(doc, method=None):
 
         event.insert(ignore_permissions=True)
         event.submit()
+
+        
+@frappe.whitelist()
+def update_calendar_info(doc, method):
+    if doc.customer and doc.instructor:
+        doc.calendar_info = f"{doc.customer} ({doc.no_of_people}) adults:({doc.no_of_adults}) children:({doc.no_of_children})"

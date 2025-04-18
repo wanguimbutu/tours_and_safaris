@@ -8,6 +8,7 @@
   "reservation_name",
   "column_break_zews",
   "task_name",
+  "packing_list",
   "section_break_aepi",
   "equipment_name",
   "equipment_type",
@@ -145,12 +146,18 @@
    "fieldtype": "Table",
    "label": "Unitemized Equipment Issue",
    "options": "Unitemized Equipment Issue"
+  },
+  {
+   "fieldname": "packing_list",
+   "fieldtype": "Link",
+   "label": "Packing List",
+   "options": "Packing List"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-11 12:05:35.533115",
+ "modified": "2025-04-18 13:13:00.908787",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment Log",
