@@ -17,6 +17,8 @@
   "trip_equipment_section",
   "trip_equipment",
   "general_equipment",
+  "section_break_dfwp",
+  "meal_plan_table",
   "section_break_dbs7",
   "amended_from"
  ],
@@ -98,12 +100,21 @@
    "hidden": 1,
    "label": "Series",
    "options": "PACK-.YYYY.-"
+  },
+  {
+   "fieldname": "section_break_dfwp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "meal_plan_table",
+   "fieldtype": "HTML",
+   "label": "Meal Plan Table"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-18 12:45:03.472499",
+ "modified": "2025-04-19 13:04:37.690970",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Packing List",
