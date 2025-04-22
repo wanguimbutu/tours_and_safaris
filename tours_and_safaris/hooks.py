@@ -31,7 +31,7 @@ doc_events = {
         "validate": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.lock_rates_after_fetch"
     },
     "Reservation": {
-        "before_insert": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.apply_exchange_rate_conversion",
+       # "before_insert": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.apply_exchange_rate_conversion",
         "before_save":[ "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.prevent_rate_reset",
                        "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_calendar_info"
         ]

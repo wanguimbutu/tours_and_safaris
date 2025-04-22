@@ -453,7 +453,7 @@ def complete_maintenance(maintenance_log_name):
     return {"message": "Maintenance completed, room is now available for booking."}
 
 
-@frappe.whitelist()
+'''@frappe.whitelist()
 def apply_exchange_rate_conversion(doc, method):
     """Ensure exchange rate conversion applies only once before inserting."""
     
@@ -504,7 +504,7 @@ def apply_exchange_rate_conversion(doc, method):
         # Mark as converted to prevent double conversion
         doc.exchange_applied = True  
         
-
+'''
 @frappe.whitelist()
 def prevent_rate_reset(doc, method):
     """Ensure that converted rates are retained before submission."""
