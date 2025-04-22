@@ -266,7 +266,7 @@
    "fieldtype": "Select",
    "hidden": 1,
    "label": "Status",
-   "options": "\nLost\nReserved"
+   "options": "\nLost\nQuoted"
   },
   {
    "fieldname": "section_break_apsj",
@@ -414,7 +414,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-08 09:48:40.582322",
+ "modified": "2025-04-22 11:12:17.931583",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
@@ -444,7 +444,7 @@
   },
   {
    "color": "Green",
-   "title": "Reserved"
+   "title": "Quoted"
   },
   {
    "color": "Orange",

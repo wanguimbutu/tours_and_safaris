@@ -19,6 +19,8 @@
   "general_equipment",
   "section_break_dfwp",
   "meal_plan_table",
+  "section_break_flal",
+  "shopping_list",
   "section_break_dbs7",
   "amended_from"
  ],
@@ -109,12 +111,22 @@
    "fieldname": "meal_plan_table",
    "fieldtype": "HTML",
    "label": "Meal Plan Table"
+  },
+  {
+   "fieldname": "section_break_flal",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "shopping_list",
+   "fieldtype": "Table",
+   "label": "Shopping List",
+   "options": "Shopping Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-19 13:04:37.690970",
+ "modified": "2025-04-22 09:08:14.352506",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Packing List",

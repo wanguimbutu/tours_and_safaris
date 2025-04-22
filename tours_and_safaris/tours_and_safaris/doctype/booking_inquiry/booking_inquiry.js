@@ -11,58 +11,36 @@ frappe.ui.form.on('Booking Inquiry', {
         toggle_exchange_rate_field(frm);
         toggle_meals_table(frm);
 
-            if (frm.doc.docstatus === 1) {
-                frappe.call({
-                    method: "frappe.client.get_list",
-                    args: {
-                        doctype: "Quotation",
-                        filters: {
-                            "custom_booking_inquiry": frm.doc.name,
-                            "docstatus": 1  
-                        },
-                        fields: ["name"]
-                    },
-                    callback: function(response) {
-                        if (response.message && response.message.length > 0) {
-                            frm.remove_custom_button(__('Create Quotation'));
-                        } else {
-                            frm.add_custom_button('Create Quotation', function () {
-                                frappe.call({
-                                    method: "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.create_quotation",
-                                    args: { inquiry_name: frm.doc.name },
-                                    callback: function (response) {
-                                        if (response.message) {
-                                            frappe.msgprint({
-                                                title: __("Success"),
-                                                message: `Quotation <a href="/app/quotation/${response.message.quotation_name}" target="_blank">${response.message.quotation_name}</a> created successfully.`,
-                                                indicator: "green"
-                                            });
-            
-                                            frappe.set_route("Form", "Quotation", response.message.quotation_name);
-                                        }
-                                    }
-                                });
-                            }, __("Actions"));
-                        }
-                    }
-                });
-            }
-            
-        if (!frm.is_new()) {  // Show button only if the document is saved
-            frm.add_custom_button(__('Download PDF'), function() {
-                var docname = frm.doc.name;
-                var doctype = "Booking Inquiry";
-                var print_format = "Booking Inquiry PDF";  // Use the custom print format name
+        add_status_indicator(frm);
+        // Disable form if Lost
+        if (frm.doc.status === 'Lost') {
+            disable_form_actions(frm);
+        }
+
+        // Show buttons only if doc is submitted
+        if (frm.doc.docstatus === 1) {
+            handle_create_quotation_button(frm);
+        }
+
+        // Add PDF Download Button
+        if (!frm.is_new()) {
+            frm.add_custom_button(__('Download PDF'), function () {
+                let docname = frm.doc.name;
+                let print_format = "Booking Inquiry PDF";
 
                 window.open(frappe.urllib.get_full_url(
-                    "/api/method/frappe.utils.print_format.download_pdf?"
-                    + "doctype=" + doctype
-                    + "&name=" + docname
-                    + "&format=" + print_format
-                    + "&no_letterhead=0"  // 0 = Use letterhead, 1 = No letterhead
+                    `/api/method/frappe.utils.print_format.download_pdf?doctype=Booking Inquiry&name=${docname}&format=${print_format}&no_letterhead=0`
                 ));
-            }, __("Actions"));  // Adds button under "Actions" menu
+            }, __("Actions"));
         }
+
+        // Show "Set as Lost" only if not Lost or Quoted
+        if (frm.doc.status !== "Lost" && frm.doc.status !== "Quoted") {
+            frm.add_custom_button(__('Set as Lost'), function () {
+                set_as_lost(frm);
+            }, __("Actions"));
+        }
+
 
         frm.fields_dict["activities"].grid.get_field("activity_name").get_query = function (doc, cdt, cdn) {
             let row = locals[cdt][cdn];
@@ -221,38 +199,6 @@ function toggle_transport_option(frm){
 }
 
 
-/*function create_reservation(frm) {
-    frappe.model.with_doctype("Reservation", function() {
-        let reservation = frappe.model.get_new_doc("Reservation");
-
-        reservation.booking_inquiry = frm.doc.name;
-        reservation.customer = frm.doc.customer;
-        reservation.customer_name = frm.doc.customer;
-        reservation.status = "Reserved";
-        reservation.no_of_people = frm.doc.no_of_people; 
-        reservation.no_of_adults = frm.doc.no_of_adults;
-        reservation.no_of_children = frm.doc.no_of_children;
-        reservation.arrival_date = frm.doc.from_date;  
-        reservation.depature_date = frm.doc.to_date; 
-        reservation.guest_details = frm.doc.guest_details;
-        reservation.activities =frm.doc.activities;
-        reservation.tent_selection = frm.doc.tent_selection;
-        reservation.room_type_booking = frm.doc.room_booking;
-        reservation.transport_service = frm.doc.transport_service;
-        reservation.accommodation_needed = frm.doc.accommodation_needed;
-        reservation.rooms = frm.doc.rooms;
-        reservation.tents = frm.doc.tents;
-        reservation.dietary_requirements = frm.doc.dietary_preferences;
-        reservation.proposed_total_cost = frm.doc.proposed_total_cost;
-        reservation.meals = frm.doc.meals;
-        reservation.exchange_rate = frm.doc.exchange_rate;
-        reservation.billing_currency = frm.doc.billing_currency;
-        reservation.remarks = frm.doc.remarks;
-        frappe.set_route("Form", "Reservation", reservation.name);
-    });
-}
-    */
-
 function set_as_lost(frm) {
     frappe.prompt([
         {
@@ -261,15 +207,105 @@ function set_as_lost(frm) {
             fieldtype: "Small Text",
             reqd: 1
         }
-    ],
-    function(values) {
-        frappe.model.set_value(frm.doctype, frm.doc.name, "status", "Lost");
-        frappe.model.set_value(frm.doctype, frm.doc.name, "reason_for_cancellation", values.reason);
-        frm.refresh();
-        frappe.msgprint(__('Booking Inquiry has been marked as Lost.'));
-    },
-    __("Set as Lost"),
-    __("Confirm"));
+    ], function (values) {
+        frappe.call({
+            method: "frappe.client.set_value",
+            args: {
+                doctype: frm.doc.doctype,
+                name: frm.doc.name,
+                fieldname: {
+                    status: "Lost",
+                    reason_for_cancellation: values.reason
+                }
+            },
+            callback: function () {
+                frappe.msgprint(__('Booking Inquiry has been marked as Lost.'));
+                frm.reload_doc();
+            }
+        });
+    }, __("Set as Lost"), __("Confirm"));
+}
+
+function disable_form_actions(frm) {
+    frm.disable_save();
+    frm.fields.forEach(field => {
+        if (field.df && field.df.fieldname !== "reason_for_cancellation") {
+            frm.set_df_property(field.df.fieldname, "read_only", 1);
+        }
+    });
+    frm.set_df_property("reason_for_cancellation", "read_only", 1);
+    frm.clear_custom_buttons();
+}
+
+function handle_create_quotation_button(frm) {
+    frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+            doctype: "Quotation",
+            filters: {
+                "custom_booking_inquiry": frm.doc.name,
+                "docstatus": 1
+            },
+            fields: ["name"]
+        },
+        callback: function (response) {
+            if (frm.doc.status === "Lost") {
+                // Don't show anything if it's already marked lost
+                return;
+            }
+            
+            if (response.message && response.message.length > 0) {
+                // Update status to Quoted if not already
+                if (frm.doc.status !== "Quoted") {
+                    frappe.call({
+                        method: "frappe.client.set_value",
+                        args: {
+                            doctype: frm.doc.doctype,
+                            name: frm.doc.name,
+                            fieldname: {
+                                status: "Quoted"
+                            }
+                        },
+                        callback: function () {
+                            frm.reload_doc();
+                        }
+                    });
+                }
+            } else {
+                frm.add_custom_button('Create Quotation', function () {
+                    frappe.call({
+                        method: "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.create_quotation",
+                        args: { inquiry_name: frm.doc.name },
+                        callback: function (response) {
+                            if (response.message) {
+                                frappe.msgprint({
+                                    title: __("Success"),
+                                    message: `Quotation <a href="/app/quotation/${response.message.quotation_name}" target="_blank">${response.message.quotation_name}</a> created successfully.`,
+                                    indicator: "green"
+                                });
+                                frappe.set_route("Form", "Quotation", response.message.quotation_name);
+                            }
+                        }
+                    });
+                }, __("Actions"));
+            }
+        }
+    });
+}            
+
+function add_status_indicator(frm) {
+    if (frm.doc.status) {
+        let indicator_color = "blue";
+
+        if (frm.doc.status === "Quoted") {
+            indicator_color = "green";
+        } else if (frm.doc.status === "Lost") {
+            indicator_color = "red";
+        }
+
+        frm.dashboard.clear_headline();
+        frm.dashboard.add_indicator(frm.doc.status, indicator_color);
+    }
 }
 
 function handle_reservation_creation(frm) {
@@ -302,17 +338,6 @@ function convert_lead_to_customer(lead_name, callback) {
             }
         }
     });
-}
-function disable_form_actions(frm) {
-    frm.disable_save();  
-    frm.set_df_property("reason_for_cancellation", "read_only", 1);
-
-    frm.fields.forEach(field => {
-        frm.set_df_property(field.df.fieldname, "read_only", 1);
-    });
-
-    frm.clear_custom_buttons();  
-    frm.refresh_fields();
 }
 
 function toggle_exchange_rate_field(frm) {
