@@ -713,13 +713,14 @@ frappe.ui.form.on('Activity Package', {
                         args: {
                             doc: {
                                 doctype: "Item Price",
-                                item_code: row.activity_name,
+                                item_code: row.item_code,
+                                item_name: row.activity_name,
                                 price_list: price_list,
                                 price_list_rate: row.rate
                             }
                         },
                         callback: () => {
-                            console.log(`✅ Created Item Price for ${row.activity_name}`);
+                            console.log(` Created Item Price for ${row.activity_name}`);
                             frappe.model.set_value(cdt, cdn, "original_rate", row.rate);  // update baseline
                         }
                     });
@@ -959,7 +960,7 @@ frappe.ui.form.on('Tent Selection', {
                         args: {
                             doc: {
                                 doctype: "Item Price",
-                                item_name: row.activity_name,
+                                item_name: row.tent_type,
                                 price_list: price_list,
                                 price_list_rate: row.rate
                             }
