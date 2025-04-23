@@ -32,30 +32,34 @@
    "fieldname": "amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Amount"
+   "label": "Amount",
+   "options": "billing_currency"
   },
   {
    "fetch_from": "service_name.price",
    "fieldname": "rate",
-   "fieldtype": "Read Only",
+   "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Rate"
+   "label": "Rate",
+   "options": "billing_currency"
   },
   {
    "fieldname": "converted_rate",
    "fieldtype": "Float",
-   "label": "Converted Rate"
+   "label": "Converted Rate",
+   "options": "billing_currency"
   },
   {
    "fieldname": "original_rate",
    "fieldtype": "Float",
-   "label": "Original Rate"
+   "label": "Original Rate",
+   "options": "billing_currency"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-26 10:38:16.234430",
+ "modified": "2025-04-23 15:37:35.816225",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation Services",

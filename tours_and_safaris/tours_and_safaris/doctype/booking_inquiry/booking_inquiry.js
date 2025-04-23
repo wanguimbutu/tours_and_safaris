@@ -5,6 +5,7 @@ frappe.ui.form.on('Booking Inquiry', {
         }
 
         frm.trigger('toggle_fields');
+        
     },
     refresh: function(frm) {
         calculate_total_amount(frm);
@@ -93,6 +94,8 @@ frappe.ui.form.on('Booking Inquiry', {
             frm.set_value("to_date", '');
         }
     },
+    
+
    // billing_currency: function(frm) {
       //  toggle_exchange_rate_field(frm);
         //recalculate_rates(frm);
@@ -733,7 +736,8 @@ frappe.ui.form.on('Activity Package', {
 
     qty: function(frm, cdt, cdn) {
         update_amount(frm, cdt, cdn);
-    }
+    },
+    
 });
 
 

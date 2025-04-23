@@ -295,10 +295,10 @@
    "options": "Room Type Booking"
   },
   {
-   "allow_on_submit": 1,
    "fieldname": "proposed_total_cost",
    "fieldtype": "Currency",
-   "label": "Proposed Total Cost"
+   "label": "Proposed Total Cost",
+   "options": "billing_currency"
   },
   {
    "fieldname": "naming_series",
@@ -375,7 +375,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-16 12:29:45.537456",
+ "modified": "2025-04-23 15:48:34.556352",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

@@ -326,6 +326,7 @@
    "fieldname": "proposed_total_cost",
    "fieldtype": "Currency",
    "label": "Proposed Total Cost",
+   "options": "billing_currency",
    "read_only": 1
   },
   {
@@ -373,6 +374,7 @@
    "fieldtype": "Currency",
    "hidden": 1,
    "label": "Total Base Amount",
+   "options": "billing_currency",
    "read_only": 1
   },
   {
@@ -415,7 +417,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-23 10:46:04.173235",
+ "modified": "2025-04-23 15:46:25.194030",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
