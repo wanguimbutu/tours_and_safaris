@@ -158,7 +158,7 @@ def lock_rates_after_fetch(doc, method):
         lock_rates(doc.hired_service)
         lock_rates(doc.transport_service)
 
-        #frappe.msgprint("Rates locked.")
+        
 
 @frappe.whitelist()
 def create_quotation(inquiry_name):
