@@ -364,6 +364,7 @@
   {
    "fieldname": "exchange_rate",
    "fieldtype": "Float",
+   "hidden": 1,
    "label": "Exchange Rate",
    "non_negative": 1
   },
@@ -414,7 +415,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-22 11:12:17.931583",
+ "modified": "2025-04-23 10:46:04.173235",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",

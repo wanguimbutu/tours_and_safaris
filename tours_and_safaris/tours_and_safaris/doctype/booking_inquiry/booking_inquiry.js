@@ -8,7 +8,7 @@ frappe.ui.form.on('Booking Inquiry', {
     },
     refresh: function(frm) {
         calculate_total_amount(frm);
-        toggle_exchange_rate_field(frm);
+        //toggle_exchange_rate_field(frm);
         toggle_meals_table(frm);
 
         add_status_indicator(frm);
@@ -93,10 +93,10 @@ frappe.ui.form.on('Booking Inquiry', {
             frm.set_value("to_date", '');
         }
     },
-    billing_currency: function(frm) {
-        toggle_exchange_rate_field(frm);
+   // billing_currency: function(frm) {
+      //  toggle_exchange_rate_field(frm);
         //recalculate_rates(frm);
-    },
+    //},
 
     //exchange_rate: function(frm) {
        // recalculate_rates(frm);
@@ -340,7 +340,7 @@ function convert_lead_to_customer(lead_name, callback) {
     });
 }
 
-function toggle_exchange_rate_field(frm) {
+/*function toggle_exchange_rate_field(frm) {
     if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES') {
         frm.set_df_property('exchange_rate', 'reqd', 1); // Make required
         frm.set_df_property('exchange_rate', 'hidden', 0); // Show field

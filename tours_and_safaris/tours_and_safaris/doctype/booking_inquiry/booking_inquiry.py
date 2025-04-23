@@ -67,7 +67,7 @@ def update_diet_preferences(doc, method):
             "dietary_preference": preference,
             "total_people": count
         })
-@frappe.whitelist()
+'''@frappe.whitelist()
 def apply_exchange_rate_conversion(doc, method):
     """Ensure exchange rate conversion applies only once before inserting."""
     
@@ -116,7 +116,7 @@ def apply_exchange_rate_conversion(doc, method):
 
         
         doc.exchange_applied = True  
-
+'''
 @frappe.whitelist()
 def prevent_rate_reset(doc, method):
     """Ensure that converted rates are retained before submission."""
@@ -158,7 +158,7 @@ def lock_rates_after_fetch(doc, method):
         lock_rates(doc.hired_service)
         lock_rates(doc.transport_service)
 
-        frappe.msgprint("Rates locked.")
+        #frappe.msgprint("Rates locked.")
 
 @frappe.whitelist()
 def create_quotation(inquiry_name):
