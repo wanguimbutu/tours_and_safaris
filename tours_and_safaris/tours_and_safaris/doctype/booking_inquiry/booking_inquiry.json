@@ -23,6 +23,7 @@
   "exchange_rate",
   "amended_from",
   "currency",
+  "calendar_info",
   "section_break_bfyy",
   "from_date",
   "to_date",
@@ -412,12 +413,18 @@
    "fieldtype": "Tab Break",
    "label": "Connections",
    "show_dashboard": 1
+  },
+  {
+   "fieldname": "calendar_info",
+   "fieldtype": "Read Only",
+   "hidden": 1,
+   "label": "Calendar Info"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-23 15:46:25.194030",
+ "modified": "2025-04-23 16:11:19.269905",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",

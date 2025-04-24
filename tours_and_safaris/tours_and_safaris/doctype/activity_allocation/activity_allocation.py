@@ -4,6 +4,8 @@
 import frappe
 from frappe.model.document import Document
 import random
+from frappe.utils import get_datetime
+from datetime import datetime
 
 
 class ActivityAllocation(Document):
@@ -80,88 +82,6 @@ def get_instructors(activity_name, activity_date=None, start_time=None, end_time
     return final_instructors
 
 
-def allocate_instructor(doc, method):
-    """Updates status to 'Allocated' and creates a Timesheet for the assigned instructors, fetching rate from Instructor Rate."""
-
-    frappe.db.set_value("Activity Allocation", doc.name, "status", "Allocated")
-
-    instructor_activities = {}
-
-    for row in doc.activity_allocation_details:
-        if row.instructor and row.activity_name:
-    
-            activity_type = frappe.db.get_value("Activity Type", {"name": row.activity_name}, "name")
-
-            if not activity_type:
-                frappe.throw(f"Activity Type not found for Activity Name: {row.activity_name}. Ensure it exists.")
-
-            if row.instructor not in instructor_activities:
-                instructor_activities[row.instructor] = []
-
-            instructor_activities[row.instructor].append({
-                "activity_name": row.activity_name,
-                "session": row.session,  
-                "qualification": row.qualification
-            })
-
-    for row in doc.activity_allocation_details:
-        if getattr(row, "safety_kayak", False) and getattr(row, "safety_kayak_instructor", None):
-            instructor = row.safety_kayak_instructor
-            if instructor not in instructor_activities:
-                instructor_activities[instructor] = []
-
-            instructor_activities[instructor].append({
-                "activity_name": "Safety Kayaking",
-                "session": "Per Session",  
-                "qualification": row.kayaker_qualification or "Unspecified"
-            })
-
-
-    if not instructor_activities:
-        frappe.throw("No instructor assigned in Activity Allocation Details.")
-
-    
-    for instructor, activities in instructor_activities.items():
-        time_logs = []
-
-        for activity in activities:
-            rate = frappe.db.get_value(
-                "Instructor Rate",
-                {
-                    "activity": activity["activity_name"],
-                    "session_type": activity["session"],  
-                    "qualification": activity["qualification"]
-                },
-                "rate"
-            )
-
-            if not rate:
-                frappe.throw(f"No rate found for {activity['activity_name']} with {activity['session']} session and {activity['qualification']}.")
-
-            time_logs.append({
-                "activity_type": activity["activity_name"],
-                "project": doc.project_name,
-                "billing_hours": 1,  
-                "is_billable": 1,  
-                "billing_rate": rate,
-                "from_time": f" {row.start_time}",
-                "to_time": f"{row.end_time}",
-            })
-
-        timesheet = frappe.get_doc({
-            "doctype": "Timesheet",
-            "employee": instructor,
-            "custom_instructor":instructor,
-            "customer": doc.customer,
-            "project": doc.project_name,
-            "custom_activity_allocation":doc.name,
-            "time_logs": time_logs
-        })
-
-        timesheet.insert(ignore_permissions=True)
-        frappe.msgprint(f"Timesheet {timesheet.name} created for Instructor {instructor} with rate {rate}.")
-
-
 color_palette = [
     "#FF5733", "#33C3FF", "#85FF33", "#FFC300", "#DAF7A6",
     "#C70039", "#900C3F", "#581845", "#00BCD4", "#8BC34A"
@@ -176,9 +96,94 @@ def get_random_color_for_instructor(instructor):
     frappe.cache().set_value(cache_key, new_color)
     return new_color
 
-import frappe
-import random
-from frappe.utils import get_datetime
+def allocate_instructor(doc, method):
+    """Allocate instructors and create Timesheets with detailed time logs."""
+
+    frappe.db.set_value("Activity Allocation", doc.name, "status", "Allocated")
+
+    instructor_rows = {}
+
+    for row in doc.activity_allocation_details:
+        if row.instructor:
+            instructor_rows.setdefault(row.instructor, []).append(row)
+
+        if row.safety_kayak and row.safety_kayak_instructor:
+            dummy_row = frappe._dict({
+                "activity_name": "Safety Kayaking",
+                "session": "Per Session",
+                "qualification": row.kayaker_qualification or "Unspecified",
+                "activity_date": row.activity_date,
+                "start_time": row.start_time,
+                "end_time": row.end_time
+            })
+            instructor_rows.setdefault(row.safety_kayak_instructor, []).append(dummy_row)
+
+    if not instructor_rows:
+        frappe.throw("No instructor assigned in Activity Allocation Details.")
+
+    for instructor, rows in instructor_rows.items():
+        time_logs = []
+
+        for row in rows:
+            rate = frappe.db.get_value(
+                "Instructor Rate",
+                {
+                    "activity": row.activity_name,
+                    "session_type": row.session,
+                    "qualification": row.qualification
+                },
+                "rate"
+            )
+
+            if not rate:
+                frappe.throw(f"No rate found for {row.activity_name} with {row.session} and {row.qualification}.")
+
+            if not (row.activity_date and row.start_time and row.end_time):
+                frappe.throw(f"Missing activity_date/start_time/end_time in row for {row.activity_name}")
+
+            activity_date = (
+                datetime.strptime(row.activity_date, "%Y-%m-%d").date()
+                if isinstance(row.activity_date, str)
+                else row.activity_date
+            )
+
+            start_time = (
+                datetime.strptime(row.start_time, "%Y-%m-%d %H:%M:%S").time()
+                if isinstance(row.start_time, str)
+                else row.start_time
+            )
+            end_time = (
+                datetime.strptime(row.end_time, "%Y-%m-%d %H:%M:%S").time()
+                if isinstance(row.end_time, str)
+                else row.end_time
+            )
+
+            from_datetime = datetime.combine(activity_date, start_time)
+            to_datetime = datetime.combine(activity_date, end_time)
+
+            time_logs.append({
+                "activity_type": row.activity_name,
+                "project": doc.project_name,
+                "billing_hours": 1,
+                "is_billable": 1,
+                "billing_rate": rate,
+                "from_time": from_datetime,
+                "to_time": to_datetime,
+                "task":doc.task
+            })
+
+        timesheet = frappe.get_doc({
+            "doctype": "Timesheet",
+            "employee": instructor,
+            "custom_instructor": instructor,
+            "customer": doc.customer,
+            "project": doc.project_name,
+            "custom_activity_allocation": doc.name,
+            "time_logs": time_logs
+        })
+
+        timesheet.insert(ignore_permissions=True)
+        frappe.msgprint(f"Timesheet {timesheet.name} created for Instructor {instructor}.")
 
 def process_activity_calendar_events(doc, method=None):
     color_map = {}

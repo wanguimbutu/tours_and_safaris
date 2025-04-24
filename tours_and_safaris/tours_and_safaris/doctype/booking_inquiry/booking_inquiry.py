@@ -255,3 +255,7 @@ def create_quotation(inquiry_name):
 
     return {"quotation_name": quotation.name, "url": f"/app/quotation/{quotation.name}"}
 
+@frappe.whitelist()
+def update_calendar_info(doc, method):
+    if doc.customer and doc.no_of_people:
+        doc.calendar_info = f"{doc.customer} ({doc.no_of_people}) adults:({doc.no_of_adults}) children:({doc.no_of_children})"
