@@ -1,0 +1,29 @@
+{
+ "attach_print": 0,
+ "channel": "System Notification",
+ "condition": "doc.status == \"Open\"\n",
+ "creation": "2025-04-25 09:11:34.510963",
+ "days_in_advance": 0,
+ "docstatus": 0,
+ "doctype": "Notification",
+ "document_type": "ToDo",
+ "enabled": 1,
+ "event": "New",
+ "idx": 0,
+ "is_standard": 1,
+ "message": "You have {0} pending ToDo's.",
+ "message_type": "Markdown",
+ "modified": "2025-04-25 09:13:05.545184",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "ToDo Notification",
+ "owner": "Administrator",
+ "recipients": [
+  {
+   "receiver_by_document_field": "owner"
+  }
+ ],
+ "send_system_notification": 0,
+ "send_to_all_assignees": 0,
+ "subject": "ToDo Reminder"
+}

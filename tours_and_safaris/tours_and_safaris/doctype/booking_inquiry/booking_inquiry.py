@@ -183,77 +183,95 @@ def create_quotation(inquiry_name):
         "depature_date": inquiry.to_date,
         "custom_booking_inquiry": inquiry.name,
         "custom_no_of_people": inquiry.no_of_people,
-        "custom_no_of_adults":inquiry.no_of_adults,
+        "custom_no_of_adults": inquiry.no_of_adults,
         "custom_no_of_children": inquiry.no_of_children,
-        "currency":inquiry.billing_currency,
-        "custom_accommodation_needed":inquiry.accommodation_needed,
-        "custom_rooms":inquiry.rooms,
-        "custom_tents":inquiry.tents,
+        "currency": inquiry.billing_currency,
+        "custom_accommodation_needed": inquiry.accommodation_needed,
+        "custom_rooms": inquiry.rooms,
+        "custom_tents": inquiry.tents,
+        "custom_is_consolidated": inquiry.is_consolidated,
+        "custom_consolidated_amount": inquiry.consolidated_amount,
         "items": []
     })
 
-    # Add activities
-    if inquiry.activities:
-        for activity in inquiry.activities:
-            quotation.append("items", {
-                "item_code": activity.item_code,
-                "item_name": activity.activity_name,
-                "qty": activity.qty,  
-                "rate": activity.rate or 0
-            })
+    # Check for consolidation
+    if inquiry.get("is_consolidated"):
+        # Add a single consolidated item
+        consolidated_amount = inquiry.get("consolidated_amount") or 0
+        quotation.append("items", {
+            "item_code": "SC-014",
+            "item_name": "Multi Activity",
+            "description": "Consolidated multi-activity package based on selected activities and services.",
+            "qty": 1,
+            "rate": consolidated_amount
+        })
 
-    # Add room bookings
-    if inquiry.room_booking:
-        for room in inquiry.room_booking:
-            quotation.append("items", {
-                "item_code": room.room_type,
-                "item_name": room.room_type_name or "Room",
-                "description": f"Room Booking: {room.room_type or 'N/A'}",
-                "qty": room.qty or 1,
-                "rate": room.rate or 0
-            })
+    else:
+        # Add activities
+        if inquiry.activities:
+            for activity in inquiry.activities:
+                quotation.append("items", {
+                    "item_code": activity.item_code,
+                    "item_name": activity.activity_name,
+                    "qty": activity.qty,  
+                    "rate": activity.rate or 0
+                })
 
-    # Add tent selections
-    if	inquiry.tent_selection:
-        for tent in inquiry.tent_selection:
-            quotation.append("items", {
-                "item_code": tent.item_code,
-                "item_name": tent.tent_type or "Tent",
-                "description": f"Tent: {tent.tent_type or 'N/A'}",
-                "qty": tent.qty or 1,
-                "rate": tent.rate or 0
-            })
+        # Add room bookings
+        if inquiry.room_booking:
+            for room in inquiry.room_booking:
+                quotation.append("items", {
+                    "item_code": room.room_type,
+                    "item_name": room.room_type_name or "Room",
+                    "description": f"Room Booking: {room.room_type or 'N/A'}",
+                    "qty": room.qty or 1,
+                    "rate": room.rate or 0
+                })
 
-    # Add transport costs
-    if inquiry.transport_service:
-        for transport in inquiry.transport_service:
-            quotation.append("items", {
-                "item_code": transport.transport_name,
-                "item_name": transport.item_name,
-                "qty": transport.qty,
-                "rate": transport.rate or 0
-            })
-    
-    if inquiry.hired_service:
-        for service in inquiry.hired_service:
-            quotation.append("items", {
-                "item_code": service.service_name,
-                "item_name": service.name or "Service",
-                "qty": service.qty,
-                "rate": service.rate or 0
-            })
+        # Add tent selections
+        if inquiry.tent_selection:
+            for tent in inquiry.tent_selection:
+                quotation.append("items", {
+                    "item_code": tent.item_code,
+                    "item_name": tent.tent_type or "Tent",
+                    "description": f"Tent: {tent.tent_type or 'N/A'}",
+                    "qty": tent.qty or 1,
+                    "rate": tent.rate or 0
+                })
 
-    if	inquiry.meals:
-        for meals in inquiry.meals:
-            quotation.append("items", {
-                "item_code": meals.meal_type,
-                "qty": meals.qty or 1,
-                "rate": meals.rate or 0
-            })
-    
+        # Add transport costs
+        if inquiry.transport_service:
+            for transport in inquiry.transport_service:
+                quotation.append("items", {
+                    "item_code": transport.transport_name,
+                    "item_name": transport.item_name,
+                    "qty": transport.qty,
+                    "rate": transport.rate or 0
+                })
+
+        # Add hired services
+        if inquiry.hired_service:
+            for service in inquiry.hired_service:
+                quotation.append("items", {
+                    "item_code": service.service_name,
+                    "item_name": service.name or "Service",
+                    "qty": service.qty,
+                    "rate": service.rate or 0
+                })
+
+        # Add meals
+        if inquiry.meals:
+            for meals in inquiry.meals:
+                quotation.append("items", {
+                    "item_code": meals.meal_type,
+                    "qty": meals.qty or 1,
+                    "rate": meals.rate or 0
+                })
+
     quotation.insert(ignore_permissions=True)
 
     return {"quotation_name": quotation.name, "url": f"/app/quotation/{quotation.name}"}
+
 
 @frappe.whitelist()
 def update_calendar_info(doc, method):

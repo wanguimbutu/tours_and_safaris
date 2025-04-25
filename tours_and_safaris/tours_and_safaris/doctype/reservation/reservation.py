@@ -101,98 +101,113 @@ def calculate_total_cost(reservation_name):
 
 @frappe.whitelist()
 def create_sales_order(reservation_name):
-    """Generate a quotation for a reservation."""
+    """Generate a sales order for a reservation."""
     reservation = frappe.get_doc("Reservation", reservation_name)
     
     if not reservation.customer_name:
         frappe.throw("Please ensure the Customer Name field is filled in the Reservation.")
 
-    # Check if a quotation already exists and is submitted
+    # Check if a sales order already exists and is submitted
     existing_sales_order = frappe.get_all("Sales Order", filters={"custom_reservation": reservation_name, "docstatus": 1}, fields=["name"])
     
     if existing_sales_order:
         frappe.throw("A sales order has already been created and submitted for this reservation.")
 
-    # Proceed with creating a new quotation
+    # Create the Sales Order document
     sales_order = frappe.get_doc({
         "doctype": "Sales Order",
-        "customer": reservation.customer_name,  
+        "customer": reservation.customer_name,
         "arrival_date": reservation.arrival_date,
         "depature_date": reservation.depature_date,
-        "delivery_date":reservation.depature_date,
+        "delivery_date": reservation.depature_date,
         "custom_reservation": reservation.name,
         "custom_no_of_people": reservation.no_of_people,
-        "custom_no_of_adults":reservation.no_of_adults,
-        "custom_no_of_children":reservation.no_of_children,
-        "currency":reservation.billing_currency,
+        "custom_no_of_adults": reservation.no_of_adults,
+        "custom_no_of_children": reservation.no_of_children,
+        "currency": reservation.billing_currency,
+        "custom_is_consolidated": reservation.is_consolidated,
         "items": []
     })
 
-    # Add activities
-    if reservation.activities:
-        for activity in reservation.activities:
-            sales_order.append("items", {
-                "item_code": activity.item_code,
-                "item_name": activity.activity_name,
-                "qty": activity.qty,  
-                "rate": activity.rate or 0,
-                "prevdoc_docname":reservation.quotation
-            })
+    # Check for consolidation
+    if reservation.get("is_consolidated"):
+        consolidated_amount = reservation.get("consolidated_amount") or 0
+        sales_order.append("items", {
+            "item_code": "SC-014",
+            "item_name": "Multi Activity",
+            "description": "Consolidated package for reservation services and activities.",
+            "qty": 1,
+            "rate": consolidated_amount,
+            "prevdoc_docname": reservation.quotation
+        })
+    else:
+        # Add activities
+        if reservation.activities:
+            for activity in reservation.activities:
+                sales_order.append("items", {
+                    "item_code": activity.item_code,
+                    "item_name": activity.activity_name,
+                    "qty": activity.qty,  
+                    "rate": activity.rate or 0,
+                    "prevdoc_docname": reservation.quotation
+                })
 
-    # Add room bookings
-    if reservation.room_type_booking:
-        for room in reservation.room_type_booking:
-            sales_order.append("items", {
-                "item_code": room.room_type,
-                "item_name": room.room_type_name or "Room",
-                "description": f"Room Booking: {room.room_type or 'N/A'}",
-                "qty": room.qty or 1,
-                "rate": room.rate or 0,
-                "prevdoc_docname":reservation.quotation
-            })
+        # Add room bookings
+        if reservation.room_type_booking:
+            for room in reservation.room_type_booking:
+                sales_order.append("items", {
+                    "item_code": room.room_type,
+                    "item_name": room.room_type_name or "Room",
+                    "description": f"Room Booking: {room.room_type or 'N/A'}",
+                    "qty": room.qty or 1,
+                    "rate": room.rate or 0,
+                    "prevdoc_docname": reservation.quotation
+                })
 
-    # Add tent selections
-    if reservation.tent_selection:
-        for tent in reservation.tent_selection:
-            sales_order.append("items", {
-                "item_code": tent.item_code,
-                "item_name": tent.tent_type or "Tent",
-                "description": f"Tent: {tent.tent_type or 'N/A'}",
-                "qty": tent.qty or 1,
-                "rate": tent.rate or 0,
-                "prevdoc_docname":reservation.quotation
-            })
+        # Add tent selections
+        if reservation.tent_selection:
+            for tent in reservation.tent_selection:
+                sales_order.append("items", {
+                    "item_code": tent.item_code,
+                    "item_name": tent.tent_type or "Tent",
+                    "description": f"Tent: {tent.tent_type or 'N/A'}",
+                    "qty": tent.qty or 1,
+                    "rate": tent.rate or 0,
+                    "prevdoc_docname": reservation.quotation
+                })
 
-    # Add transport costs
-    if reservation.transport_service:
-        for transport in reservation.transport_service:
-            sales_order.append("items", {
-                "item_code": transport.transport_name,
-                "item_name": transport.item_name,
-                "qty": transport.qty,
-                "rate": transport.rate or 0,
-                "prevdoc_docname":reservation.quotation
-            })
-    
-    if reservation.hired_services:
-        for service in reservation.hired_services:
-            sales_order.append("items", {
-                "item_code": service.service_name,
-                "item_name": service.name or "Service",
-                "qty": service.qty,
-                "rate": service.rate or 0,
-                "prevdoc_docname":reservation.quotation
-            })
+        # Add transport services
+        if reservation.transport_service:
+            for transport in reservation.transport_service:
+                sales_order.append("items", {
+                    "item_code": transport.transport_name,
+                    "item_name": transport.item_name,
+                    "qty": transport.qty,
+                    "rate": transport.rate or 0,
+                    "prevdoc_docname": reservation.quotation
+                })
 
-    if reservation.meals:
-        for meals in reservation.meals:
-            sales_order.append("items", {
-                "item_code": meals.meal_type,
-                "qty": meals.qty or 1,
-                "rate": meals.rate or 0,
-                "prevdoc_docname":reservation.quotation
-            })
-    
+        # Add hired services
+        if reservation.hired_services:
+            for service in reservation.hired_services:
+                sales_order.append("items", {
+                    "item_code": service.service_name,
+                    "item_name": service.name or "Service",
+                    "qty": service.qty,
+                    "rate": service.rate or 0,
+                    "prevdoc_docname": reservation.quotation
+                })
+
+        # Add meals
+        if reservation.meals:
+            for meals in reservation.meals:
+                sales_order.append("items", {
+                    "item_code": meals.meal_type,
+                    "qty": meals.qty or 1,
+                    "rate": meals.rate or 0,
+                    "prevdoc_docname": reservation.quotation
+                })
+
     sales_order.insert(ignore_permissions=True)
 
     return {"sales_order_name": sales_order.name, "url": f"/app/sales-order/{sales_order.name}"}
