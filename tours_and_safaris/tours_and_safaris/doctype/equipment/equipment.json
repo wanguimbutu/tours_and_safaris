@@ -7,7 +7,6 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "naming_series",
   "equipment_name",
   "equipment_group",
   "is_itemized",
@@ -22,11 +21,6 @@
    "fieldname": "capacity",
    "fieldtype": "Int",
    "label": "Capacity"
-  },
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Data",
-   "label": "Number Series"
   },
   {
    "fieldname": "equipment_name",
@@ -72,7 +66,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-28 15:49:20.206052",
+ "modified": "2025-04-28 15:54:03.841509",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment",
