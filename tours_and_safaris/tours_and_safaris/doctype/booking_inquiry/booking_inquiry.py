@@ -191,6 +191,7 @@ def create_quotation(inquiry_name):
         "custom_tents": inquiry.tents,
         "custom_is_consolidated": inquiry.is_consolidated,
         "custom_consolidated_amount": inquiry.consolidated_amount,
+        "custom_remarks": inquiry.remarks,
         "items": []
     })
 
