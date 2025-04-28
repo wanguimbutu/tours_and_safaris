@@ -20,15 +20,13 @@
   {
    "fieldname": "total_people",
    "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Total People",
-   "non_negative": 1
+   "label": "Total People"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-02-27 12:02:19.132020",
+ "modified": "2025-04-28 11:03:28.673547",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Meal Diet Preferences",
