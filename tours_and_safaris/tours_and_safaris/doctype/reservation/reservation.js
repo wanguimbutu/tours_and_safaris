@@ -3,12 +3,12 @@ frappe.ui.form.on("Reservation", {
        // calculate_total_cost(frm);
         toggle_accommodation_fields(frm);
             calculate_total_amount(frm);
-            toggle_exchange_rate_field(frm);
+           // toggle_exchange_rate_field(frm);
     
             // 🔹 Ensure exchange rate is applied when converting from Booking Inquiry
-            if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES') {
-                recalculate_rates(frm);
-            }
+           // if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES') {
+           //     recalculate_rates(frm);
+          //  }
 
         if (frm.doc.accommodation_type === "Rooms") {
             frm.set_df_property("room_booking", "hidden", 0);
@@ -131,14 +131,14 @@ frappe.ui.form.on("Reservation", {
         }
         fetch_available_rooms(frm);
     },
-    billing_currency: function(frm) {
-        toggle_exchange_rate_field(frm);
-        recalculate_rates(frm);
-    },
+   // billing_currency: function(frm) {
+        //toggle_exchange_rate_field(frm);
+        //recalculate_rates(frm);
+   // },
 
-    exchange_rate: function(frm) {
-        recalculate_rates(frm);
-    },
+    //exchange_rate: function(frm) {
+      //  recalculate_rates(frm);
+   // },
 
     no_of_people: function(frm){
         validate_people_count(frm);
@@ -219,7 +219,7 @@ frappe.ui.form.on("Reservation", {
 */
 
 // Toggle exchange rate field visibility
-function toggle_exchange_rate_field(frm) {
+/*function toggle_exchange_rate_field(frm) {
     if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES') {
         frm.set_df_property('exchange_rate', 'reqd', 1); // Make required
         frm.set_df_property('exchange_rate', 'hidden', 0); // Show field
@@ -253,7 +253,7 @@ function recalculate_rates(frm) {
         calculate_total_amount(frm);
     }
 }
-
+*/
 
 function update_amount(frm, cdt, cdn) {
     let row = locals[cdt][cdn];
@@ -278,11 +278,11 @@ function update_amount(frm, cdt, cdn) {
     }
 
     let rate = row.rate;
-    if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES' && frm.doc.exchange_rate) {
+   /* if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES' && frm.doc.exchange_rate) {
         rate = row.original_rate / frm.doc.exchange_rate;
         frappe.model.set_value(cdt, cdn, 'rate', rate);
         frappe.model.set_value(cdt, cdn, 'currency', frm.doc.billing_currency);
-    }
+    }*/
 
     // Calculate amount
     let amount = row.qty && rate ? row.qty * rate : 0;
