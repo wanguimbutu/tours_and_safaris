@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Tours and Safaris",
  "links": [],
- "modified": "2025-04-28 11:50:20.080621",
+ "modified": "2025-04-29 08:47:58.354208",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Tours and Safaris",
@@ -28,7 +28,11 @@
    "quick_list_filter": "[[\"ToDo\",\"status\",\"=\",\"Open\",false]]"
   }
  ],
- "roles": [],
+ "roles": [
+  {
+   "role": "All"
+  }
+ ],
  "sequence_id": 42.0,
  "shortcuts": [
   {
