@@ -19,7 +19,7 @@
    "options": "Equipment"
   },
   {
-   "fetch_from": "equipment_name.quantity",
+   "fetch_from": "equipment_name.number_available",
    "fieldname": "quantity",
    "fieldtype": "Read Only",
    "in_list_view": 1,
@@ -36,7 +36,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-09 11:45:22.153462",
+ "modified": "2025-04-30 10:49:51.100596",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment Allocation",
