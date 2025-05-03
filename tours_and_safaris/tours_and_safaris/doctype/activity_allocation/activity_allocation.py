@@ -6,7 +6,7 @@ from frappe.model.document import Document
 import random
 from frappe.utils import get_datetime
 from datetime import datetime
-
+import json
 
 class ActivityAllocation(Document):
 	pass
@@ -18,7 +18,6 @@ def get_instructors(activity_name, activity_date=None, start_time=None, end_time
 
     frappe.logger().info(f"Fetching instructors for activity: {activity_name}")
 
-    # Step 1: Get all qualified instructors for this activity
     instructor_details = frappe.get_all(
         "Instructor Activity Level",
         filters={"activity_name": activity_name},
@@ -31,10 +30,9 @@ def get_instructors(activity_name, activity_date=None, start_time=None, end_time
 
     instructor_names = [row["instructor"] for row in instructor_details]
 
-    # Step 2: Get instructors who are already booked during this time slot
     busy_instructors = []
     if activity_date and start_time and end_time:
-        overlapping = frappe.db.sql("""
+        overlapping_allocation = frappe.db.sql("""
             SELECT iad.instructor
             FROM `tabActivity Allocation Details` iad
             INNER JOIN `tabActivity Allocation` ia ON ia.name = iad.parent
@@ -48,9 +46,23 @@ def get_instructors(activity_name, activity_date=None, start_time=None, end_time
               AND ia.docstatus < 2
         """, (activity_date, start_time, end_time, start_time, end_time), as_dict=True)
 
-        busy_instructors = [row.instructor for row in overlapping]
+        busy_instructors.extend(row.instructor for row in overlapping_allocation)
 
-    # Step 3: Filter out busy instructors
+        overlapping_events = frappe.db.sql("""
+            SELECT instructor
+            FROM `tabActivity Calendar Event`
+            WHERE instructor IS NOT NULL
+              AND (
+                  (%s BETWEEN start_time AND end_time)
+                  OR (%s BETWEEN start_time AND end_time)
+                  OR (start_time BETWEEN %s AND %s)
+              )
+        """, (start_time, end_time, start_time, end_time), as_dict=True)
+
+        busy_instructors.extend(row.instructor for row in overlapping_events)
+
+    busy_instructors = list(set(busy_instructors))
+
     available_instructor_details = [
         row for row in instructor_details
         if row["instructor"] not in busy_instructors
@@ -60,7 +72,6 @@ def get_instructors(activity_name, activity_date=None, start_time=None, end_time
         frappe.logger().info("No available instructors found in time range.")
         return [] if is_safety_kayak else []
 
-    # Step 4: Get instructor display names
     instructors = frappe.get_all(
         "Instructor",
         filters={"name": ["in", [row["instructor"] for row in available_instructor_details]]},
@@ -80,6 +91,7 @@ def get_instructors(activity_name, activity_date=None, start_time=None, end_time
     frappe.logger().info(f"Final Instructor List: {final_instructors}")
 
     return final_instructors
+
 
 
 color_palette = [
