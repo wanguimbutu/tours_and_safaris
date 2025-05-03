@@ -7,6 +7,7 @@ import random
 from frappe.utils import get_datetime
 from datetime import datetime
 import json
+import hashlib
 
 class ActivityAllocation(Document):
 	pass
@@ -99,14 +100,11 @@ color_palette = [
     "#C70039", "#900C3F", "#581845", "#00BCD4", "#8BC34A"
 ]
 
-def get_random_color_for_instructor(instructor):
-    cache_key = f"instructor_color::{instructor}"
-    cached_color = frappe.cache().get_value(cache_key)
-    if cached_color:
-        return cached_color
-    new_color = random.choice(color_palette)
-    frappe.cache().set_value(cache_key, new_color)
-    return new_color
+def get_consistent_color_for_instructor(instructor):
+    
+    hash_val = int(hashlib.sha256(instructor.encode()).hexdigest(), 16)
+    color_index = hash_val % len(color_palette)
+    return color_palette[color_index]
 
 def allocate_instructor(doc, method):
     """Allocate instructors and create Timesheets with detailed time logs."""
@@ -198,14 +196,11 @@ def allocate_instructor(doc, method):
         frappe.msgprint(f"Timesheet {timesheet.name} created for Instructor {instructor}.")
 
 def process_activity_calendar_events(doc, method=None):
-    color_map = {}
-
     for detail in doc.activity_allocation_details:
         if not detail.instructor:
             continue
 
-        if detail.instructor not in color_map:
-            color_map[detail.instructor] = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+        color = get_consistent_color_for_instructor(detail.instructor)
 
         new_start = get_datetime(f"{detail.activity_date} {detail.start_time}")
         new_end = get_datetime(f"{detail.activity_date} {detail.end_time}")
@@ -222,7 +217,12 @@ def process_activity_calendar_events(doc, method=None):
         )
 
         if overlapping:
-            frappe.throw(f"Instructor {detail.instructor} is already booked on {detail.activity_date} between {detail.start_time} and {detail.end_time}.")
+            frappe.throw(
+                f"Instructor {detail.instructor} is already booked on {detail.activity_date} "
+                f"between {detail.start_time} and {detail.end_time}."
+            )
+
+        title = f"{detail.instructor} | {detail.activity_name} | {doc.customer}"
 
         event = frappe.new_doc("Activity Calendar Event")
         event.activity_allocation = doc.name
@@ -234,14 +234,9 @@ def process_activity_calendar_events(doc, method=None):
         event.session = detail.session
         event.session_period = detail.session_period
         event.customer = doc.customer
-        event.no_of_people = doc.custom_no_of_people,
-        event.color = color_map[detail.instructor]
+        event.no_of_people = doc.custom_no_of_people
+        event.color = color
+        event.title = title 
 
         event.insert(ignore_permissions=True)
         event.submit()
-
-        
-@frappe.whitelist()
-def update_calendar_info(doc, method):
-    if doc.customer and doc.instructor:
-        doc.calendar_info = f"{doc.customer} ({doc.no_of_people}) adults:({doc.no_of_adults}) children:({doc.no_of_children})"
