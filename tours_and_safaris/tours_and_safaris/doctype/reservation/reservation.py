@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate, now_datetime
+from frappe.utils import getdate, now_datetime,add_days,nowdate,now
 from datetime import datetime
 
 
@@ -224,11 +224,11 @@ def update_room_availability(doc, method=None):
     elif doc.status == "Confirmed Reservation":
         room_status = "Booked"
 
-    # Ensure dates exist
+    # Ensure required dates are provided
     if not doc.arrival_date or not doc.depature_date:
         frappe.throw("Arrival Date and Departure Date cannot be empty.")
 
-    # Convert datetime to date format
+    # Convert to date objects
     arrival_date = getdate(doc.arrival_date)
     depature_date = getdate(doc.depature_date)
 
@@ -236,12 +236,12 @@ def update_room_availability(doc, method=None):
         for room in doc.room_booking:
             if not room.room_name:
                 frappe.log_error(f"Missing room_name in room_booking: {room}", "Room Availability Error")
-                continue  # Skip to the next room
+                continue
 
             frappe.logger().info(f"Fetching availability for room {room.room_name} from {arrival_date} to {depature_date}")
 
             try:
-                # Fetch availability records using SQL (with parameterized queries)
+                # Fetch availability records
                 availability_records = frappe.db.sql("""
                     SELECT name 
                     FROM `tabAvailability`
@@ -256,14 +256,25 @@ def update_room_availability(doc, method=None):
 
                 for record in availability_records:
                     availability_doc = frappe.get_doc("Availability", record["name"])
+
+                    # Ensure that the record is correctly fetched
+                    if not availability_doc:
+                        frappe.log_error(f"Availability record not found for {room.room_name} between {arrival_date} and {depature_date}", "Room Availability Error")
+                        continue
+
+                    # Update the availability fields
                     availability_doc.status = room_status
+                    availability_doc.check_in_date = arrival_date
+                    availability_doc.check_out_date = depature_date
+                    availability_doc.room_name = room.room_name
+
+                    # Save the updated document
                     availability_doc.save()
-                
+
                 frappe.db.commit()
 
             except Exception as e:
                 frappe.log_error(f"Error updating room availability: {str(e)}", "Room Availability Error")
-
 
 @frappe.whitelist()
 def get_check_in_status(reservation_name):
@@ -527,7 +538,7 @@ def prevent_rate_reset(doc, method):
 
         def retain_converted_rates(rows):
             for row in rows:
-                # If converted_rate exists, force rate to stay converted
+            
                 if row.get("converted_rate"):
                     row.rate = row.converted_rate
                     row.currency = doc.billing_currency  
@@ -544,3 +555,53 @@ def prevent_rate_reset(doc, method):
 def update_calendar_info(doc, method):
     if doc.customer and doc.no_of_people:
         doc.calendar_info = f"{doc.customer} ({doc.no_of_people}) adults:({doc.no_of_adults}) children:({doc.no_of_children})"
+
+@frappe.whitelist()
+def reschedule_reservation(reservation_name, new_start_date, new_end_date, reason=None):
+
+    original = frappe.get_doc("Reservation", reservation_name)
+
+    if original.status != "Confirmed Reservation":
+        frappe.throw("Only confirmed reservations can be rescheduled.")
+
+    original.status = "Rescheduled"
+    original.rescheduled_on = now()
+    original.reschedule_reason = reason
+    original.save()
+
+    sales_order = frappe.get_doc("Sales Order", {"custom_reservation": reservation_name})
+    if sales_order.docstatus == 1:
+        sales_order.cancel()
+
+        if sales_order.project:
+            try:
+                project = frappe.get_doc("Project", sales_order.project)
+                project.status = "Cancelled"
+                project.save()
+            except Exception as e:
+                frappe.log_error(f"Failed to cancel project {sales_order.project}: {str(e)}", "Project Status Update Error")
+
+    new_res = frappe.copy_doc(original)
+    new_res.name = None
+    new_res.status = "Rescheduled"
+    new_res.start_date = new_start_date
+    new_res.end_date = new_end_date
+    new_res.original_reservation = reservation_name
+    new_res.rescheduled_on = None
+    new_res.reschedule_reason = None
+    new_res.flags.ignore_permissions = True
+    new_res.insert()
+
+    amended_so = frappe.copy_doc(sales_order)
+    amended_so.name = None
+    amended_so.amended_from = sales_order.name
+    amended_so.docstatus = 0
+    amended_so.custom_reservation = new_res.name
+    amended_so.arrival_date = new_start_date
+    amended_so.depature_date = new_end_date
+    amended_so.delivery_date = new_start_date
+    amended_so.flags.ignore_permissions = True
+    amended_so.insert()
+    amended_so.submit()
+
+    return amended_so.name

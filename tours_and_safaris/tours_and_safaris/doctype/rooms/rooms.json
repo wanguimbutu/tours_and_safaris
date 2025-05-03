@@ -9,9 +9,6 @@
   "room_number",
   "room_type",
   "capacity",
-  "base_price",
-  "resident_rate",
-  "non_resident_rate",
   "status",
   "item_code",
   "section_break_atkp",
@@ -36,12 +33,6 @@
    "label": "Capacity"
   },
   {
-   "fetch_from": "room_type.resident_rate",
-   "fieldname": "base_price",
-   "fieldtype": "Currency",
-   "label": "Base Price"
-  },
-  {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -58,18 +49,6 @@
    "options": "Amenities"
   },
   {
-   "fetch_from": "room_type.resident_rate",
-   "fieldname": "resident_rate",
-   "fieldtype": "Read Only",
-   "label": "Resident Rate"
-  },
-  {
-   "fetch_from": "room_type.non_resident_rate",
-   "fieldname": "non_resident_rate",
-   "fieldtype": "Read Only",
-   "label": "Non Resident Rate"
-  },
-  {
    "fetch_from": "room_type.item_code",
    "fieldname": "item_code",
    "fieldtype": "Read Only",
@@ -78,7 +57,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-29 10:40:20.720144",
+ "modified": "2025-04-29 13:49:28.917968",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Rooms",

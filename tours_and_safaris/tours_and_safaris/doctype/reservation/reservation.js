@@ -66,7 +66,46 @@ frappe.ui.form.on("Reservation", {
                 }
             });
         }
-        
+        if (frm.doc.docstatus === 1 && frm.doc.status !== "Rescheduled") {
+            frm.add_custom_button(__('Reschedule'), function () {
+                frappe.prompt([
+                    {
+                        fieldname: 'new_start_date',
+                        label: 'New Start Date',
+                        fieldtype: 'Date',
+                        reqd: true
+                    },
+                    {
+                        fieldname: 'new_end_date',
+                        label: 'New End Date',
+                        fieldtype: 'Date',
+                        reqd: true
+                    },
+                    {
+                        fieldname: 'reason',
+                        label: 'Reason',
+                        fieldtype: 'Small Text'
+                    }
+                ], function (values) {
+                    frappe.call({
+                        method: 'tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.reschedule_reservation',
+                        args: {
+                            reservation_name: frm.doc.name,
+                            new_start_date: values.new_start_date,
+                            new_end_date: values.new_end_date,
+                            reason: values.reason
+                        },
+                        callback: function (r) {
+                            if (!r.exc) {
+                                frappe.msgprint(__('Reservation rescheduled. New Reservation: ') + r.message);
+                                frm.reload_doc();
+                            }
+                        }
+                    });
+                }, 'Reschedule Reservation', 'Submit');
+            });
+        }
+
         
 
         // Check-In Button Logic
@@ -762,3 +801,22 @@ function fetch_room_rate(frm, row, cdt, cdn) {
     }
 }
 
+frappe.ui.form.on("Inquiry Room Booking", {
+    room_type: function (frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        if (row.room_type) {
+            // Clear previously selected room_name when room_type changes
+            frappe.model.set_value(cdt, cdn, "room_name", "");
+
+            // Apply filter to room_name field in child table
+            frm.fields_dict["room_booking"].grid.get_field("room_name").get_query = function () {
+                return {
+                    filters: {
+                        room_type: row.room_type
+                    }
+                };
+            };
+        }
+    }
+});

@@ -21,7 +21,8 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Tent Type",
-   "options": "Tents"
+   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Camping\"]]",
+   "options": "Item"
   },
   {
    "fieldname": "qty",
@@ -74,7 +75,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-23 15:31:34.683180",
+ "modified": "2025-04-29 13:07:51.552029",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Tent Selection",

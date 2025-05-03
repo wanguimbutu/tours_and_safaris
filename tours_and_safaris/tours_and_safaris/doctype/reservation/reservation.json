@@ -217,9 +217,8 @@
    "allow_on_submit": 1,
    "fieldname": "status",
    "fieldtype": "Select",
-   "hidden": 1,
    "label": "Status",
-   "options": "\nReserved\nConfirmed Reservation\nChecked In\nUnder Maintenance\nCompleted"
+   "options": "\nReserved\nConfirmed Reservation\nChecked In\nUnder Maintenance\nCompleted\nRescheduled"
   },
   {
    "fieldname": "section_break_guea",
@@ -352,7 +351,8 @@
    "fieldname": "quotation",
    "fieldtype": "Link",
    "label": "Quotation",
-   "options": "Quotation"
+   "options": "Quotation",
+   "search_index": 1
   },
   {
    "fieldname": "meals",
@@ -389,7 +389,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-29 10:33:21.684125",
+ "modified": "2025-05-02 15:12:09.774282",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
@@ -470,6 +470,10 @@
   {
    "color": "Green",
    "title": "Confirmed Reservation"
+  },
+  {
+   "color": "Purple",
+   "title": "Rescheduled"
   }
  ],
  "track_changes": 1

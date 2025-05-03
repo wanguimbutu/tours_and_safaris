@@ -6,41 +6,20 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "room_type",
-  "resident_rate",
-  "non_resident_rate",
-  "item_code"
+  "room_type"
  ],
  "fields": [
   {
    "fieldname": "room_type",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "label": "Room Type",
    "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Accomodation\"]]",
-   "options": "Item",
    "unique": 1
-  },
-  {
-   "fieldname": "resident_rate",
-   "fieldtype": "Currency",
-   "label": "Resident Rate"
-  },
-  {
-   "fieldname": "non_resident_rate",
-   "fieldtype": "Currency",
-   "label": "Non Resident Rate"
-  },
-  {
-   "fieldname": "item_code",
-   "fieldtype": "Link",
-   "label": "Item Code",
-   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"ACCOMMODATION\"]]",
-   "options": "Item"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-26 10:56:07.846081",
+ "modified": "2025-04-29 13:47:31.895772",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Room Type",
