@@ -583,7 +583,7 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, reaso
 
     new_res = frappe.copy_doc(original)
     new_res.name = None
-    new_res.status = "Rescheduled"
+    new_res.status = "Confirmed Reservation"
     new_res.start_date = new_start_date
     new_res.end_date = new_end_date
     new_res.original_reservation = reservation_name
