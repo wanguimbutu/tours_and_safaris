@@ -9,7 +9,14 @@ frappe.ui.form.on("Reservation", {
            // if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES') {
            //     recalculate_rates(frm);
           //  }
-
+          frm.fields_dict['room_booking'].grid.get_field('room_name').get_query = function(doc, cdt, cdn) {
+            let row = locals[cdt][cdn];
+            return {
+                filters: {
+                    room_type: row.room_type
+                }
+            };
+        }
         if (frm.doc.accommodation_type === "Rooms") {
             frm.set_df_property("room_booking", "hidden", 0);
         }
@@ -153,6 +160,14 @@ frappe.ui.form.on("Reservation", {
             }, __("Actions"));
         }
     },
+    room_booking_add: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        apply_room_name_filter(frm, row);
+    },
+
+    room_booking_remove: function(frm, cdt, cdn) {
+        // You can add any logic here if needed when a row is removed
+    },
     arrival_date: function(frm) {
         let today = frappe.datetime.get_today();
 
@@ -215,15 +230,18 @@ frappe.ui.form.on("Reservation", {
         toggle_accommodation_fields(frm);
     },
 
-    room_booking_add: function (frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
-        add_room_to_calendar(frm, row);
+    onload: function(frm) {
+        set_room_type_filter(frm);
     },
-
-    room_booking_remove: function (frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
-        remove_room_from_calendar(frm, row);
-    }, 
+    room_type_booking_on_form_rendered: function(frm) {
+        set_room_type_filter(frm);
+    },
+    room_booking_on_form_rendered: function(frm) {
+        set_room_type_filter(frm);
+    },
+    after_save: function(frm) {
+        set_room_type_filter(frm);
+    },
 
     status: function (frm) {
         if (frm.doc.status === "Confirmed Reservation") {
@@ -801,22 +819,14 @@ function fetch_room_rate(frm, row, cdt, cdn) {
     }
 }
 
-frappe.ui.form.on("Inquiry Room Booking", {
-    room_type: function (frm, cdt, cdn) {
-        let row = locals[cdt][cdn];
+function set_room_type_filter(frm) {
+    const selected_room_types = (frm.doc.room_type_booking || []).map(d => d.room_type).filter(Boolean);
 
-        if (row.room_type) {
-            // Clear previously selected room_name when room_type changes
-            frappe.model.set_value(cdt, cdn, "room_name", "");
-
-            // Apply filter to room_name field in child table
-            frm.fields_dict["room_booking"].grid.get_field("room_name").get_query = function () {
-                return {
-                    filters: {
-                        room_type: row.room_type
-                    }
-                };
-            };
-        }
-    }
-});
+    frm.fields_dict["room_booking"].grid.get_field("room_type").get_query = function(doc, cdt, cdn) {
+        return {
+            filters: {
+                name: ["in", selected_room_types.length ? selected_room_types : [""]]
+            }
+        };
+    };
+}

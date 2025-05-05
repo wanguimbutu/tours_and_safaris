@@ -222,7 +222,7 @@ def process_activity_calendar_events(doc, method=None):
                 f"between {detail.start_time} and {detail.end_time}."
             )
 
-        title = f"{detail.instructor} | {detail.activity_name} | {doc.customer}"
+        title = f"{detail.instructor} | {detail.activity_name} | {doc.customer_name}"
 
         event = frappe.new_doc("Activity Calendar Event")
         event.activity_allocation = doc.name
@@ -240,3 +240,4 @@ def process_activity_calendar_events(doc, method=None):
 
         event.insert(ignore_permissions=True)
         event.submit()
+    
