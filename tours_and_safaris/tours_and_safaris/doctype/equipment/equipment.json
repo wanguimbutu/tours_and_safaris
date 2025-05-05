@@ -1,9 +1,8 @@
 {
  "actions": [],
- "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:equipment_name",
- "creation": "2025-01-15 12:01:12.169851",
+ "creation": "2025-05-05 10:36:00.411800",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -14,14 +13,9 @@
   "capacity",
   "number_available",
   "equipment_details",
-  "dashboard_tab"
+  "connections_tab"
  ],
  "fields": [
-  {
-   "fieldname": "capacity",
-   "fieldtype": "Int",
-   "label": "Capacity"
-  },
   {
    "fieldname": "equipment_name",
    "fieldtype": "Data",
@@ -32,7 +26,6 @@
    "fieldname": "equipment_group",
    "fieldtype": "Link",
    "label": "Equipment Group",
-   "link_filters": "[[\"Item Group\",\"parent_item_group\",\"=\",\"Equipment\"]]",
    "options": "Item Group"
   },
   {
@@ -47,6 +40,11 @@
    "label": "No of Equipment"
   },
   {
+   "fieldname": "capacity",
+   "fieldtype": "Int",
+   "label": "Capacity"
+  },
+  {
    "fieldname": "number_available",
    "fieldtype": "Int",
    "label": "Number Available"
@@ -58,15 +56,15 @@
    "options": "Equipment Serial Details"
   },
   {
-   "fieldname": "dashboard_tab",
+   "fieldname": "connections_tab",
    "fieldtype": "Tab Break",
-   "label": "Dashboard",
+   "label": "Connections",
    "show_dashboard": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-29 10:32:08.705276",
+ "modified": "2025-05-05 10:54:57.520485",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Equipment",
@@ -84,58 +82,9 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Accounts User",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Activity User",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Sales User",
-   "share": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Sales Manager",
-   "share": 1,
-   "write": 1
   }
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
- "track_changes": 1
+ "states": []
 }

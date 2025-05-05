@@ -3,7 +3,7 @@
 
 frappe.ui.form.on('Equipment', {
     onload: function(frm) {
-        toggle_equipment_details(frm);  // ensures it's hidden initially
+        toggle_equipment_details(frm);  
     },
 
     is_itemized: function(frm) {
