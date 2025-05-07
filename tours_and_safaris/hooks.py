@@ -57,25 +57,25 @@ scheduler_events = {
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "tours_and_safaris",
-# 		"logo": "/assets/tours_and_safaris/logo.png",
-# 		"title": "Tours and Safaris",
-# 		"route": "/tours_and_safaris",
-# 		"has_permission": "tours_and_safaris.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+ 	{
+		"name": "tours_and_safaris",
+ 		"logo": "/assets/tours_and_safaris/images/tours.png",
+ 		"title": "Tours and Safaris",
+ 		"route": "app/tours-and-safaris",
+ 		#"has_permission": "tours_and_safaris.api.permission.has_app_permission"
+ 	}
+ ]
 
 # Includes in <head>
 # ------------------
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/tours_and_safaris/css/tours_and_safaris.css"
-app_include_js = "/assets/tours_and_safaris/js/activity_allocation_list.js"
+#app_include_js = "/assets/tours_and_safaris/js/activity_allocation_list.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/tours_and_safaris/css/tours_and_safaris.css"
