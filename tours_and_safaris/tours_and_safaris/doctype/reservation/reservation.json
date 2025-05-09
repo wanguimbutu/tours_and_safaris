@@ -217,6 +217,7 @@
    "allow_on_submit": 1,
    "fieldname": "status",
    "fieldtype": "Select",
+   "hidden": 1,
    "label": "Status",
    "options": "\nReserved\nConfirmed Reservation\nChecked In\nUnder Maintenance\nCompleted\nRescheduled"
   },
@@ -389,7 +390,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-02 15:12:09.774282",
+ "modified": "2025-05-08 10:31:38.456460",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

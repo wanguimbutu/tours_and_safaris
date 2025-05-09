@@ -21,20 +21,6 @@ frappe.ui.form.on("Reservation", {
             frm.set_df_property("room_booking", "hidden", 0);
         }
 
-        if (frm.doc.status === "Confirmed Reservation") {
-            frappe.call({
-                method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_availability_status",
-                args: {
-                    reservation_id: frm.doc.name,
-                    status:"Confirmed Reservation"
-                },
-                callback: function(response) {
-                    if (response.message === "success") {
-                        frappe.msgprint("Availability updated successfully.");
-                    }
-                }
-            });
-        }
 
         if (frm.doc.docstatus === 1) {
             // Check if a quotation already exists for this reservation
@@ -112,54 +98,8 @@ frappe.ui.form.on("Reservation", {
                 }, 'Reschedule Reservation', 'Submit');
             });
         }
-
-        
-
-        // Check-In Button Logic
-        if (frm.doc.room_booking && frm.doc.room_booking.length > 0 && !frm.doc.checked_in) {
-            frm.add_custom_button("Check-In", function () {
-                frappe.call({
-                    method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.create_check_in",
-                    args: {
-                        reservation_name: frm.doc.name
-                    },
-                    callback: function (response) {
-                        if (response.message) {
-                            frappe.msgprint({
-                                title: __("Success"),
-                                message: `Check-In recorded successfully for ${frm.doc.customer_name}.`,
-                                indicator: "green"
-                            });
-                            frm.reload_doc();
-                        }
-                    }
-                });
-            }, __("Actions"));
-        }
-
-        // Check-Out Button Logic
-        let today = frappe.datetime.get_today();
-        if (frm.doc.checked_in && frm.doc.depature_date <= today && !frm.doc.checked_out) {
-            frm.add_custom_button("Check-Out", function () {
-                frappe.call({
-                    method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.create_check_out",
-                    args: {
-                        reservation_name: frm.doc.name
-                    },
-                    callback: function (response) {
-                        if (response.message) {
-                            frappe.msgprint({
-                                title: __("Success"),
-                                message: `Check-Out recorded and maintenance log created.`,
-                                indicator: "green"
-                            });
-                            frm.reload_doc();
-                        }
-                    }
-                });
-            }, __("Actions"));
-        }
     },
+        
     room_booking_add: function(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
         apply_room_name_filter(frm, row);
@@ -233,14 +173,9 @@ frappe.ui.form.on("Reservation", {
     onload: function(frm) {
         set_room_type_filter(frm);
     },
-    room_type_booking_on_form_rendered: function(frm) {
-        set_room_type_filter(frm);
-    },
-    room_booking_on_form_rendered: function(frm) {
-        set_room_type_filter(frm);
-    },
-    after_save: function(frm) {
-        set_room_type_filter(frm);
+    room_booking_add: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        apply_room_name_filter(frm, row);
     },
 
     status: function (frm) {
@@ -616,70 +551,6 @@ function validate_people_count(frm) {
     }
 }
 
-function fetch_available_rooms(frm) {
-    if (!frm.doc.arrival_date || !frm.doc.depature_date || !frm.doc.room_type) return;
-
-    frappe.call({
-        method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.get_available_rooms",
-        args: {
-            arrival_date: frm.doc.arrival_date,
-            depature_date: frm.doc.depature_date,
-            room_type: frm.doc.room_type
-        },
-        callback: function (response) {
-            console.log("Available rooms response:", response);
-
-            if (response.message && response.message.length > 0) {
-                frm.clear_table("room_booking");
-                
-                response.message.forEach(room => {
-                    let row = frm.add_child("room_booking");
-                    row.room_name = room.room_number;
-                    row.price = room.resident_rate;
-                    row.status = room.status;
-                    row.capacity = room.capacity;
-                });
-
-                frm.refresh_field("room_booking");
-                frm.set_df_property('room_booking', 'hidden', 0);
-            } else {
-                frm.set_df_property('room_booking', 'hidden', 1);
-                frappe.msgprint("No available rooms of this type for the selected dates.");
-            }
-        }
-    });
-}
-
-function add_room_to_calendar(frm, row) {
-    frappe.call({
-        method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.add_room_to_calendar",
-        args: {
-            reservation_name: frm.doc.name,
-            room_name: row.room_name,
-            arrival_date: frm.doc.arrival_date,
-            depature_date: frm.doc.depature_date
-        }
-    });
-}
-
-function remove_room_from_calendar(frm, row) {
-    frappe.call({
-        method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.remove_room_from_calendar",
-        args: {
-            reservation_name: frm.doc.name,
-            room_name: row.room_name
-        }
-    });
-}
-
-function confirm_room_reservations(frm) {
-    frappe.call({
-        method: "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.confirm_room_reservations",
-        args: {
-            reservation_name: frm.doc.name
-        }
-    });
-}
 
 function toggle_accommodation_fields(frm) {
     let show_accommodation = frm.doc.accommodation_needed;
@@ -819,13 +690,12 @@ function fetch_room_rate(frm, row, cdt, cdn) {
     }
 }
 
-function set_room_type_filter(frm) {
-    const selected_room_types = (frm.doc.room_type_booking || []).map(d => d.room_type).filter(Boolean);
-
-    frm.fields_dict["room_booking"].grid.get_field("room_type").get_query = function(doc, cdt, cdn) {
+// Function to apply the filter to the Room Name field based on selected Room Type
+function apply_room_name_filter(frm, row) {
+    frm.fields_dict['room_booking'].grid.get_field('room_name').get_query = function(doc, cdt, cdn) {
         return {
             filters: {
-                name: ["in", selected_room_types.length ? selected_room_types : [""]]
+                room_type: row.room_type // Filter based on the room type in the current row
             }
         };
     };

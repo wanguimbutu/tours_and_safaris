@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "tent_type",
+  "tent_name",
   "qty",
   "rate",
   "base_rate",
@@ -53,7 +54,6 @@
    "options": "Item"
   },
   {
-   "fetch_from": "tent_type.rate",
    "fieldname": "base_rate",
    "fieldtype": "Float",
    "label": "Base Rate",
@@ -70,12 +70,19 @@
    "fieldtype": "Float",
    "label": "Original Rate",
    "options": "billing_currency"
+  },
+  {
+   "fetch_from": "tent_type.item_name",
+   "fieldname": "tent_name",
+   "fieldtype": "Read Only",
+   "in_list_view": 1,
+   "label": "Tent Name"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-29 13:07:51.552029",
+ "modified": "2025-05-09 10:04:59.451252",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Tent Selection",
