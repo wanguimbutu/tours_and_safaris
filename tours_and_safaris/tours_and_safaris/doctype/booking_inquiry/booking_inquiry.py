@@ -233,8 +233,8 @@ def create_quotation(inquiry_name):
         if inquiry.tent_selection:
             for tent in inquiry.tent_selection:
                 quotation.append("items", {
-                    "item_code": tent.item_code,
-                    "item_name": tent.tent_type or "Tent",
+                    "item_code": tent.tent_type,
+                    "item_name": tent.tent_name or "Tent",
                     "description": f"Tent: {tent.tent_type or 'N/A'}",
                     "qty": tent.qty or 1,
                     "rate": tent.rate or 0

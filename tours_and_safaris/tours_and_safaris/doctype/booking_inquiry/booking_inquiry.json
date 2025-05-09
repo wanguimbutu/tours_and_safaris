@@ -1,522 +1,522 @@
 {
- "actions": [],
- "allow_import": 1,
- "allow_rename": 1,
- "autoname": "naming_series:",
- "creation": "2025-02-22 10:00:29.543639",
- "doctype": "DocType",
- "engine": "InnoDB",
- "field_order": [
-  "inquiry_details_tab",
-  "section_break_eot3",
-  "naming_series",
-  "inquiry_date",
-  "workflow_state",
-  "is_consolidated",
-  "column_break_etvu",
-  "new_customer",
-  "existing_customer",
-  "lead_name",
-  "first_name",
-  "customer",
-  "customer_name",
-  "billing_currency",
-  "exchange_rate",
-  "amended_from",
-  "currency",
-  "calendar_info",
-  "section_break_bfyy",
-  "from_date",
-  "to_date",
-  "column_break_xjrn",
-  "no_of_people",
-  "no_of_adults",
-  "no_of_children",
-  "section_break_apsj",
-  "activities",
-  "section_break_untc",
-  "accommodation_needed",
-  "rooms",
-  "tents",
-  "tent_selection",
-  "room_booking",
-  "section_break_rnwd",
-  "transport_required",
-  "transport_service",
-  "meals_and_menu_section",
-  "meals_required",
-  "meals",
-  "diet_preferences",
-  "section_break_xphs",
-  "hired_service",
-  "remarks_section",
-  "remarks",
-  "section_break_weje",
-  "column_break_akgb",
-  "column_break_xkxr",
-  "proposed_total_cost",
-  "total_base_amount",
-  "consolidated_amount",
-  "section_break_yhuz",
-  "status",
-  "guest_details_tab",
-  "guest_details",
-  "follow_up_tab",
-  "follow_up_date",
-  "column_break_vlrv",
-  "follow_up_notes_section",
-  "notes",
-  "section_break_qyei",
-  "reason_for_cancellation",
-  "connections_tab"
- ],
- "fields": [
-  {
-   "fieldname": "section_break_eot3",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Booking Inquiry",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "bold": 1,
-   "fieldname": "inquiry_date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Inquiry Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_etvu",
-   "fieldtype": "Column Break"
-  },
-  {
-   "default": "0",
-   "fieldname": "new_customer",
-   "fieldtype": "Check",
-   "label": "New Customer"
-  },
-  {
-   "default": "0",
-   "fieldname": "existing_customer",
-   "fieldtype": "Check",
-   "label": "Existing Customer"
-  },
-  {
-   "fieldname": "section_break_bfyy",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "from_date",
-   "fieldtype": "Datetime",
-   "in_list_view": 1,
-   "label": "From Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "to_date",
-   "fieldtype": "Datetime",
-   "in_list_view": 1,
-   "label": "To Date",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_xjrn",
-   "fieldtype": "Column Break"
-  },
-  {
-   "default": "1",
-   "fieldname": "no_of_people",
-   "fieldtype": "Int",
-   "label": "No. of People"
-  },
-  {
-   "fieldname": "no_of_adults",
-   "fieldtype": "Int",
-   "label": "No. of Adults"
-  },
-  {
-   "fieldname": "no_of_children",
-   "fieldtype": "Int",
-   "label": "No. of Children"
-  },
-  {
-   "fieldname": "section_break_untc",
-   "fieldtype": "Section Break",
-   "label": "Accommodation Booking"
-  },
-  {
-   "default": "0",
-   "fieldname": "accommodation_needed",
-   "fieldtype": "Check",
-   "label": "Accommodation needed"
-  },
-  {
-   "fieldname": "section_break_rnwd",
-   "fieldtype": "Section Break",
-   "label": "Transport"
-  },
-  {
-   "default": "0",
-   "fieldname": "transport_required",
-   "fieldtype": "Check",
-   "label": "Transport Required"
-  },
-  {
-   "fieldname": "section_break_xphs",
-   "fieldtype": "Section Break",
-   "label": "Other Services"
-  },
-  {
-   "fieldname": "hired_service",
-   "fieldtype": "Table",
-   "label": "Hired Service",
-   "options": "Reservation Services"
-  },
-  {
-   "bold": 1,
-   "fieldname": "follow_up_tab",
-   "fieldtype": "Tab Break",
-   "label": "Follow Up"
-  },
-  {
-   "fieldname": "follow_up_date",
-   "fieldtype": "Date",
-   "label": "Follow Up Date"
-  },
-  {
-   "fieldname": "column_break_vlrv",
-   "fieldtype": "Column Break"
-  },
-  {
-   "collapsible": 1,
-   "fieldname": "follow_up_notes_section",
-   "fieldtype": "Section Break",
-   "label": "Follow Up Notes"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "notes",
-   "fieldtype": "Small Text",
-   "label": "Notes"
-  },
-  {
-   "fieldname": "section_break_qyei",
-   "fieldtype": "Section Break",
-   "label": "Cancellation"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "reason_for_cancellation",
-   "fieldtype": "Small Text",
-   "label": "Reason for Cancellation"
-  },
-  {
-   "fieldname": "inquiry_details_tab",
-   "fieldtype": "Tab Break",
-   "label": "Inquiry Details"
-  },
-  {
-   "fieldname": "lead_name",
-   "fieldtype": "Link",
-   "label": "Lead Name",
-   "options": "Lead"
-  },
-  {
-   "fetch_from": "customer.customer_name",
-   "fieldname": "customer_name",
-   "fieldtype": "Read Only",
-   "label": "Customer Name"
-  },
-  {
-   "default": "0",
-   "fieldname": "rooms",
-   "fieldtype": "Check",
-   "label": "Rooms"
-  },
-  {
-   "default": "0",
-   "fieldname": "tents",
-   "fieldtype": "Check",
-   "label": "Tents"
-  },
-  {
-   "fieldname": "tent_selection",
-   "fieldtype": "Table",
-   "label": "Tent Selection",
-   "options": "Tent Selection"
-  },
-  {
-   "fieldname": "room_booking",
-   "fieldtype": "Table",
-   "label": "Room Booking",
-   "options": "Room Type Booking"
-  },
-  {
-   "fieldname": "section_break_yhuz",
-   "fieldtype": "Section Break"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "hidden": 1,
-   "label": "Status",
-   "options": "\nLost\nQuoted"
-  },
-  {
-   "fieldname": "section_break_apsj",
-   "fieldtype": "Section Break",
-   "label": "Activities"
-  },
-  {
-   "fieldname": "activities",
-   "fieldtype": "Table",
-   "label": "Activities",
-   "options": "Activity Package"
-  },
-  {
-   "fetch_from": "lead_name.first_name",
-   "fieldname": "first_name",
-   "fieldtype": "Read Only",
-   "label": "First Name"
-  },
-  {
-   "fieldname": "meals_and_menu_section",
-   "fieldtype": "Section Break",
-   "label": "Meals and Menu"
-  },
-  {
-   "fieldname": "diet_preferences",
-   "fieldtype": "Table",
-   "label": "Diet Preferences",
-   "options": "Meal Diet Preferences"
-  },
-  {
-   "fieldname": "workflow_state",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Workflow State",
-   "options": "Workflow"
-  },
-  {
-   "fieldname": "section_break_weje",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_akgb",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_xkxr",
-   "fieldtype": "Column Break"
-  },
-  {
-   "default": "0",
-   "fieldname": "meals_required",
-   "fieldtype": "Check",
-   "label": "Meals Required"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "proposed_total_cost",
-   "fieldtype": "Currency",
-   "label": "Proposed Total Cost",
-   "options": "billing_currency",
-   "read_only": 1
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "customer",
-   "fieldtype": "Link",
-   "label": "Customer",
-   "options": "Customer"
-  },
-  {
-   "fetch_from": "customer.default_currency",
-   "fieldname": "billing_currency",
-   "fieldtype": "Read Only",
-   "label": "Billing Currency"
-  },
-  {
-   "fieldname": "naming_series",
-   "fieldtype": "Select",
-   "label": "Series",
-   "no_copy": 1,
-   "options": "BIN-.YYYY.-",
-   "print_hide": 1,
-   "reqd": 1,
-   "set_only_once": 1
-  },
-  {
-   "fieldname": "remarks_section",
-   "fieldtype": "Section Break",
-   "label": "Remarks"
-  },
-  {
-   "fieldname": "remarks",
-   "fieldtype": "Small Text",
-   "label": "Remarks"
-  },
-  {
-   "fieldname": "exchange_rate",
-   "fieldtype": "Float",
-   "hidden": 1,
-   "label": "Exchange Rate",
-   "non_negative": 1
-  },
-  {
-   "fieldname": "total_base_amount",
-   "fieldtype": "Currency",
-   "hidden": 1,
-   "label": "Total Base Amount",
-   "options": "billing_currency",
-   "read_only": 1
-  },
-  {
-   "fieldname": "currency",
-   "fieldtype": "Link",
-   "label": "Currency",
-   "options": "Currency"
-  },
-  {
-   "fieldname": "transport_service",
-   "fieldtype": "Table",
-   "label": "Transport Service",
-   "options": "Transport"
-  },
-  {
-   "fieldname": "guest_details_tab",
-   "fieldtype": "Tab Break",
-   "label": "Guest Details"
-  },
-  {
-   "allow_bulk_edit": 1,
-   "fieldname": "guest_details",
-   "fieldtype": "Table",
-   "label": "Guest Details",
-   "options": "Guest Details"
-  },
-  {
-   "fieldname": "meals",
-   "fieldtype": "Table",
-   "label": "Meals",
-   "options": "Meal Details"
-  },
-  {
-   "fieldname": "connections_tab",
-   "fieldtype": "Tab Break",
-   "label": "Connections",
-   "show_dashboard": 1
-  },
-  {
-   "fieldname": "calendar_info",
-   "fieldtype": "Read Only",
-   "hidden": 1,
-   "label": "Calendar Info"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_consolidated",
-   "fieldtype": "Check",
-   "label": "Is Consolidated"
-  },
-  {
-   "fieldname": "consolidated_amount",
-   "fieldtype": "Currency",
-   "label": "Consolidated Amount",
-   "options": "billing_currency"
-  }
- ],
- "index_web_pages_for_search": 1,
- "is_submittable": 1,
- "links": [],
- "modified": "2025-04-29 10:34:14.836620",
- "modified_by": "Administrator",
- "module": "Tours and Safaris",
- "name": "Booking Inquiry",
- "naming_rule": "By \"Naming Series\" field",
- "owner": "Administrator",
- "permissions": [
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "System Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Sales Manager",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Sales User",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  },
-  {
-   "create": 1,
-   "delete": 1,
-   "email": 1,
-   "export": 1,
-   "print": 1,
-   "read": 1,
-   "report": 1,
-   "role": "Projects User",
-   "share": 1,
-   "submit": 1,
-   "write": 1
-  }
- ],
- "sort_field": "modified",
- "sort_order": "DESC",
- "states": [
-  {
-   "color": "Red",
-   "title": "Lost"
-  },
-  {
-   "color": "Green",
-   "title": "Quoted"
-  },
-  {
-   "color": "Orange",
-   "title": "Ongoing"
-  },
-  {
-   "color": "Blue",
-   "title": "Submitted"
-  }
- ],
- "track_changes": 1
-}
+    "actions": [],
+    "allow_import": 1,
+    "allow_rename": 1,
+    "autoname": "naming_series:",
+    "creation": "2025-02-22 10:00:29.543639",
+    "doctype": "DocType",
+    "engine": "InnoDB",
+    "field_order": [
+     "inquiry_details_tab",
+     "section_break_eot3",
+     "naming_series",
+     "inquiry_date",
+     "workflow_state",
+     "is_consolidated",
+     "column_break_etvu",
+     "new_customer",
+     "existing_customer",
+     "lead_name",
+     "first_name",
+     "customer",
+     "customer_name",
+     "billing_currency",
+     "exchange_rate",
+     "amended_from",
+     "currency",
+     "calendar_info",
+     "section_break_bfyy",
+     "from_date",
+     "to_date",
+     "column_break_xjrn",
+     "no_of_people",
+     "no_of_adults",
+     "no_of_children",
+     "section_break_apsj",
+     "activities",
+     "section_break_untc",
+     "accommodation_needed",
+     "rooms",
+     "tents",
+     "tent_selection",
+     "room_booking",
+     "section_break_rnwd",
+     "transport_required",
+     "transport_service",
+     "meals_and_menu_section",
+     "meals_required",
+     "meals",
+     "diet_preferences",
+     "section_break_xphs",
+     "hired_service",
+     "remarks_section",
+     "remarks",
+     "section_break_weje",
+     "column_break_akgb",
+     "column_break_xkxr",
+     "proposed_total_cost",
+     "total_base_amount",
+     "consolidated_amount",
+     "section_break_yhuz",
+     "status",
+     "guest_details_tab",
+     "guest_details",
+     "follow_up_tab",
+     "follow_up_date",
+     "column_break_vlrv",
+     "follow_up_notes_section",
+     "notes",
+     "section_break_qyei",
+     "reason_for_cancellation",
+     "connections_tab"
+    ],
+    "fields": [
+     {
+      "fieldname": "section_break_eot3",
+      "fieldtype": "Section Break"
+     },
+     {
+      "fieldname": "amended_from",
+      "fieldtype": "Link",
+      "label": "Amended From",
+      "no_copy": 1,
+      "options": "Booking Inquiry",
+      "print_hide": 1,
+      "read_only": 1,
+      "search_index": 1
+     },
+     {
+      "bold": 1,
+      "fieldname": "inquiry_date",
+      "fieldtype": "Date",
+      "in_list_view": 1,
+      "label": "Inquiry Date",
+      "reqd": 1
+     },
+     {
+      "fieldname": "column_break_etvu",
+      "fieldtype": "Column Break"
+     },
+     {
+      "default": "0",
+      "fieldname": "new_customer",
+      "fieldtype": "Check",
+      "label": "New Customer"
+     },
+     {
+      "default": "0",
+      "fieldname": "existing_customer",
+      "fieldtype": "Check",
+      "label": "Existing Customer"
+     },
+     {
+      "fieldname": "section_break_bfyy",
+      "fieldtype": "Section Break"
+     },
+     {
+      "fieldname": "from_date",
+      "fieldtype": "Datetime",
+      "in_list_view": 1,
+      "label": "From Date",
+      "reqd": 1
+     },
+     {
+      "fieldname": "to_date",
+      "fieldtype": "Datetime",
+      "in_list_view": 1,
+      "label": "To Date",
+      "reqd": 1
+     },
+     {
+      "fieldname": "column_break_xjrn",
+      "fieldtype": "Column Break"
+     },
+     {
+      "default": "1",
+      "fieldname": "no_of_people",
+      "fieldtype": "Int",
+      "label": "No. of People"
+     },
+     {
+      "fieldname": "no_of_adults",
+      "fieldtype": "Int",
+      "label": "No. of Adults"
+     },
+     {
+      "fieldname": "no_of_children",
+      "fieldtype": "Int",
+      "label": "No. of Children"
+     },
+     {
+      "fieldname": "section_break_untc",
+      "fieldtype": "Section Break",
+      "label": "Accommodation Booking"
+     },
+     {
+      "default": "0",
+      "fieldname": "accommodation_needed",
+      "fieldtype": "Check",
+      "label": "Accommodation needed"
+     },
+     {
+      "fieldname": "section_break_rnwd",
+      "fieldtype": "Section Break",
+      "label": "Transport"
+     },
+     {
+      "default": "0",
+      "fieldname": "transport_required",
+      "fieldtype": "Check",
+      "label": "Transport Required"
+     },
+     {
+      "fieldname": "section_break_xphs",
+      "fieldtype": "Section Break",
+      "label": "Other Services"
+     },
+     {
+      "fieldname": "hired_service",
+      "fieldtype": "Table",
+      "label": "Hired Service",
+      "options": "Reservation Services"
+     },
+     {
+      "bold": 1,
+      "fieldname": "follow_up_tab",
+      "fieldtype": "Tab Break",
+      "label": "Follow Up"
+     },
+     {
+      "fieldname": "follow_up_date",
+      "fieldtype": "Date",
+      "label": "Follow Up Date"
+     },
+     {
+      "fieldname": "column_break_vlrv",
+      "fieldtype": "Column Break"
+     },
+     {
+      "collapsible": 1,
+      "fieldname": "follow_up_notes_section",
+      "fieldtype": "Section Break",
+      "label": "Follow Up Notes"
+     },
+     {
+      "allow_on_submit": 1,
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Notes"
+     },
+     {
+      "fieldname": "section_break_qyei",
+      "fieldtype": "Section Break",
+      "label": "Cancellation"
+     },
+     {
+      "allow_on_submit": 1,
+      "fieldname": "reason_for_cancellation",
+      "fieldtype": "Small Text",
+      "label": "Reason for Cancellation"
+     },
+     {
+      "fieldname": "inquiry_details_tab",
+      "fieldtype": "Tab Break",
+      "label": "Inquiry Details"
+     },
+     {
+      "fieldname": "lead_name",
+      "fieldtype": "Link",
+      "label": "Lead Name",
+      "options": "Lead"
+     },
+     {
+      "fetch_from": "customer.customer_name",
+      "fieldname": "customer_name",
+      "fieldtype": "Read Only",
+      "label": "Customer Name"
+     },
+     {
+      "default": "0",
+      "fieldname": "rooms",
+      "fieldtype": "Check",
+      "label": "Rooms"
+     },
+     {
+      "default": "0",
+      "fieldname": "tents",
+      "fieldtype": "Check",
+      "label": "Tents"
+     },
+     {
+      "fieldname": "tent_selection",
+      "fieldtype": "Table",
+      "label": "Tent Selection",
+      "options": "Tent Selection"
+     },
+     {
+      "fieldname": "room_booking",
+      "fieldtype": "Table",
+      "label": "Room Booking",
+      "options": "Room Type Booking"
+     },
+     {
+      "fieldname": "section_break_yhuz",
+      "fieldtype": "Section Break"
+     },
+     {
+      "allow_on_submit": 1,
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "hidden": 1,
+      "label": "Status",
+      "options": "\nLost\nQuoted"
+     },
+     {
+      "fieldname": "section_break_apsj",
+      "fieldtype": "Section Break",
+      "label": "Activities"
+     },
+     {
+      "fieldname": "activities",
+      "fieldtype": "Table",
+      "label": "Activities",
+      "options": "Activity Package"
+     },
+     {
+      "fetch_from": "lead_name.first_name",
+      "fieldname": "first_name",
+      "fieldtype": "Read Only",
+      "label": "First Name"
+     },
+     {
+      "fieldname": "meals_and_menu_section",
+      "fieldtype": "Section Break",
+      "label": "Meals and Menu"
+     },
+     {
+      "fieldname": "diet_preferences",
+      "fieldtype": "Table",
+      "label": "Diet Preferences",
+      "options": "Meal Diet Preferences"
+     },
+     {
+      "fieldname": "workflow_state",
+      "fieldtype": "Link",
+      "hidden": 1,
+      "label": "Workflow State",
+      "options": "Workflow"
+     },
+     {
+      "fieldname": "section_break_weje",
+      "fieldtype": "Section Break"
+     },
+     {
+      "fieldname": "column_break_akgb",
+      "fieldtype": "Column Break"
+     },
+     {
+      "fieldname": "column_break_xkxr",
+      "fieldtype": "Column Break"
+     },
+     {
+      "default": "0",
+      "fieldname": "meals_required",
+      "fieldtype": "Check",
+      "label": "Meals Required"
+     },
+     {
+      "allow_on_submit": 1,
+      "fieldname": "proposed_total_cost",
+      "fieldtype": "Currency",
+      "label": "Proposed Total Cost",
+      "options": "billing_currency",
+      "read_only": 1
+     },
+     {
+      "allow_on_submit": 1,
+      "fieldname": "customer",
+      "fieldtype": "Link",
+      "label": "Customer",
+      "options": "Customer"
+     },
+     {
+      "fetch_from": "customer.default_currency",
+      "fieldname": "billing_currency",
+      "fieldtype": "Read Only",
+      "label": "Billing Currency"
+     },
+     {
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Series",
+      "no_copy": 1,
+      "options": "BIN-.YYYY.-",
+      "print_hide": 1,
+      "reqd": 1,
+      "set_only_once": 1
+     },
+     {
+      "fieldname": "remarks_section",
+      "fieldtype": "Section Break",
+      "label": "Remarks"
+     },
+     {
+      "fieldname": "remarks",
+      "fieldtype": "Small Text",
+      "label": "Remarks"
+     },
+     {
+      "fieldname": "exchange_rate",
+      "fieldtype": "Float",
+      "hidden": 1,
+      "label": "Exchange Rate",
+      "non_negative": 1
+     },
+     {
+      "fieldname": "total_base_amount",
+      "fieldtype": "Currency",
+      "hidden": 1,
+      "label": "Total Base Amount",
+      "options": "billing_currency",
+      "read_only": 1
+     },
+     {
+      "fieldname": "currency",
+      "fieldtype": "Link",
+      "label": "Currency",
+      "options": "Currency"
+     },
+     {
+      "fieldname": "transport_service",
+      "fieldtype": "Table",
+      "label": "Transport Service",
+      "options": "Transport"
+     },
+     {
+      "fieldname": "guest_details_tab",
+      "fieldtype": "Tab Break",
+      "label": "Guest Details"
+     },
+     {
+      "allow_bulk_edit": 1,
+      "fieldname": "guest_details",
+      "fieldtype": "Table",
+      "label": "Guest Details",
+      "options": "Guest Details"
+     },
+     {
+      "fieldname": "meals",
+      "fieldtype": "Table",
+      "label": "Meals",
+      "options": "Meal Details"
+     },
+     {
+      "fieldname": "connections_tab",
+      "fieldtype": "Tab Break",
+      "label": "Connections",
+      "show_dashboard": 1
+     },
+     {
+      "fieldname": "calendar_info",
+      "fieldtype": "Read Only",
+      "hidden": 1,
+      "label": "Calendar Info"
+     },
+     {
+      "default": "0",
+      "fieldname": "is_consolidated",
+      "fieldtype": "Check",
+      "label": "Is Consolidated"
+     },
+     {
+      "fieldname": "consolidated_amount",
+      "fieldtype": "Currency",
+      "label": "Consolidated Amount",
+      "options": "billing_currency"
+     }
+    ],
+    "index_web_pages_for_search": 1,
+    "is_submittable": 1,
+    "links": [],
+    "modified": "2025-04-29 10:34:14.836620",
+    "modified_by": "Administrator",
+    "module": "Tours and Safaris",
+    "name": "Booking Inquiry",
+    "naming_rule": "By \"Naming Series\" field",
+    "owner": "Administrator",
+    "permissions": [
+     {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+     },
+     {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Sales Manager",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+     },
+     {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Sales User",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+     },
+     {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Projects User",
+      "share": 1,
+      "submit": 1,
+      "write": 1
+     }
+    ],
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "states": [
+     {
+      "color": "Red",
+      "title": "Lost"
+     },
+     {
+      "color": "Green",
+      "title": "Quoted"
+     },
+     {
+      "color": "Orange",
+      "title": "Ongoing"
+     },
+     {
+      "color": "Blue",
+      "title": "Submitted"
+     }
+    ],
+    "track_changes": 1
+   }

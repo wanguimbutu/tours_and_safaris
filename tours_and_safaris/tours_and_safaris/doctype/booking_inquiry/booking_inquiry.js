@@ -786,7 +786,7 @@ frappe.ui.form.on('Meal Details', {
                         console.log(__("⚠ No price found for {0} in {1}", [row.meal_type, price_list]));
                     }
                 } else {
-                    console.log(__("No response from Item Price API"));
+                    console.log(__("No response from Item Pri1ce API"));
                 }
 
                 update_amount(frm, cdt, cdn);
@@ -865,7 +865,7 @@ frappe.ui.form.on('Meal Details', {
 
 
 frappe.ui.form.on('Tent Selection', {
-    item_code: function(frm, cdt, cdn) {
+    tent_type: function(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
 
         if (!row) {
@@ -878,7 +878,7 @@ frappe.ui.form.on('Tent Selection', {
             price_list = "Non Resident";
         }
 
-        console.log(" Fetching rate from:", price_list, "for Activity:", row.item_code);
+        console.log(" Fetching rate from:", price_list, "for Activity:", row.tent_type);
 
         if (row.rate && row.rate !== 0) {
             console.log(" User modified rate:", row.rate);
@@ -890,7 +890,7 @@ frappe.ui.form.on('Tent Selection', {
             args: {
                 doctype: "Item Price",
                 filters: {
-                    item_code: row.item_code,
+                    item_code: row.tent_type,
                     price_list: price_list
                 },
                 fieldname: ["price_list_rate"]
@@ -903,10 +903,10 @@ frappe.ui.form.on('Tent Selection', {
                         let rate = response.message.price_list_rate;
                         frappe.model.set_value(cdt, cdn, "original_rate", rate);
                         frappe.model.set_value(cdt, cdn, "rate", rate);
-                        console.log("Price found:", rate, "for", row.item_code);
+                        console.log("Price found:", rate, "for", row.tent_type);
                     } else {
-                        console.log(__("⚠ No price found for {0} in {1}", [row.item_code, price_list]));
-                    }
+                        console.log(__("⚠ No price found for {0} in {1}", [row.tent_type, price_list]));
+                    }1
                 } else {
                     console.log(__("No response from Item Price API"));
                 }
@@ -919,7 +919,7 @@ frappe.ui.form.on('Tent Selection', {
     rate: function(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
 
-        if (!row.item_code || row.rate === row.original_rate) {
+        if (!row.tent_type || row.rate === row.original_rate) {
             update_amount(frm, cdt, cdn);
             return;
         }
@@ -935,7 +935,7 @@ frappe.ui.form.on('Tent Selection', {
             args: {
                 doctype: "Item Price",
                 filters: {
-                    item_code: row.item_code,
+                    item_code: row.tent_type,
                     price_list: price_list
                 },
                 fields: ["name"]
@@ -954,7 +954,7 @@ frappe.ui.form.on('Tent Selection', {
                             value: row.rate
                         },
                         callback: () => {
-                            console.log(__("Price list updated for {0}", [row.item_code]));
+                            console.log(__("Price list updated for {0}", [row.tent_type]));
                         }
                     });
                 } else {
@@ -970,7 +970,7 @@ frappe.ui.form.on('Tent Selection', {
                             }
                         },
                         callback: () => {
-                            console.log(__("Price list entry created for {0}", [row.activity_name]));
+                            console.log(__("Price list entry created for {0}", [row.tent_type]));
                         }
                     });
                 }
@@ -1008,4 +1008,3 @@ function set_price_list(frm) {
         });
     }
 }
-
