@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-12 10:42:47.138768",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_npuf",
+  "customer",
+  "customer_name",
+  "arrival_date",
+  "departure_date",
+  "column_break_ewkf",
+  "no_of_pax",
+  "task",
+  "project",
+  "reservation",
+  "section_break_xpzm",
+  "booked_rooms",
+  "section_break_yaig",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_npuf",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Room Allocation",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Read Only",
+   "label": "Customer Name"
+  },
+  {
+   "fieldname": "section_break_yaig",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "arrival_date",
+   "fieldtype": "Date",
+   "label": "Arrival Date"
+  },
+  {
+   "fieldname": "departure_date",
+   "fieldtype": "Date",
+   "label": "Departure date"
+  },
+  {
+   "fieldname": "column_break_ewkf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "no_of_pax",
+   "fieldtype": "Int",
+   "label": "No of Pax"
+  },
+  {
+   "fieldname": "task",
+   "fieldtype": "Link",
+   "label": "Task",
+   "options": "Task"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project"
+  },
+  {
+   "fieldname": "section_break_xpzm",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "booked_rooms",
+   "fieldtype": "Table",
+   "label": "Booked Rooms",
+   "options": "Inquiry Room Booking"
+  },
+  {
+   "fieldname": "reservation",
+   "fieldtype": "Link",
+   "label": "Reservation",
+   "options": "Reservation"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-05-12 12:30:29.864083",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Room Allocation",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -41,7 +41,6 @@
   "accommodation_needed",
   "rooms",
   "room_type_booking",
-  "room_booking",
   "tents",
   "tent_selection",
   "section_break_guea",
@@ -164,12 +163,6 @@
    "fieldname": "accommodation_section",
    "fieldtype": "Section Break",
    "label": "Accommodation"
-  },
-  {
-   "fieldname": "room_booking",
-   "fieldtype": "Table",
-   "label": "Room Booking",
-   "options": "Inquiry Room Booking"
   },
   {
    "fieldname": "dietary_requirements_section",
@@ -390,7 +383,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-08 10:31:38.456460",
+ "modified": "2025-05-12 11:23:55.422218",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

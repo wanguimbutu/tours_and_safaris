@@ -6,12 +6,16 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_mrdh",
-  "amended_from",
+  "room_type",
   "room_name",
   "reservation",
   "check_in_date",
   "check_out_date",
-  "status"
+  "status",
+  "column_break_rhzf",
+  "amended_from",
+  "customer",
+  "customer_name"
  ],
  "fields": [
   {
@@ -42,12 +46,12 @@
   },
   {
    "fieldname": "check_in_date",
-   "fieldtype": "Datetime",
+   "fieldtype": "Date",
    "label": "Check In Date"
   },
   {
    "fieldname": "check_out_date",
-   "fieldtype": "Datetime",
+   "fieldtype": "Date",
    "label": "Check Out Date"
   },
   {
@@ -56,12 +60,34 @@
    "fieldtype": "Select",
    "label": "Status",
    "options": "\nReserved\nConfirmed Reservation\nOccupied\nUnder Maintenance\nAvailable"
+  },
+  {
+   "fieldname": "column_break_rhzf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Read Only",
+   "label": "Customer Name"
+  },
+  {
+   "fieldname": "room_type",
+   "fieldtype": "Link",
+   "label": "Room Type",
+   "options": "Room Type"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-03 15:24:52.502476",
+ "modified": "2025-05-12 13:02:01.599945",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Availability",

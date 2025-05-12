@@ -9,14 +9,7 @@ frappe.ui.form.on("Reservation", {
            // if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES') {
            //     recalculate_rates(frm);
           //  }
-          frm.fields_dict['room_booking'].grid.get_field('room_name').get_query = function(doc, cdt, cdn) {
-            let row = locals[cdt][cdn];
-            return {
-                filters: {
-                    room_type: row.room_type
-                }
-            };
-        }
+          
         if (frm.doc.accommodation_type === "Rooms") {
             frm.set_df_property("room_booking", "hidden", 0);
         }
