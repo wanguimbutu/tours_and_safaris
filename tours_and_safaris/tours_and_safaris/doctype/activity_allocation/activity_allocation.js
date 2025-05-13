@@ -41,9 +41,177 @@ frappe.ui.form.on("Activity Allocation", {
                 console.error(" API Call Failed when updating Task:", err);
             }
         });
+    },
+    refresh: function (frm) {
+        if (!frm.is_new()) {
+            frm.add_custom_button('Reassign', () => {
+                let activityDialog = new frappe.ui.Dialog({
+                    title: 'Reassign Instructor',
+                    fields: [
+                        {
+                            label: 'Activity Date',
+                            fieldname: 'activity_date',
+                            fieldtype: 'Date',
+                            reqd: 1
+                        },
+                        {
+                            label: 'Session',
+                            fieldname: 'session',
+                            fieldtype: 'Link',
+                            options: 'Session Type',
+                            onchange: function () {
+                                const values = activityDialog.get_values();
+                                if (!values || !values.activity_date) {
+                                    frappe.msgprint("Please select Activity Date first.");
+                                    return;
+                                }
+    
+                                const date = frappe.datetime.obj_to_str(frappe.datetime.str_to_obj(values.activity_date)).split(" ")[0];
+    
+                                if (values.session === 'FULL DAY') {
+                                    activityDialog.set_value('start_time', `${date} 08:00:00`);
+                                    activityDialog.set_value('end_time', `${date} 17:30:00`);
+                                    activityDialog.set_df_property('session_type', 'hidden', 1);
+                                } else {
+                                    activityDialog.set_df_property('session_type', 'hidden', 0);
+                                }
+                            }
+                        },
+                        {
+                            label: 'Session Type',
+                            fieldname: 'session_type',
+                            fieldtype: 'Select',
+                            options: ['AM', 'PM'],
+                            onchange: function () {
+                                const values = activityDialog.get_values();
+                                if (!values || !values.activity_date) {
+                                    frappe.msgprint("Please select Activity Date first.");
+                                    return;
+                                }
+    
+                                const date = frappe.datetime.obj_to_str(frappe.datetime.str_to_obj(values.activity_date)).split(" ")[0];
+                                if (values.session_type === 'AM') {
+                                    activityDialog.set_value('start_time', `${date} 08:00:00`);
+                                    activityDialog.set_value('end_time', `${date} 12:30:00`);
+                                } else {
+                                    activityDialog.set_value('start_time', `${date} 13:30:00`);
+                                    activityDialog.set_value('end_time', `${date} 17:30:00`);
+                                }
+                            }
+                        },
+                        {
+                            label: 'Activity Name',
+                            fieldname: 'activity_name',
+                            fieldtype: 'Link',
+                            options: 'Activity Type',
+                            reqd: 0
+                        },
+                        {
+                            label: 'Start Time',
+                            fieldname: 'start_time',
+                            fieldtype: 'Datetime',
+                            reqd: 0
+                        },
+                        {
+                            label: 'End Time',
+                            fieldname: 'end_time',
+                            fieldtype: 'Datetime',
+                            reqd: 0
+                        },
+                    ],
+                    primary_action_label: 'Get Instructors',
+                    primary_action(values) {
+                        frappe.call({
+                            method: 'tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.get_instructors',
+                            args: {
+                                activity_name: values.activity_name,
+                                activity_date: values.activity_date,
+                                start_time: values.start_time,
+                                end_time: values.end_time
+                            },
+                            callback: function (r) {
+                                if (r.message && r.message.length > 0) {
+                                    activityDialog.hide();
+    
+                                    let instructor_map = {};
+                                    let instructor_fields = [];
+    
+                                    r.message.forEach((inst, idx) => {
+                                        let fieldname = `instructor_${idx}`;
+                                        instructor_map[fieldname] = inst;
+    
+                                        instructor_fields.push({
+                                            label: `${inst.instructor} (${inst.qualification})`,
+                                            fieldname: fieldname,
+                                            fieldtype: 'Check'
+                                        });
+                                    });
+    
+                                    const instructorDialog = new frappe.ui.Dialog({
+                                        title: 'Select Instructors',
+                                        fields: instructor_fields,
+                                        primary_action_label: 'Assign Selected',
+                                        primary_action(selected) {
+                                        
+                                            const child_table =
+                                                frm.doc.instructor_assignment && frm.doc.instructor_assignment.length
+                                                    ? 'instructor_assignment'
+                                                    : 'activity_allocation_details';
+    
+                                            frm.clear_table(child_table);
+    
+                                            Object.entries(selected).forEach(([key, is_checked]) => {
+                                                if (is_checked) {
+                                                    const inst = instructor_map[key];
+                                                    const row = frm.add_child(child_table);
+    
+                                                    row.activity_date = values.activity_date;
+                                                    row.session = values.session;
+                                                    row.session_type = values.session_type;
+                                                    row.activity_name = values.activity_name;
+                                                    row.instructor = inst.instructor;
+                                                    row.qualification = inst.qualification;
+                                                    row.start_time = values.start_time;
+                                                    row.end_time = values.end_time;
+    
+                                                    if (child_table === 'instructor_assignment') {
+                                                        row.from_date = values.activity_date;
+                                                        row.to_date = values.activity_date;
+                                                    }
+                                                }
+                                            });
+    
+                                            frm.set_value('status', 'Reassigned');
+                                            frm.refresh_field(child_table);
+                                            frm.refresh_field('status');
+                                            instructorDialog.hide();
+    
+                                            frappe.call({
+                                                method: 'tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.create_calendar_events_on_reassign',
+                                                args: {
+                                                    allocation_name: frm.doc.name
+                                                },
+                                                callback: () => {
+                                                    frappe.show_alert({ message: 'Calendar updated', indicator: 'green' });
+                                                }
+                                            });
+                                        }
+                                    });
+    
+                                    instructorDialog.show();
+                                } else {
+                                    frappe.msgprint('No available instructors found for the given time slot.');
+                                }
+                            }
+                        });
+                    }
+                });
+    
+                activityDialog.show();
+            });
+        }
     }
-});
-
+});    
 
 function check_parent_task_completion(task_name) {
     console.log("🔹 Checking Parent Task for:", task_name); 
@@ -327,4 +495,100 @@ function set_session_times(frm, cdt, cdn) {
 
 function combine_date_time(date_str, time_str) {
     return `${frappe.datetime.obj_to_str(frappe.datetime.str_to_obj(date_str)).split(" ")[0]} ${time_str}`;
+}
+
+frappe.ui.form.on('Instructor Assignment', {
+    activity_name: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+
+        if (!row.from_date || !row.to_date) {
+            frappe.msgprint(__('Please set From Date and To Date first'));
+            return;
+        }
+
+        frappe.call({
+            method: 'tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.get_instructors',
+            args: {
+                activity_name: row.activity_name,
+                activity_date: row.from_date,
+                start_time: row.start_time || '08:00:00',
+                end_time: row.end_time || '17:00:00',
+                is_safety_kayak: row.is_safety_kayak || false
+            },
+            callback: function(r) {
+                if (r.message && r.message.length > 0) {
+                    const options = r.message.map(inst => ({
+                        label: `${inst.instructor} (${inst.qualification})`,
+                        value: inst.instructor
+                    }));
+
+                    const d = new frappe.ui.Dialog({
+                        title: 'Select Instructors',
+                        fields: [
+                            {
+                                fieldname: 'selected_instructors',
+                                fieldtype: 'MultiCheck',
+                                label: 'Instructors',
+                                options: options,
+                                columns: 2
+                            }
+                        ],
+                        primary_action_label: 'Assign',
+                        primary_action(values) {
+                            if (values.selected_instructors.length) {
+                                // Remove the original row
+                                frm.get_field('instructor_assignment').grid.grid_rows_by_docname[cdn].remove();
+
+                                // For each selected instructor, add a new row
+                                values.selected_instructors.forEach(instructor => {
+                                    const new_row = frm.add_child('instructor_assignment');
+                                    new_row.activity_name = row.activity_name;
+                                    new_row.from_date = row.from_date;
+                                    new_row.to_date = row.to_date;
+                                    new_row.start_time = row.start_time;
+                                    new_row.end_time = row.end_time;
+                                    new_row.is_safety_kayak = row.is_safety_kayak;
+                                    new_row.instructor = instructor;
+                                    new_row.qualification = r.message.find(i => i.instructor === instructor).qualification || "Not Specified";
+                                });
+
+                                frm.refresh_field('instructor_assignment');
+                            }
+                            d.hide();
+                        }
+                    });
+
+                    d.show();
+                } else {
+                    frappe.msgprint(__('No available instructors found for this time.'));
+                }
+            }
+        });
+    },
+    from_date: function(frm, cdt, cdn) {
+        set_datetime_fields(frm, cdt, cdn);
+    },
+    to_date: function(frm, cdt, cdn) {
+        set_datetime_fields(frm, cdt, cdn);
+    }
+});
+
+function set_datetime_fields(frm, cdt, cdn) {
+    const row = locals[cdt][cdn];
+
+    if (row.from_date) {
+        const from_date_clean = frappe.datetime.obj_to_str(
+            frappe.datetime.str_to_obj(row.from_date)
+        ).split(" ")[0];
+        row.start_time = `${from_date_clean} 08:00:00`;
+    }
+
+    if (row.to_date) {
+        const to_date_clean = frappe.datetime.obj_to_str(
+            frappe.datetime.str_to_obj(row.to_date)
+        ).split(" ")[0];
+        row.end_time = `${to_date_clean} 17:00:00`;
+    }
+
+    frm.refresh_field('instructor_assignment');
 }

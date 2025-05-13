@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class AssignedInstructors(Document):
+class InstructorAssignment(Document):
 	pass

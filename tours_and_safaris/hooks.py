@@ -40,7 +40,8 @@ doc_events = {
     "on_submit": [
         "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.allocate_instructor",
         "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.process_activity_calendar_events"
-    ]
+    ],
+    "on_update": "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.delete_existing_calendar_events"
 }
 }
 

@@ -28,33 +28,39 @@
    "options": "Activity Allocation"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "start_time",
    "fieldtype": "Datetime",
    "label": "Start Time"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "end_time",
    "fieldtype": "Datetime",
    "label": "End TIme"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "instructor",
    "fieldtype": "Data",
    "label": "Instructor"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "activity_name",
    "fieldtype": "Link",
    "label": "Activity Name",
    "options": "Activity Type"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "session",
    "fieldtype": "Link",
    "label": "Session",
    "options": "Session Type"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "session_period",
    "fieldtype": "Select",
    "label": "Session Period"
@@ -71,6 +77,7 @@
    "label": "Safety Kayak"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "qualification",
    "fieldtype": "Link",
    "label": "Qualification",
@@ -97,6 +104,7 @@
    "label": "Color"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "title",
    "fieldtype": "Data",
    "label": "Title"
@@ -105,7 +113,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-03 15:00:11.038014",
+ "modified": "2025-05-12 15:40:08.355615",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Calendar Event",

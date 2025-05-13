@@ -113,59 +113,70 @@ def allocate_instructor(doc, method):
 
     instructor_rows = {}
 
-    for row in doc.activity_allocation_details:
+    # Combine both sources: activity_allocation_details and instructor_assignment_table
+    all_rows = list(doc.activity_allocation_details) + list(doc.instructor_assignment)
+
+    for row in all_rows:
         if row.instructor:
             instructor_rows.setdefault(row.instructor, []).append(row)
 
-        if row.safety_kayak and row.safety_kayak_instructor:
+        if hasattr(row, "safety_kayak") and row.safety_kayak and hasattr(row, "safety_kayak_instructor") and row.safety_kayak_instructor:
             dummy_row = frappe._dict({
                 "activity_name": "Safety Kayaking",
                 "session": "Per Session",
-                "qualification": row.kayaker_qualification or "Unspecified",
-                "activity_date": row.activity_date,
+                "qualification": getattr(row, "kayaker_qualification", None) or "Unspecified",
+                "activity_date": getattr(row, "activity_date", None) or getattr(row, "from_date", None),
                 "start_time": row.start_time,
                 "end_time": row.end_time
             })
             instructor_rows.setdefault(row.safety_kayak_instructor, []).append(dummy_row)
 
     if not instructor_rows:
-        frappe.throw("No instructor assigned in Activity Allocation Details.")
+        frappe.throw("No instructor assigned in Activity Allocation Details or Instructor Assignment.")
 
     for instructor, rows in instructor_rows.items():
         time_logs = []
 
         for row in rows:
+            # Fetch the rate
             rate = frappe.db.get_value(
                 "Instructor Rate",
                 {
                     "activity": row.activity_name,
-                    "session_type": row.session,
-                    "qualification": row.qualification
+                    "session_type": getattr(row, "session", "Per Session"),
+                    "qualification": getattr(row, "qualification", "Unspecified"),
                 },
                 "rate"
             )
 
             if not rate:
-                frappe.throw(f"No rate found for {row.activity_name} with {row.session} and {row.qualification}.")
+                frappe.throw(f"No rate found for {row.activity_name} with {getattr(row, 'session', 'Per Session')} and {getattr(row, 'qualification', 'Unspecified')}.")
 
-            if not (row.activity_date and row.start_time and row.end_time):
+            # Handle dates and times
+            activity_date = getattr(row, "activity_date", None) or getattr(row, "from_date", None)
+            start_time = row.start_time
+            end_time = row.end_time
+
+            if not (activity_date and start_time and end_time):
                 frappe.throw(f"Missing activity_date/start_time/end_time in row for {row.activity_name}")
 
+            # Convert strings to datetime objects if necessary
             activity_date = (
-                datetime.strptime(row.activity_date, "%Y-%m-%d").date()
-                if isinstance(row.activity_date, str)
-                else row.activity_date
+                datetime.strptime(activity_date, "%Y-%m-%d").date()
+                if isinstance(activity_date, str)
+                else activity_date
             )
 
             start_time = (
-                datetime.strptime(row.start_time, "%Y-%m-%d %H:%M:%S").time()
-                if isinstance(row.start_time, str)
-                else row.start_time
+                datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S").time()
+                if isinstance(start_time, str)
+                else start_time
             )
+
             end_time = (
-                datetime.strptime(row.end_time, "%Y-%m-%d %H:%M:%S").time()
-                if isinstance(row.end_time, str)
-                else row.end_time
+                datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S").time()
+                if isinstance(end_time, str)
+                else end_time
             )
 
             from_datetime = datetime.combine(activity_date, start_time)
@@ -179,7 +190,7 @@ def allocate_instructor(doc, method):
                 "billing_rate": rate,
                 "from_time": from_datetime,
                 "to_time": to_datetime,
-                "task":doc.task
+                "task": doc.task,
             })
 
         timesheet = frappe.get_doc({
@@ -195,49 +206,106 @@ def allocate_instructor(doc, method):
         timesheet.insert(ignore_permissions=True)
         frappe.msgprint(f"Timesheet {timesheet.name} created for Instructor {instructor}.")
 
+
+
 def process_activity_calendar_events(doc, method=None):
+
     for detail in doc.activity_allocation_details:
         if not detail.instructor:
             continue
 
-        color = get_consistent_color_for_instructor(detail.instructor)
+        create_activity_event_from_row(doc, detail, source="Activity Allocation")
 
-        new_start = get_datetime(f"{detail.activity_date} {detail.start_time}")
-        new_end = get_datetime(f"{detail.activity_date} {detail.end_time}")
+    
+    for row in doc.instructor_assignment:
+        if not row.instructor:
+            continue
 
-        overlapping = frappe.db.exists(
-            "Activity Calendar Event",
-            {
-                "instructor": detail.instructor,
-                "activity_date": detail.activity_date,
-                "docstatus": 1,
-                "start_time": ("<", new_end.time()),
-                "end_time": (">", new_start.time()),
-            }
+        create_activity_event_from_row(doc, row, source="Instructor Assignment")
+
+
+def create_activity_event_from_row(doc, row, source):
+    instructor = row.instructor
+    activity_name = row.activity_name
+    activity_date = getattr(row, "activity_date", None) or getattr(row, "from_date", None)
+    start_time = row.start_time
+    end_time = row.end_time
+
+    if not (activity_date and start_time and end_time):
+        return  
+
+    color = get_consistent_color_for_instructor(instructor)
+
+    new_start = get_datetime(f"{activity_date} {start_time}")
+    new_end = get_datetime(f"{activity_date} {end_time}")
+
+    overlapping = frappe.db.exists(
+        "Activity Calendar Event",
+        {
+            "instructor": instructor,
+            "activity_date": activity_date,
+            "docstatus": 1,
+            "start_time": ("<", new_end.time()),
+            "end_time": (">", new_start.time()),
+        }
+    )
+
+    if overlapping:
+        frappe.throw(
+            f"Instructor {instructor} is already booked on {activity_date} "
+            f"between {start_time} and {end_time}."
         )
 
-        if overlapping:
-            frappe.throw(
-                f"Instructor {detail.instructor} is already booked on {detail.activity_date} "
-                f"between {detail.start_time} and {detail.end_time}."
-            )
+    title = f"{instructor} | {activity_name} | {doc.customer_name or doc.customer}"
 
-        title = f"{detail.instructor} | {detail.activity_name} | {doc.customer_name}"
+    event = frappe.new_doc("Activity Calendar Event")
+    event.activity_allocation = doc.name
+    event.activity_date = activity_date
+    event.start_time = start_time
+    event.end_time = end_time
+    event.instructor = instructor
+    event.activity_name = activity_name
+    event.session = getattr(row, "session", "Per Session")
+    event.session_type = getattr(row, "session_type", "Full Day")
+    event.customer = doc.customer
+    event.no_of_people = getattr(doc, "custom_no_of_people", 1)
+    event.color = color
+    event.title = title
 
-        event = frappe.new_doc("Activity Calendar Event")
-        event.activity_allocation = doc.name
-        event.activity_date = detail.activity_date
-        event.start_time = detail.start_time
-        event.end_time = detail.end_time
-        event.instructor = detail.instructor
-        event.activity_name = detail.activity_name
-        event.session = detail.session
-        event.session_period = detail.session_period
-        event.customer = doc.customer
-        event.no_of_people = doc.custom_no_of_people
-        event.color = color
-        event.title = title 
+    event.insert(ignore_permissions=True)
+    event.submit()
 
-        event.insert(ignore_permissions=True)
-        event.submit()
-    
+        
+@frappe.whitelist()
+def create_calendar_events_on_reassign(allocation_name):
+    doc = frappe.get_doc("Activity Allocation", allocation_name)
+
+    target_table = (
+        doc.instructor_assignment
+        if any(getattr(row, "instructor", None) for row in doc.instructor_assignment)
+        else doc.activity_allocation_details
+    )
+
+    for row in target_table:
+        if row.instructor:
+            create_activity_event_from_row(doc, row, source="reassign")
+
+def delete_existing_calendar_events(docname, instructor=None):
+    filters = {"activity_allocation": docname}
+    if instructor:
+        filters["instructor"] = instructor
+
+    old_events = frappe.get_all(
+        "Activity Calendar Event",
+        filters=filters,
+        fields=["name"]
+    )
+
+    for event in old_events:
+        try:
+            ev_doc = frappe.get_doc("Activity Calendar Event", event.name)
+            if ev_doc.docstatus == 1:
+                ev_doc.cancel()
+            ev_doc.delete()
+        except Exception as e:
+            frappe.log_error(f"Failed to delete calendar event {event.name}: {e}")
