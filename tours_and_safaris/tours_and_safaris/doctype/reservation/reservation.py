@@ -32,8 +32,8 @@ def calculate_total_cost(reservation_name):
                 has_watersports = True
 
     # Calculate accommodation costs
-    if reservation.room_booking:
-        accommodation_cost += sum(room.rate for room in reservation.room_booking)
+    if reservation.room_type_booking:
+        accommodation_cost += sum(room.rate for room in reservation.room_type_booking)
 
     if reservation.tent_selection:
         accommodation_cost += sum(tent.qty * tent.price for tent in reservation.tent_selection)

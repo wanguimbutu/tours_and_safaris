@@ -76,8 +76,25 @@ frappe.ui.form.on('Booking Inquiry', {
     },
 
     customer: function(frm) {
+        if (frm.doc.customer) {
+            frappe.db.get_value('Customer', frm.doc.customer, 'customer_group')
+                .then(r => {
+                    const group = r.message.customer_group;
+
+                    if (group === 'Schools') {
+                        frm.set_df_property('grade', 'hidden', 0); 
+                    } else {
+                        frm.set_df_property('grade', 'hidden', 1);
+                        frm.set_value('grade', null); 
+                    }
+                });
+        } else {
+            frm.set_df_property('grade', 'hidden', 1);
+            frm.set_value('grade', null);
+        }
         set_price_list(frm);
     },
+
 
     from_date: function(frm) {
     
