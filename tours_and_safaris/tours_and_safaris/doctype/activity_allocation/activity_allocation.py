@@ -271,6 +271,7 @@ def create_activity_event_from_row(doc, row, source):
     event.no_of_people = getattr(doc, "custom_no_of_people", 1)
     event.color = color
     event.title = title
+    event.qualification = getattr(row, "qualification", "Unspecified")
 
     event.insert(ignore_permissions=True)
     event.submit()
@@ -280,6 +281,26 @@ def create_activity_event_from_row(doc, row, source):
 def create_calendar_events_on_reassign(allocation_name):
     doc = frappe.get_doc("Activity Allocation", allocation_name)
 
+    # Step 1: Cancel and delete existing calendar events
+    existing_events = frappe.get_all(
+        "Activity Calendar Event",
+        filters={"activity_allocation": allocation_name},
+        pluck="name"
+    )
+
+    for event_name in existing_events:
+        try:
+            event = frappe.get_doc("Activity Calendar Event", event_name)
+            if event.docstatus == 1:
+                event.cancel()
+            event.delete()
+        except Exception as e:
+            frappe.log_error(frappe.get_traceback(), f"Error removing old calendar event {event_name}")
+
+    # 🔄 Step 2: Reload the document to pick up latest changes
+    doc = frappe.get_doc("Activity Allocation", allocation_name)
+
+    # Step 3: Recreate calendar events from current instructor assignments
     target_table = (
         doc.instructor_assignment
         if any(getattr(row, "instructor", None) for row in doc.instructor_assignment)
@@ -290,22 +311,23 @@ def create_calendar_events_on_reassign(allocation_name):
         if row.instructor:
             create_activity_event_from_row(doc, row, source="reassign")
 
+
+
 def delete_existing_calendar_events(docname, instructor=None):
     filters = {"activity_allocation": docname}
     if instructor:
         filters["instructor"] = instructor
 
-    old_events = frappe.get_all(
-        "Activity Calendar Event",
-        filters=filters,
-        fields=["name"]
-    )
+    old_events = frappe.get_all("Activity Calendar Event", filters=filters, pluck="name")
 
-    for event in old_events:
+    for name in old_events:
         try:
-            ev_doc = frappe.get_doc("Activity Calendar Event", event.name)
+            ev_doc = frappe.get_doc("Activity Calendar Event", name)
             if ev_doc.docstatus == 1:
                 ev_doc.cancel()
+            frappe.flags.in_delete = True  # 🔐 Temporarily mark delete
             ev_doc.delete()
         except Exception as e:
-            frappe.log_error(f"Failed to delete calendar event {event.name}: {e}")
+            frappe.log_error(f"Failed to delete calendar event {name}: {e}")
+        finally:
+            frappe.flags.in_delete = False  # 🔓 Always reset

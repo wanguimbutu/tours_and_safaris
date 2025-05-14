@@ -7,6 +7,7 @@
  "field_order": [
   "title",
   "activity_allocation",
+  "activity_date",
   "start_time",
   "end_time",
   "instructor",
@@ -108,12 +109,17 @@
    "fieldname": "title",
    "fieldtype": "Data",
    "label": "Title"
+  },
+  {
+   "fieldname": "activity_date",
+   "fieldtype": "Date",
+   "label": "Activity Date"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-12 15:40:08.355615",
+ "modified": "2025-05-14 10:40:57.001524",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Calendar Event",
@@ -129,6 +135,7 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -141,6 +148,7 @@
    "report": 1,
    "role": "Item Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -177,6 +185,7 @@
    "report": 1,
    "role": "Sales User",
    "share": 1,
+   "submit": 1,
    "write": 1
   },
   {
@@ -189,6 +198,7 @@
    "report": 1,
    "role": "Sales Manager",
    "share": 1,
+   "submit": 1,
    "write": 1
   }
  ],

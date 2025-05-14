@@ -20,21 +20,21 @@ frappe.ui.form.on("Activity Allocation", {
                 doctype: "Task",
                 name: frm.doc.task,
                 fieldname: {
-                    status: "Working",
-                    //completed_on: frappe.datetime.get_today(),
-                    //completed_by: frappe.session.user
+                    status: "Completed",
+                    completed_on: frappe.datetime.get_today(),
+                    completed_by: frappe.session.user
                 }
             },
             callback: function(response) {
                 if (response.message) {
-                    console.log(" Task marked as Working:", frm.doc.task);
-                    frappe.msgprint(__("Task marked as working."));
+                    console.log(" Task marked as Completed:", frm.doc.task);
+                    frappe.msgprint(__("Task marked as Completed."));
 
                     
                     check_parent_task_completion(frm.doc.task);
                 } else {
                     frappe.msgprint(__("Failed to update task."));
-                    console.error(" Error: Could not mark task as working:", response);
+                    console.error(" Error: Could not mark task as completed:", response);
                 }
             },
             error: function(err) {
