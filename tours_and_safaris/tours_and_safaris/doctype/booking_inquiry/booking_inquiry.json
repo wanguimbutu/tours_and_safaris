@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "naming_series:",
+ "autoname": "format:BIN-{customer_name}-{grade}-{no_of_people}-{inquiry_date}",
  "creation": "2025-02-22 10:00:29.543639",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -444,11 +444,11 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-13 16:29:08.050330",
+ "modified": "2025-05-14 16:12:17.863881",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
- "naming_rule": "By \"Naming Series\" field",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
