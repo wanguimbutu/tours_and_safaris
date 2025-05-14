@@ -197,7 +197,7 @@ def apply_exchange_rate_conversion(doc, method):
         # Apply to all relevant child tables
         convert_rates(doc.activities)
         convert_rates(doc.tent_selection)
-        convert_rates(doc.room_booking)
+       # convert_rates(doc.room_booking)
         convert_rates(doc.meals)
         convert_rates(doc.hired_services)
         convert_rates(doc.transport_service)
@@ -207,7 +207,7 @@ def apply_exchange_rate_conversion(doc, method):
             row.amount for table in [
                 doc.activities,
                 doc.tent_selection,
-                doc.room_booking,
+               # doc.room_booking,
                 doc.meals,
                 doc.hired_services,
                 doc.transport_service
@@ -232,7 +232,7 @@ def prevent_rate_reset(doc, method):
 
         retain_converted_rates(doc.activities)
         retain_converted_rates(doc.tent_selection)
-        retain_converted_rates(doc.room_booking)
+       # retain_converted_rates(doc.room_booking)
         retain_converted_rates(doc.meals)
         retain_converted_rates(doc.hired_services)
         retain_converted_rates(doc.transport_service)
