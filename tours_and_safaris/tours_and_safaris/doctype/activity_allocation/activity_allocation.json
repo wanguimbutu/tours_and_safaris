@@ -126,7 +126,7 @@
    "fieldname": "instructor_assignment",
    "fieldtype": "Table",
    "label": "Instructor Assignment",
-   "options": "Instructor Assignment"
+   "options": "Instructor Assignment Table"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -138,7 +138,7 @@
    "link_fieldname": "custom_activity_allocation"
   }
  ],
- "modified": "2025-05-14 18:00:19.930756",
+ "modified": "2025-05-14 18:05:27.957211",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Activity Allocation",

@@ -497,7 +497,7 @@ function combine_date_time(date_str, time_str) {
     return `${frappe.datetime.obj_to_str(frappe.datetime.str_to_obj(date_str)).split(" ")[0]} ${time_str}`;
 }
 
-frappe.ui.form.on('Instructor Assignment', {
+frappe.ui.form.on('Instructor Assignment Table', {
     activity_name: function(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
 

@@ -221,7 +221,7 @@ def process_activity_calendar_events(doc, method=None):
         if not row.instructor:
             continue
 
-        create_activity_event_from_row(doc, row, source="Instructor Assignment")
+        create_activity_event_from_row(doc, row, source="Instructor Assignment Table")
 
 
 def create_activity_event_from_row(doc, row, source):
