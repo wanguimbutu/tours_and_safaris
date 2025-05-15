@@ -1,7 +1,7 @@
 frappe.listview_settings['Room Allocation'] = {
     onload: function (listview) {
         listview.page.add_inner_button(__('📅 Calendar View'), function () {
-            window.location.href = "app/availability/view/calendar/Availability";
+            window.location.href = "availability/view/calendar/Availability";
         });
     },
 
@@ -22,7 +22,7 @@ frappe.listview_settings['Room Allocation'] = {
 
             return `
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <a href="app/availability/view/calendar/Availability" title="View in Calendar">
+                    <a href="availability/view/calendar/Availability" title="View in Calendar">
                         <i class="fa fa-calendar" style="color: ${color}; font-size: 14px;"></i>
                     </a>
                     <span style="color: ${color}; font-size: 12px;">
