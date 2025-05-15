@@ -225,6 +225,8 @@ def process_activity_calendar_events(doc, method=None):
 
 
 def create_activity_event_from_row(doc, row, source):
+    from frappe.utils import get_datetime
+
     instructor = row.instructor
     activity_name = row.activity_name
     activity_date = getattr(row, "activity_date", None) or getattr(row, "from_date", None)
@@ -232,23 +234,22 @@ def create_activity_event_from_row(doc, row, source):
     end_time = row.end_time
 
     if not (activity_date and start_time and end_time):
-        return  
+        return
 
     color = get_consistent_color_for_instructor(instructor)
 
     new_start = get_datetime(f"{activity_date} {start_time}")
     new_end = get_datetime(f"{activity_date} {end_time}")
 
-    overlapping = frappe.db.exists(
-        "Activity Calendar Event",
-        {
-            "instructor": instructor,
-            "activity_date": activity_date,
-            "docstatus": 1,
-            "start_time": ("<", new_end.time()),
-            "end_time": (">", new_start.time()),
-        }
-    )
+    # ✅ Overlap check after old events are fully deleted
+    overlapping = frappe.db.sql("""
+        SELECT name FROM `tabActivity Calendar Event`
+        WHERE instructor = %s
+        AND activity_date = %s
+        AND docstatus = 1
+        AND start_time < %s
+        AND end_time > %s
+    """, (instructor, activity_date, new_end.time(), new_start.time()))
 
     if overlapping:
         frappe.throw(
@@ -272,35 +273,41 @@ def create_activity_event_from_row(doc, row, source):
     event.color = color
     event.title = title
     event.qualification = getattr(row, "qualification", "Unspecified")
+    event.source = source or "manual"
 
     event.insert(ignore_permissions=True)
     event.submit()
+
 
         
 @frappe.whitelist()
 def create_calendar_events_on_reassign(allocation_name):
     doc = frappe.get_doc("Activity Allocation", allocation_name)
 
-    # Step 1: Cancel and delete existing calendar events
-    existing_events = frappe.get_all(
+    # Step 1: Cancel and delete all existing events
+    event_names = frappe.get_all(
         "Activity Calendar Event",
         filters={"activity_allocation": allocation_name},
         pluck="name"
     )
 
-    for event_name in existing_events:
+    for name in event_names:
         try:
-            event = frappe.get_doc("Activity Calendar Event", event_name)
-            if event.docstatus == 1:
-                event.cancel()
-            event.delete()
-        except Exception as e:
-            frappe.log_error(frappe.get_traceback(), f"Error removing old calendar event {event_name}")
+            e = frappe.get_doc("Activity Calendar Event", name)
+            if e.docstatus == 1:
+                e.cancel()
+            frappe.flags.in_delete = True
+            e.delete()
+        except Exception as err:
+            frappe.log_error(frappe.get_traceback(), f"Error deleting calendar event {name}")
+        finally:
+            frappe.flags.in_delete = False
 
-    # 🔄 Step 2: Reload the document to pick up latest changes
+    # 🔄 Force commit to ensure events are *actually* deleted before proceeding
+    frappe.db.commit()
+
+    # Step 2: Reload and create fresh events
     doc = frappe.get_doc("Activity Allocation", allocation_name)
-
-    # Step 3: Recreate calendar events from current instructor assignments
     target_table = (
         doc.instructor_assignment
         if any(getattr(row, "instructor", None) for row in doc.instructor_assignment)
@@ -325,9 +332,9 @@ def delete_existing_calendar_events(docname, instructor=None):
             ev_doc = frappe.get_doc("Activity Calendar Event", name)
             if ev_doc.docstatus == 1:
                 ev_doc.cancel()
-            frappe.flags.in_delete = True  # 🔐 Temporarily mark delete
+            frappe.flags.in_delete = True  #  Temporarily mark delete
             ev_doc.delete()
         except Exception as e:
             frappe.log_error(f"Failed to delete calendar event {name}: {e}")
         finally:
-            frappe.flags.in_delete = False  # 🔓 Always reset
+            frappe.flags.in_delete = False  # Always reset
