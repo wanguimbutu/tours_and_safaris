@@ -15,7 +15,8 @@
   "column_break_rhzf",
   "amended_from",
   "customer",
-  "customer_name"
+  "customer_name",
+  "calendar_info"
  ],
  "fields": [
   {
@@ -82,12 +83,17 @@
    "fieldtype": "Link",
    "label": "Room Type",
    "options": "Room Type"
+  },
+  {
+   "fieldname": "calendar_info",
+   "fieldtype": "Data",
+   "label": "Calendar Info"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-12 13:02:01.599945",
+ "modified": "2025-05-19 09:26:31.076476",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Availability",

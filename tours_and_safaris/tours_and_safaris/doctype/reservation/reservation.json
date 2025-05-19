@@ -22,6 +22,7 @@
   "billing_currency",
   "customer_email",
   "customer_group",
+  "grade",
   "exchange_rate",
   "kitlist",
   "column_break_rddc",
@@ -48,8 +49,8 @@
   "section_break_sfmh",
   "transport_service",
   "dietary_requirements_section",
-  "dietary_requirements",
   "meals",
+  "dietary_requirements",
   "section_break_vqzr",
   "remarks",
   "cost_section",
@@ -378,12 +379,17 @@
    "fieldname": "is_consolidated",
    "fieldtype": "Check",
    "label": "Is Consolidated"
+  },
+  {
+   "fieldname": "grade",
+   "fieldtype": "Data",
+   "label": "Grade"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-12 11:23:55.422218",
+ "modified": "2025-05-15 12:55:27.864054",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
