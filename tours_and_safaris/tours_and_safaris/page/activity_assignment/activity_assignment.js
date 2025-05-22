@@ -41,6 +41,48 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
         return `hsl(${hue}, 70%, 80%)`;
     };
 
+    // Helper function to determine session type and times
+    const getSessionDetails = (details, activityName, activityDate) => {
+        const sameDayActivities = details.filter(d => 
+            d.activity_name === activityName && 
+            d.activity_date === activityDate
+        );
+
+        
+        const hasAM = sameDayActivities.some(d => d.start_time.includes('08:00'));
+        const hasPM = sameDayActivities.some(d => d.start_time.includes('13:30'));
+        
+        if (hasAM && hasPM) {
+            return {
+                session: 'Full Day',
+                start_time: `${activityDate} 08:00:00`,
+                end_time: `${activityDate} 17:00:00`
+            };
+        } else if (hasAM) {
+            return {
+                session: 'Half Day',
+                start_time: `${activityDate} 08:00:00`,
+                end_time: `${activityDate} 12:30:00`
+            };
+        } else if (hasPM) {
+            return {
+                session: 'Half Day',
+                start_time: `${activityDate} 13:30:00`,
+                end_time: `${activityDate} 17:30:00`
+            };
+        }
+        return null;
+    };
+
+    // Helper function to get instructor qualification for an activity
+const getInstructorQualification = (instructors, instructorName, activityName) => {
+    const instructor = instructors.find(i => i.name === instructorName);
+    if (!instructor || !instructor.activity_levels) return '';
+    
+    const activityLevel = instructor.activity_levels.find(al => al.activity_name === activityName);
+    return activityLevel ? activityLevel.qualification || '' : '';
+};
+
     const fetchAllocations = (weekStart, weekEnd, callback) => {
         frappe.call({
             method: 'frappe.client.get_list',
@@ -168,10 +210,32 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                     },
                     callback: function (instRes) {
                         const instructors = instRes.message || [];
+                        
+                        // Fetch instructor qualifications
+                        const instructorPromises = instructors.map(instructor =>
+                            new Promise(resolve => {
+                                frappe.call({
+                                    method: 'frappe.client.get',
+                                    args: {
+                                        doctype: 'Instructor',
+                                        name: instructor.name
+                                    },
+                                    callback: (res) => {
+                                        instructor.activity_levels = res.message.instructor_acrivity_level || [];
+                                        resolve();
+                                    }
+                                });
+                            })
+                        );
+                
+                        Promise.all(instructorPromises).then(() => {
 
                         fetchAllocations(weekStart, weekEnd, (allocations) => {
                             
                             let html = `
+                                <div style="margin-bottom: 15px;">
+                                    <button id="submit-activities-btn" class="btn btn-primary">Submit Activities</button>
+                                    </div>
                                 <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                                     <div>
                                         <button class="btn btn-default prev-week">&larr; Prev</button>
@@ -265,6 +329,8 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                 });
                             }, 100);
 
+                            
+
                             let rowIndex = 0;
 
                             Object.entries(customerGroups).forEach(([cust, groups]) => {
@@ -314,7 +380,58 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                             html += `</tbody></table>`;
                             $(page.body).html(html);
 
-                            
+                            document.getElementById("submit-activities-btn").addEventListener("click", function () {
+                                // Determine the start and end dates of the current calendar week
+                                const weekStart = weekDates[0].date;
+                                const weekEnd = weekDates[weekDates.length - 1].date;
+                              
+                                // Fetch all Activity Allocation documents in Draft status within the week
+                                frappe.call({
+                                  method: "frappe.client.get_list",
+                                  args: {
+                                    doctype: "Activity Allocation",
+                                    filters: [
+                                      ["docstatus", "=", 0],
+                                      ["start_date", ">=", frappe.datetime.obj_to_str(weekStart)],
+                                      ["end_date", "<=", frappe.datetime.obj_to_str(weekEnd)]
+                                    ],
+                                    fields: ["name"]
+                                  },
+                                  callback: function (r) {
+                                    if (r.message && r.message.length > 0) {
+                                      const allocations = r.message;
+                                      let submittedCount = 0;
+                                      let failedCount = 0;
+                              
+                                      // Submit each fetched document
+                                      allocations.forEach((doc) => {
+                                        frappe.call({
+                                          method: "tours_and_safaris.tours_and_safaris.page.activity_assignment.activity_assignment.submit_activity_allocation",
+                                          args: {
+                                            doctype: "Activity Allocation",
+                                            name: doc.name
+                                          },
+                                          callback: function () {
+                                            submittedCount++;
+                                            if (submittedCount + failedCount === allocations.length) {
+                                              frappe.show_alert(`Submitted ${submittedCount} activities.`);
+                                            }
+                                          },
+                                          error: function () {
+                                            failedCount++;
+                                            if (submittedCount + failedCount === allocations.length) {
+                                              frappe.show_alert(`Submitted ${submittedCount} activities. ${failedCount} failed.`);
+                                            }
+                                          }
+                                        });
+                                      });
+                                    } else {
+                                      frappe.show_alert("No draft activities found for this week.");
+                                    }
+                                  }
+                                });
+                              });
+                              
                             allTasks.forEach(task => {
                                 const color = customerColors[task.custom_customer];
                                 const start = new Date(task.exp_start_date);
@@ -509,12 +626,27 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                         );
                           
                                         if (!alreadyAssigned) {
-                                          doc.activity_allocation_details.push({
-                                            activity_name: subject,
-                                            activity_date: date,
-                                            instructor,
-                                            start_time
-                                          });
+                                          // Add new detail
+                                          const qualification = getInstructorQualification(instructors, instructor, subject);
+                                            doc.activity_allocation_details.push({
+                                                activity_name: subject,
+                                                activity_date: date,
+                                                instructor,
+                                                start_time,
+                                                qualification
+                                            });
+
+                                          // Update session details for all matching activities
+                                          const sessionDetails = getSessionDetails(doc.activity_allocation_details, subject, date);
+                                          if (sessionDetails) {
+                                            doc.activity_allocation_details.forEach(detail => {
+                                              if (detail.activity_name === subject && detail.activity_date === date) {
+                                                detail.session = sessionDetails.session;
+                                                detail.start_time = sessionDetails.start_time;
+                                                detail.end_time = sessionDetails.end_time;
+                                              }
+                                            });
+                                          }
                           
                                           frappe.call({
                                             method: 'frappe.client.save',
@@ -530,6 +662,10 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                       }
                                     });
                                   } else {
+                                    // Determine initial session details
+                                    const session = 'Half Day';
+                                    const end_time = block === 'am' ? `${date} 12:30:00` : `${date} 17:30:00`;
+
                                     frappe.call({
                                       method: 'frappe.client.insert',
                                       args: {
@@ -540,12 +676,15 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                           start_date: date,
                                           end_date: date,
                                           custom_no_of_people: no_of_people,
-                                          activity_allocation_details: [{
+                                        activity_allocation_details: [{
                                             activity_name: subject,
                                             activity_date: date,
                                             instructor,
-                                            start_time
-                                          }]
+                                            start_time,
+                                            end_time,
+                                            session,
+                                            qualification: getInstructorQualification(instructors, instructor, subject)
+                                        }]
                                         }
                                       },
                                       callback: function () {
@@ -589,13 +728,13 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
 
                                         let changed = false;
                                         doc.activity_allocation_details.forEach(detail => {
-                                            if (
-                                                detail.activity_name === data.activity_name &&
-                                                detail.activity_date === data.activity_date &&
-                                                detail.instructor === data.instructor
-                                            ) {
-                                                detail.instructor = newInstructor;
-                                                changed = true;
+                                            if (detail.activity_name === subject && detail.activity_date === date) {
+                                                detail.session = sessionDetails.session;
+                                                detail.start_time = sessionDetails.start_time;
+                                                detail.end_time = sessionDetails.end_time;
+                                                if (!detail.qualification) {
+                                                    detail.qualification = getInstructorQualification(instructors, detail.instructor, subject);
+                                                }
                                             }
                                         });
 
@@ -696,8 +835,10 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                 renderPage();
                             });
                         }); 
+                    });
                     } 
                 }); 
+            
             } 
         }); 
     };
