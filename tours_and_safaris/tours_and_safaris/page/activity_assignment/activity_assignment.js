@@ -131,54 +131,143 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                         fetchAllocations(weekStart, weekEnd, (allocations) => {
 							
                             let html = `
-                                <div style="margin-bottom: 1rem;">
-                                    <button class="btn btn-default prev-week">&larr; Prev</button>
-                                    <span style="margin: 0 1rem; font-weight: bold;">Week of ${week.start.toDateString()}</span>
-                                    <button class="btn btn-default next-week">Next &rarr;</button>
+                                <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <button class="btn btn-default prev-week">&larr; Prev</button>
+                                        <span style="margin: 0 1rem; font-weight: bold;">Week of ${week.start.toDateString()}</span>
+                                        <button class="btn btn-default next-week">Next &rarr;</button>
+                                    </div>
+                                    <button class="btn btn-primary print-button">🖨️ Print</button>
                                 </div>
-                                <table class="table table-bordered">
-                                    <thead>
-                                        <tr>
-                                            <th>Customer (People)</th>`;
-
+                                
+                                <div id="print-area">
+                                    <div class="table-scroll-wrapper" style="max-height: 75vh; overflow-y: auto; border: 1px solid #ddd;">
+                                        <table class="table table-bordered activity-table" style="border-collapse: collapse; width: 100%;">
+                                            <thead>
+                                                <tr>
+                                                    <th style="position: sticky; top: 0; background-color: #fff; z-index: 3;">Customer (People)</th>`;
+                                                    
                             weekDates.forEach(d => {
-                                html += `<th colspan="2" style="text-align: center; background-color: #f1f1f1;">${d.label}</th>`;
+                                html += `<th colspan="2" style="text-align: center; background-color: #f1f1f1; position: sticky; top: 0; z-index: 3;">${d.label}</th>`;
                             });
 
-                            html += `</tr><tr><td></td>`;
+                            html += `</tr><tr><td style="position: sticky; top: 40px; background-color: #fff; z-index: 2;"></td>`;
+
                             weekDates.forEach(() => {
-                                html += `<td style="text-align:center">AM</td><td style="text-align:center">PM</td>`;
+                                html += `
+                                    <td style="text-align:center; position: sticky; top: 40px; background-color: #fff; z-index: 2;">AM</td>
+                                    <td style="text-align:center; position: sticky; top: 40px; background-color: #fff; z-index: 2;">PM</td>`;
                             });
+
                             html += `</tr></thead><tbody>`;
 
-                            let rowIndex = 0;
-                            Object.entries(customerGroups).forEach(([cust, groups]) => {
-                                groups.forEach((group, gIndex) => {
-                                    const isGroup = groups.length > 1;
-                                    const color = customerColors[cust];
-                                    const label = isGroup
-                                        ? `${group.name} Group ${gIndex + 1} (${group.people})`
-                                        : `${group.name} (${group.people})`;
-                            
-                                    html += `<tr>
-                                        <td style="background-color: ${color}; font-weight: bold; cursor: pointer;" 
-                                            class="customer-cell" 
-                                            data-customer="${cust}" 
-                                            data-index="${gIndex}">
-                                            ${label}
-                                        </td>`;
-                            
-                                    weekDates.forEach((d, dayIndex) => {
-                                        ['am', 'pm'].forEach(block => {
-                                            const cellId = `cust-${rowIndex}-${dayIndex}-${block}`;
-                                            html += `<td id="${cellId}" style="min-height: 60px;"></td>`;
-                                        });
-                                    });
-                            
-                                    html += `</tr>`;
-                                    rowIndex++;
+                            // Your rows will continue building here...
+
+                            $(`<style>
+                                .activity-table thead th,
+                                .activity-table thead td {
+                                    position: sticky;
+                                    background-color: #fff;
+                                }
+
+                                .activity-table thead tr:first-child th {
+                                    top: 0;
+                                    z-index: 3;
+                                }
+
+                                .activity-table thead tr:nth-child(2) th,
+                                .activity-table thead tr:nth-child(2) td {
+                                    top: 40px;
+                                    z-index: 2;
+                                }
+
+                                .table-scroll-wrapper {
+                                    overflow-y: auto;
+                                    max-height: 75vh;
+                                }
+
+                                @media print {
+                                    body * {
+                                        visibility: hidden;
+                                    }
+
+                                    #print-area, #print-area * {
+                                        visibility: visible;
+                                    }
+
+                                    #print-area {
+                                        position: absolute;
+                                        top: 0;
+                                        left: 0;
+                                        width: 100%;
+                                    }
+
+                                    .print-button,
+                                    .prev-week,
+                                    .next-week {
+                                        display: none !important;
+                                    }
+
+                                    th, td {
+                                        -webkit-print-color-adjust: exact !important;
+                                        print-color-adjust: exact !important;
+                                    }
+                                }
+                            </style>`).appendTo('head');
+
+                            // Attach print handler
+                            setTimeout(() => {
+                                $('.print-button').on('click', () => {
+                                    window.print();
                                 });
-                            });
+                            }, 100);
+
+
+                            let rowIndex = 0;
+
+Object.entries(customerGroups).forEach(([cust, groups]) => {
+    const allGroups = [...groups];
+
+    // Include subtasks for this customer
+    const subTasks = tasks.filter(t =>
+        t.custom_customer === cust && t.parent_task
+    ).map((t, i) => ({
+        name: cust,
+        people: t.custom_no_of_people || 0,
+        subject: t.subject,
+        isSubtask: true
+    }));
+
+    allGroups.push(...subTasks);
+
+    allGroups.forEach((group, gIndex) => {
+        const color = customerColors[cust];
+        const label = group.isSubtask
+            ? `↳ ${group.subject} (${group.people})`
+            : allGroups.length > 1
+                ? `${group.name} Group ${gIndex + 1} (${group.people})`
+                : `${group.name} (${group.people})`;
+
+        html += `<tr>
+            <td style="background-color: ${color}; font-weight: ${group.isSubtask ? 'normal' : 'bold'}; cursor: ${group.isSubtask ? 'default' : 'pointer'}; padding-left: ${group.isSubtask ? '30px' : '10px'};"
+                class="${group.isSubtask ? '' : 'customer-cell'}" 
+                data-customer="${cust}" 
+                data-index="${gIndex}">
+                ${label}
+            </td>`;
+
+        weekDates.forEach((d, dayIndex) => {
+            ['am', 'pm'].forEach(block => {
+                const cellId = `cust-${rowIndex}-${dayIndex}-${block}`;
+                html += `<td id="${cellId}" style="min-height: 60px;"></td>`;
+            });
+        });
+
+        html += `</tr>`;
+        rowIndex++;
+    });
+});
+
                             
                             html += `<tr><td colspan="${weekDates.length * 2 + 1}"><hr></td></tr>`;
 
@@ -485,6 +574,7 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
 $('.customer-cell').off('click').on('click', function () {
 	const cust = $(this).data('customer');
 	const index = $(this).data('index');
+	const group = customerGroups[cust][index];
 
 	frappe.prompt(
 		{
@@ -494,27 +584,58 @@ $('.customer-cell').off('click').on('click', function () {
 			reqd: 1
 		},
 		(values) => {
-			const currentGroup = customerGroups[cust][index];
 			const numGroups = values.group_count;
-			const peoplePerGroup = Math.floor(currentGroup.people / numGroups);
-			const remainder = currentGroup.people % numGroups;
+			const totalPeople = group.people;
+			const peoplePerGroup = Math.floor(totalPeople / numGroups);
+			const remainder = totalPeople % numGroups;
 
 			if (numGroups > 1 && peoplePerGroup > 0) {
-				const newGroups = [];
+				
+				frappe.call({
+					method: "frappe.client.get_list",
+					args: {
+						doctype: "Task",
+						filters: {
+							custom_customer: cust,
+							parent_task: ""
+						},
+						fields: ["name", "subject"]
+					},
+					callback: function (r) {
+						const parentTask = r.message && r.message[0];
 
-				for (let i = 0; i < numGroups; i++) {
-					let people = peoplePerGroup;
-					if (i < remainder) people += 1;
+						if (!parentTask) {
+							frappe.msgprint("Parent task not found for this customer.");
+							return;
+						}
 
-					newGroups.push({
-						name: cust, 
-						group_index: i + 1,
-						people,
-					});
-				}
+						for (let i = 0; i < numGroups; i++) {
+							let people = peoplePerGroup;
+							if (i < remainder) people += 1;
 
-				customerGroups[cust].splice(index, 1, ...newGroups);
-				renderPage();
+							frappe.call({
+								method: "frappe.client.insert",
+								args: {
+									doc: {
+										doctype: "Task",
+										subject: parentTask.subject,
+										custom_customer: cust,
+										parent_task: parentTask.name,
+										custom_no_of_people: people,
+										custom_is_activity: 1
+									}
+								},
+								callback: function () {
+									// After last group is inserted, reload
+									if (i === numGroups - 1) {
+										frappe.show_alert("Groups created. Reloading...");
+										setTimeout(() => location.reload(), 800);
+									}
+								}
+							});
+						}
+					}
+				});
 			} else {
 				frappe.msgprint('Not enough people to split into that many groups.');
 			}
