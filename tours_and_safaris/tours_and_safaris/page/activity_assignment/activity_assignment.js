@@ -29,41 +29,40 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
     const formatDate = date => date.toISOString().slice(0, 10);
 
     const fetchAllocations = (weekStart, weekEnd, callback) => {
-		frappe.call({
-			method: 'frappe.client.get_list',
-			args: {
-				doctype: 'Activity Allocation',
-				filters: [
-					['start_date', '<=', formatDate(weekEnd)],
-					['end_date', '>=', formatDate(weekStart)]
-				],
-				fields: ['name', 'customer', 'start_date', 'end_date', 'activity_name'],
-			},
-			callback: (res) => {
-				const allocations = res.message || [];
-	
-				const promises = allocations.map(allocation =>
-					new Promise(resolve => {
-						frappe.call({
-							method: 'frappe.client.get',
-							args: {
-								doctype: 'Activity Allocation',
-								name: allocation.name
-							},
-							callback: (res2) => {
-								const fullDoc = res2.message;
-								allocation.details = fullDoc.activity_allocation_details || [];
-								resolve();
-							}
-						});
-					})
-				);
-	
-				Promise.all(promises).then(() => callback(allocations));
-			}
-		});
-	};
-	
+        frappe.call({
+            method: 'frappe.client.get_list',
+            args: {
+                doctype: 'Activity Allocation',
+                filters: [
+                    ['start_date', '<=', formatDate(weekEnd)],
+                    ['end_date', '>=', formatDate(weekStart)]
+                ],
+                fields: ['name', 'customer', 'start_date', 'end_date', 'activity_name'],
+            },
+            callback: (res) => {
+                const allocations = res.message || [];
+    
+                const promises = allocations.map(allocation =>
+                    new Promise(resolve => {
+                        frappe.call({
+                            method: 'frappe.client.get',
+                            args: {
+                                doctype: 'Activity Allocation',
+                                name: allocation.name
+                            },
+                            callback: (res2) => {
+                                const fullDoc = res2.message;
+                                allocation.details = fullDoc.activity_allocation_details || [];
+                                resolve();
+                            }
+                        });
+                    })
+                );
+    
+                Promise.all(promises).then(() => callback(allocations));
+            }
+        });
+    };
 
     const deleteAllocationDetail = (parent, date, subject, instructor) => {
         frappe.call({
@@ -100,11 +99,16 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                     status: 'Open',
                     custom_is_activity: 1
                 },
-                fields: ['name', 'subject', 'custom_customer', 'custom_no_of_people', 'exp_start_date', 'exp_end_date']
+                fields: ['name', 'subject', 'custom_customer', 'custom_no_of_people', 'exp_start_date', 'exp_end_date', 'parent_task']
             },
             callback: function (taskRes) {
-                const tasks = taskRes.message || [];
-                const uniqueCustomers = [...new Set(tasks.map(t => t.custom_customer))];
+                const allTasks = taskRes.message || [];
+                
+            
+                const mainTasks = allTasks.filter(t => !t.parent_task);
+                const subTasks = allTasks.filter(t => t.parent_task);
+                
+                const uniqueCustomers = [...new Set(allTasks.map(t => t.custom_customer))];
 
                 const customerColors = {};
                 uniqueCustomers.forEach((cust, idx) => {
@@ -112,11 +116,34 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                     customerColors[cust] = `hsl(${hue}, 70%, 80%)`;
                 });
 
+        
                 customerGroups = {};
                 uniqueCustomers.forEach(cust => {
-                    const customerTasks = tasks.filter(t => t.custom_customer === cust);
-                    const totalPeople = customerTasks[0]?.custom_no_of_people || 0;
-                    customerGroups[cust] = [{ name: cust, people: totalPeople }];
+                    const customerMainTasks = mainTasks.filter(t => t.custom_customer === cust);
+                    const customerSubTasks = subTasks.filter(t => t.custom_customer === cust);
+                    
+
+                    if (customerMainTasks.length > 0) {
+                        const mainTask = customerMainTasks[0];
+                        customerGroups[cust] = [{ 
+                            name: cust, 
+                            people: mainTask.custom_no_of_people || 0,
+                            isMain: true,
+                            taskName: mainTask.name
+                        }];
+                        
+                    
+                        customerSubTasks.forEach(subTask => {
+                            customerGroups[cust].push({
+                                name: cust,
+                                people: subTask.custom_no_of_people || 0,
+                                subject: subTask.subject,
+                                isSubtask: true,
+                                taskName: subTask.name,
+                                parentTask: subTask.parent_task
+                            });
+                        });
+                    }
                 });
 
                 frappe.call({
@@ -129,7 +156,7 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                         const instructors = instRes.message || [];
 
                         fetchAllocations(weekStart, weekEnd, (allocations) => {
-							
+                            
                             let html = `
                                 <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                                     <div>
@@ -160,8 +187,6 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                             });
 
                             html += `</tr></thead><tbody>`;
-
-                            // Your rows will continue building here...
 
                             $(`<style>
                                 .activity-table thead th,
@@ -222,53 +247,39 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                 });
                             }, 100);
 
-
                             let rowIndex = 0;
 
-Object.entries(customerGroups).forEach(([cust, groups]) => {
-    const allGroups = [...groups];
+                            Object.entries(customerGroups).forEach(([cust, groups]) => {
+                                const allGroups = [...groups];
 
-    // Include subtasks for this customer
-    const subTasks = tasks.filter(t =>
-        t.custom_customer === cust && t.parent_task
-    ).map((t, i) => ({
-        name: cust,
-        people: t.custom_no_of_people || 0,
-        subject: t.subject,
-        isSubtask: true
-    }));
+                                allGroups.forEach((group, gIndex) => {
+                                    const color = customerColors[cust];
+                                    const label = group.isSubtask
+                                        ? `↳ ${group.subject} (${group.people})`
+                                        : allGroups.length > 1 && !group.isMain
+                                            ? `${group.name} Group ${gIndex + 1} (${group.people})`
+                                            : `${group.name} (${group.people})`;
 
-    allGroups.push(...subTasks);
+                                    html += `<tr>
+                                        <td style="background-color: ${color}; font-weight: ${group.isSubtask ? 'normal' : 'bold'}; cursor: ${group.isSubtask ? 'default' : 'pointer'}; padding-left: ${group.isSubtask ? '30px' : '10px'};"
+                                            class="${group.isSubtask ? '' : 'customer-cell'}" 
+                                            data-customer="${cust}" 
+                                            data-index="${gIndex}">
+                                            ${label}
+                                        </td>`;
 
-    allGroups.forEach((group, gIndex) => {
-        const color = customerColors[cust];
-        const label = group.isSubtask
-            ? `↳ ${group.subject} (${group.people})`
-            : allGroups.length > 1
-                ? `${group.name} Group ${gIndex + 1} (${group.people})`
-                : `${group.name} (${group.people})`;
+                                    weekDates.forEach((d, dayIndex) => {
+                                        ['am', 'pm'].forEach(block => {
+                                            const cellId = `cust-${rowIndex}-${dayIndex}-${block}`;
+                                            html += `<td id="${cellId}" style="min-height: 60px;"></td>`;
+                                        });
+                                    });
 
-        html += `<tr>
-            <td style="background-color: ${color}; font-weight: ${group.isSubtask ? 'normal' : 'bold'}; cursor: ${group.isSubtask ? 'default' : 'pointer'}; padding-left: ${group.isSubtask ? '30px' : '10px'};"
-                class="${group.isSubtask ? '' : 'customer-cell'}" 
-                data-customer="${cust}" 
-                data-index="${gIndex}">
-                ${label}
-            </td>`;
+                                    html += `</tr>`;
+                                    rowIndex++;
+                                });
+                            });
 
-        weekDates.forEach((d, dayIndex) => {
-            ['am', 'pm'].forEach(block => {
-                const cellId = `cust-${rowIndex}-${dayIndex}-${block}`;
-                html += `<td id="${cellId}" style="min-height: 60px;"></td>`;
-            });
-        });
-
-        html += `</tr>`;
-        rowIndex++;
-    });
-});
-
-                            
                             html += `<tr><td colspan="${weekDates.length * 2 + 1}"><hr></td></tr>`;
 
                             instructors.forEach((inst, instIndex) => {
@@ -285,7 +296,8 @@ Object.entries(customerGroups).forEach(([cust, groups]) => {
                             html += `</tbody></table>`;
                             $(page.body).html(html);
 
-                            tasks.forEach(task => {
+                            // Render tasks in correct rows
+                            allTasks.forEach(task => {
                                 const color = customerColors[task.custom_customer];
                                 const start = new Date(task.exp_start_date);
                                 const end = new Date(task.exp_end_date);
@@ -293,8 +305,29 @@ Object.entries(customerGroups).forEach(([cust, groups]) => {
                                 for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                                     const dayIndex = weekDates.findIndex(wd => formatDate(wd.date) === formatDate(d));
                                     if (dayIndex !== -1) {
-                                        const custIndex = Object.keys(customerGroups).indexOf(task.custom_customer);
-                                        const amCell = $(`#cust-${custIndex}-${dayIndex}-am`);
+                                        // Find the correct row index for this task
+                                        let custRowIndex = 0;
+                                        let found = false;
+                                        
+                                        for (const [custName, groups] of Object.entries(customerGroups)) {
+                                            if (custName === task.custom_customer) {
+                                                // Find the specific group/subtask this task belongs to
+                                                const groupIndex = groups.findIndex(g => 
+                                                    (g.isMain && !task.parent_task) || 
+                                                    (g.isSubtask && g.taskName === task.name)
+                                                );
+                                                if (groupIndex !== -1) {
+                                                    custRowIndex += groupIndex;
+                                                    found = true;
+                                                    break;
+                                                }
+                                            }
+                                            if (!found) {
+                                                custRowIndex += groups.length;
+                                            }
+                                        }
+                                        
+                                        const amCell = $(`#cust-${custRowIndex}-${dayIndex}-am`);
                                         
                                         const el = $(`
                                             <div 
@@ -318,7 +351,6 @@ Object.entries(customerGroups).forEach(([cust, groups]) => {
                                             frappe.show_alert(`Copied: ${subject} (${people} pax)`);
                                         });
                                         
-                            
                                         amCell.append(el);
                                     }
                                 }
@@ -332,8 +364,6 @@ Object.entries(customerGroups).forEach(([cust, groups]) => {
                                 clipboard = { subject, color, custom_customer: customer };
                                 frappe.show_alert(`Copied ${subject}`);
                             });
-                            
-                            
 
                             allocations.forEach(allocation => {
                                 allocation.details.forEach(detail => {
@@ -343,7 +373,7 @@ Object.entries(customerGroups).forEach(([cust, groups]) => {
                                         const block = detail.start_time.includes('13') ? 'pm' : 'am';
                                         const instIndex = instructors.findIndex(i => i.name === detail.instructor);
                                         const cellId = `inst-${instIndex}-${dayIndex}-${block}`;
-                                        const task = tasks.find(t => t.subject === detail.activity_name);
+                                        const task = allTasks.find(t => t.subject === detail.activity_name);
                                         const color = customerColors[task?.custom_customer] || '#ddd';
                                         const el = $(`<div class="assigned-task" style="background-color: ${color}; padding: 2px 6px; border-radius: 4px; margin-bottom: 2px; cursor: pointer;" title="Click to remove">${detail.activity_name}</div>`);
                                         
@@ -361,7 +391,6 @@ Object.entries(customerGroups).forEach(([cust, groups]) => {
                                                 instructor: $(this).data('instructor')
                                             }));
                                         });
-                            
                             
                                         el.on('click', function (e) {
                                             if (!e.originalEvent?.dataTransfer) {
@@ -385,7 +414,6 @@ Object.entries(customerGroups).forEach(([cust, groups]) => {
                                                         );
                                         
                                                         if (doc.activity_allocation_details.length === 0) {
-            
                                                             frappe.call({
                                                                 method: 'frappe.client.delete',
                                                                 args: {
@@ -398,7 +426,6 @@ Object.entries(customerGroups).forEach(([cust, groups]) => {
                                                                 }
                                                             });
                                                         } else {
-                                                            
                                                             frappe.call({
                                                                 method: 'frappe.client.save',
                                                                 args: { doc },
@@ -413,7 +440,6 @@ Object.entries(customerGroups).forEach(([cust, groups]) => {
                                             }
                                         });
                                         
-                            
                                         $(`#${cellId}`).append(el);
                                     }
                                 });
@@ -513,155 +539,151 @@ Object.entries(customerGroups).forEach(([cust, groups]) => {
                                   }
                                 }
                               });
-                            
                             })
                             
-.on('dragover', function (e) {
-    e.preventDefault();
-    $(this).addClass('drag-over');
-})
-.on('dragleave', function (e) {
-    $(this).removeClass('drag-over');
-})
-.on('drop', function (e) {
-    e.preventDefault();
-    $(this).removeClass('drag-over');
+                            .on('dragover', function (e) {
+                                e.preventDefault();
+                                $(this).addClass('drag-over');
+                            })
+                            .on('dragleave', function (e) {
+                                $(this).removeClass('drag-over');
+                            })
+                            .on('drop', function (e) {
+                                e.preventDefault();
+                                $(this).removeClass('drag-over');
 
-    const data = JSON.parse(e.originalEvent.dataTransfer.getData('text/plain'));
-    const newInstructor = $(this).data('instructor');
+                                const data = JSON.parse(e.originalEvent.dataTransfer.getData('text/plain'));
+                                const newInstructor = $(this).data('instructor');
 
-    if (data.instructor === newInstructor) {
-        frappe.show_alert('Already assigned to this instructor');
-        return;
-    }
+                                if (data.instructor === newInstructor) {
+                                    frappe.show_alert('Already assigned to this instructor');
+                                    return;
+                                }
 
-    frappe.call({
-        method: 'frappe.client.get',
-        args: {
-            doctype: 'Activity Allocation',
-            name: data.allocation_name
-        },
-        callback: function (res) {
-            const doc = res.message;
-            if (!doc || !doc.activity_allocation_details) return;
+                                frappe.call({
+                                    method: 'frappe.client.get',
+                                    args: {
+                                        doctype: 'Activity Allocation',
+                                        name: data.allocation_name
+                                    },
+                                    callback: function (res) {
+                                        const doc = res.message;
+                                        if (!doc || !doc.activity_allocation_details) return;
 
-            let changed = false;
-            doc.activity_allocation_details.forEach(detail => {
-                if (
-                    detail.activity_name === data.activity_name &&
-                    detail.activity_date === data.activity_date &&
-                    detail.instructor === data.instructor
-                ) {
-                    detail.instructor = newInstructor;
-                    changed = true;
-                }
-            });
+                                        let changed = false;
+                                        doc.activity_allocation_details.forEach(detail => {
+                                            if (
+                                                detail.activity_name === data.activity_name &&
+                                                detail.activity_date === data.activity_date &&
+                                                detail.instructor === data.instructor
+                                            ) {
+                                                detail.instructor = newInstructor;
+                                                changed = true;
+                                            }
+                                        });
 
-            if (changed) {
-                frappe.call({
-                    method: 'frappe.client.save',
-                    args: { doc },
-                    callback: function () {
-                        frappe.show_alert('Instructor updated');
-                        renderPage();
-                    }
-                });
-            }
-        }
-    });
-});
+                                        if (changed) {
+                                            frappe.call({
+                                                method: 'frappe.client.save',
+                                                args: { doc },
+                                                callback: function () {
+                                                    frappe.show_alert('Instructor updated');
+                                                    renderPage();
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+                            });
 
-$('.customer-cell').off('click').on('click', function () {
-	const cust = $(this).data('customer');
-	const index = $(this).data('index');
-	const group = customerGroups[cust][index];
+                            $('.customer-cell').off('click').on('click', function () {
+                                const cust = $(this).data('customer');
+                                const index = $(this).data('index');
+                                const group = customerGroups[cust][index];
 
-	frappe.prompt(
-		{
-			label: 'How many groups?',
-			fieldname: 'group_count',
-			fieldtype: 'Int',
-			reqd: 1
-		},
-		(values) => {
-			const numGroups = values.group_count;
-			const totalPeople = group.people;
-			const peoplePerGroup = Math.floor(totalPeople / numGroups);
-			const remainder = totalPeople % numGroups;
+                                frappe.prompt(
+                                    {
+                                        label: 'How many groups?',
+                                        fieldname: 'group_count',
+                                        fieldtype: 'Int',
+                                        reqd: 1
+                                    },
+                                    (values) => {
+                                        const numGroups = values.group_count;
+                                        const totalPeople = group.people;
+                                        const peoplePerGroup = Math.floor(totalPeople / numGroups);
+                                        const remainder = totalPeople % numGroups;
 
-			if (numGroups > 1 && peoplePerGroup > 0) {
-				
-				frappe.call({
-					method: "frappe.client.get_list",
-					args: {
-						doctype: "Task",
-						filters: {
-							custom_customer: cust,
-							parent_task: ""
-						},
-						fields: ["name", "subject"]
-					},
-					callback: function (r) {
-						const parentTask = r.message && r.message[0];
+                                        if (numGroups > 1 && peoplePerGroup > 0) {
+                                            
+                                            frappe.call({
+                                                method: "frappe.client.get_list",
+                                                args: {
+                                                    doctype: "Task",
+                                                    filters: {
+                                                        custom_customer: cust,
+                                                        parent_task: ""
+                                                    },
+                                                    fields: ["name", "subject"]
+                                                },
+                                                callback: function (r) {
+                                                    const parentTask = r.message && r.message[0];
 
-						if (!parentTask) {
-							frappe.msgprint("Parent task not found for this customer.");
-							return;
-						}
+                                                    if (!parentTask) {
+                                                        frappe.msgprint("Parent task not found for this customer.");
+                                                        return;
+                                                    }
 
-						for (let i = 0; i < numGroups; i++) {
-							let people = peoplePerGroup;
-							if (i < remainder) people += 1;
+                                                    for (let i = 0; i < numGroups; i++) {
+                                                        let people = peoplePerGroup;
+                                                        if (i < remainder) people += 1;
 
-							frappe.call({
-								method: "frappe.client.insert",
-								args: {
-									doc: {
-										doctype: "Task",
-										subject: parentTask.subject,
-										custom_customer: cust,
-										parent_task: parentTask.name,
-										custom_no_of_people: people,
-										custom_is_activity: 1
-									}
-								},
-								callback: function () {
-									// After last group is inserted, reload
-									if (i === numGroups - 1) {
-										frappe.show_alert("Groups created. Reloading...");
-										setTimeout(() => location.reload(), 800);
-									}
-								}
-							});
-						}
-					}
-				});
-			} else {
-				frappe.msgprint('Not enough people to split into that many groups.');
-			}
-		},
-		'Split Into Groups'
-	);
-});
+                                                        frappe.call({
+                                                            method: "frappe.client.insert",
+                                                            args: {
+                                                                doc: {
+                                                                    doctype: "Task",
+                                                                    subject: parentTask.subject,
+                                                                    custom_customer: cust,
+                                                                    parent_task: parentTask.name,
+                                                                    custom_no_of_people: people,
+                                                                    custom_is_activity: 1
+                                                                }
+                                                            },
+                                                            callback: function () {
+                                                                // After last group is inserted, reload
+                                                                if (i === numGroups - 1) {
+                                                                    frappe.show_alert("Groups created. Reloading...");
+                                                                    setTimeout(() => location.reload(), 800);
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+                                                }
+                                            });
+                                        } else {
+                                            frappe.msgprint('Not enough people to split into that many groups.');
+                                        }
+                                    },
+                                    'Split Into Groups'
+                                );
+                            });
 
-
-							$('.prev-week').on('click', function () {
-								currentOffset--;
-								renderPage();
-							});
-						
-							$('.next-week').on('click', function () {
-								currentOffset++;
-								renderPage();
-							});
-						
-						}); 
-					} 
-				}); 
-			} 
-		}); 
-	};
-						
-	renderPage();
-}; 
-						
+                            $('.prev-week').on('click', function () {
+                                currentOffset--;
+                                renderPage();
+                            });
+                        
+                            $('.next-week').on('click', function () {
+                                currentOffset++;
+                                renderPage();
+                            });
+                        }); 
+                    } 
+                }); 
+            } 
+        }); 
+    };
+                        
+    renderPage();
+};
