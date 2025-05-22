@@ -154,17 +154,44 @@ const getInstructorQualification = (instructors, instructorName, activityName) =
                     status: 'Open',
                     custom_is_activity: 1
                 },
-                fields: ['name', 'subject', 'custom_customer', 'custom_no_of_people', 'exp_start_date', 'exp_end_date', 'parent_task']
+                fields: ['name', 'subject', 'custom_customer', 'custom_customer_name', 'custom_no_of_people', 'exp_start_date', 'exp_end_date', 'parent_task']
             },
             callback: function (taskRes) {
                 const allTasks = taskRes.message || [];
                 
-                // Separate main tasks and subtasks
-                const mainTasks = allTasks.filter(t => !t.parent_task);
-                const subTasks = allTasks.filter(t => t.parent_task);
+                // First, determine which customers actually have tasks that will be displayed this week
+                const customersWithTasksThisWeek = new Set();
                 
-                const uniqueCustomers = [...new Set(allTasks.map(t => t.custom_customer))];
+                allTasks.forEach(task => {
+                    if (!task.exp_start_date || !task.exp_end_date) return;
+                    
+                    const start = new Date(task.exp_start_date);
+                    const end = new Date(task.exp_end_date);
+                    
+                    // Check each day of the task's duration
+                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                        const dayIndex = weekDates.findIndex(wd => formatDate(wd.date) === formatDate(d));
+                        if (dayIndex !== -1) {
+                            // This task has activity on a day within the current week
+                            customersWithTasksThisWeek.add(task.custom_customer);
+                            break; // No need to check other days for this task
+                        }
+                    }
+                });
+
+                // Only include customers that have tasks displaying this week
+                const tasksInWeek = allTasks.filter(task => 
+                    customersWithTasksThisWeek.has(task.custom_customer)
+                );
+
+                // Only show customers that have tasks in the current week
+                const uniqueCustomers = Array.from(customersWithTasksThisWeek);
                 uniqueCustomers.sort(); // Sort for consistent ordering
+
+                // If no customers have tasks this week, don't show any customer rows
+                if (uniqueCustomers.length === 0) {
+                    console.log('No customers have tasks in this week');
+                }
 
                 // Use hash-based color generation for consistent colors
                 const customerColors = {};
@@ -172,17 +199,18 @@ const getInstructorQualification = (instructors, instructorName, activityName) =
                     customerColors[cust] = getCustomerColor(cust);
                 });
 
-                
+                // Build customer groups including subtasks - only for customers with tasks in this week
                 customerGroups = {};
                 uniqueCustomers.forEach(cust => {
-                    const customerMainTasks = mainTasks.filter(t => t.custom_customer === cust);
-                    const customerSubTasks = subTasks.filter(t => t.custom_customer === cust);
+                    const customerMainTasks = tasksInWeek.filter(t => t.custom_customer === cust && !t.parent_task);
+                    const customerSubTasks = tasksInWeek.filter(t => t.custom_customer === cust && t.parent_task);
                     
-                    
+                    // Start with main task
                     if (customerMainTasks.length > 0) {
                         const mainTask = customerMainTasks[0];
                         customerGroups[cust] = [{ 
-                            name: cust, 
+                            name: cust,
+                            displayName: mainTask.custom_customer_name || cust, // Use custom_customer_name for display
                             people: mainTask.custom_no_of_people || 0,
                             isMain: true,
                             taskName: mainTask.name
@@ -192,6 +220,7 @@ const getInstructorQualification = (instructors, instructorName, activityName) =
                         customerSubTasks.forEach(subTask => {
                             customerGroups[cust].push({
                                 name: cust,
+                                displayName: subTask.custom_customer_name || cust, // Use custom_customer_name for display
                                 people: subTask.custom_no_of_people || 0,
                                 subject: subTask.subject,
                                 isSubtask: true,
@@ -201,6 +230,7 @@ const getInstructorQualification = (instructors, instructorName, activityName) =
                         });
                     }
                 });
+
 
                 frappe.call({
                     method: 'frappe.client.get_list',
@@ -218,7 +248,10 @@ const getInstructorQualification = (instructors, instructorName, activityName) =
                                     method: 'frappe.client.get',
                                     args: {
                                         doctype: 'Instructor',
-                                        name: instructor.name
+                                        name: instructor.name,
+                                        filters:{
+                                            'enabled': 1
+                                        }
                                     },
                                     callback: (res) => {
                                         instructor.activity_levels = res.message.instructor_acrivity_level || [];
@@ -341,8 +374,8 @@ const getInstructorQualification = (instructors, instructorName, activityName) =
                                     const label = group.isSubtask
                                         ? `↳ ${group.subject} (${group.people})`
                                         : allGroups.length > 1 && !group.isMain
-                                            ? `${group.name} Group ${gIndex + 1} (${group.people})`
-                                            : `${group.name} (${group.people})`;
+                                            ? `${group.displayName} Group ${gIndex + 1} (${group.people})`
+                                            : `${group.displayName} (${group.people})`;
 
                                     html += `<tr>
                                         <td style="background-color: ${color}; font-weight: ${group.isSubtask ? 'normal' : 'bold'}; cursor: ${group.isSubtask ? 'default' : 'pointer'}; padding-left: ${group.isSubtask ? '30px' : '10px'};"
@@ -440,15 +473,14 @@ const getInstructorQualification = (instructors, instructorName, activityName) =
                                 for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                                     const dayIndex = weekDates.findIndex(wd => formatDate(wd.date) === formatDate(d));
                                     if (dayIndex !== -1) {
-                                        
+                                
                                         let custRowIndex = 0;
                                         let found = false;
-                                        
+                                
                                         for (const [custName, groups] of Object.entries(customerGroups)) {
                                             if (custName === task.custom_customer) {
-                                    
-                                                const groupIndex = groups.findIndex(g => 
-                                                    (g.isMain && !task.parent_task) || 
+                                                const groupIndex = groups.findIndex(g =>
+                                                    (g.isMain && !task.parent_task) ||
                                                     (g.isSubtask && g.taskName === task.name)
                                                 );
                                                 if (groupIndex !== -1) {
@@ -461,9 +493,15 @@ const getInstructorQualification = (instructors, instructorName, activityName) =
                                                 custRowIndex += groups.length;
                                             }
                                         }
-                                        
+                                
+                                        // ✅ Highlight both AM and PM cells for the task duration
                                         const amCell = $(`#cust-${custRowIndex}-${dayIndex}-am`);
-                                        
+                                        const pmCell = $(`#cust-${custRowIndex}-${dayIndex}-pm`);
+                                
+                                        amCell.css('background-color', color);
+                                        pmCell.css('background-color', color);
+                                
+                                        // Existing: Add draggable task block to AM cell (or decide which one)
                                         const el = $(`
                                             <div 
                                                 class="task-cell" 
@@ -474,21 +512,20 @@ const getInstructorQualification = (instructors, instructorName, activityName) =
                                                 ${task.subject}
                                             </div>
                                         `);
-                                        
-                                        
+                                
                                         el.off('click').on('click', function () {
                                             const subject = $(this).data('subject');
                                             const customer = $(this).data('customer');
                                             const people = $(this).data('people');
-                                        
-                                            clipboard = { subject, customer, people }; 
-                                        
+                                
+                                            clipboard = { subject, customer, people };
                                             frappe.show_alert(`Copied: ${subject} (${people} pax)`);
                                         });
-                                        
+                                
                                         amCell.append(el);
                                     }
                                 }
+                                
                             });
 
                             // Fixed: Use consistent color lookup for allocations

@@ -9,6 +9,8 @@
  "field_order": [
   "name1",
   "supplier",
+  "column_break_lqsf",
+  "enabled",
   "section_break_efvn",
   "activity_levels"
  ],
@@ -35,11 +37,21 @@
    "hidden": 1,
    "label": "Supplier",
    "options": "Supplier"
+  },
+  {
+   "fieldname": "column_break_lqsf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-29 10:42:16.322618",
+ "modified": "2025-05-22 14:49:47.853359",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Instructor",
