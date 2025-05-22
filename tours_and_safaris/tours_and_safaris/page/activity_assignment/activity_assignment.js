@@ -28,6 +28,19 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
 
     const formatDate = date => date.toISOString().slice(0, 10);
 
+    // Hash-based color generation for consistent colors
+    const getCustomerColor = (customerName) => {
+        if (!customerName) return '#ddd';
+        let hash = 0;
+        for (let i = 0; i < customerName.length; i++) {
+            const char = customerName.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        const hue = Math.abs(hash) % 360;
+        return `hsl(${hue}, 70%, 80%)`;
+    };
+
     const fetchAllocations = (weekStart, weekEnd, callback) => {
         frappe.call({
             method: 'frappe.client.get_list',
@@ -104,25 +117,26 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
             callback: function (taskRes) {
                 const allTasks = taskRes.message || [];
                 
-            
+                // Separate main tasks and subtasks
                 const mainTasks = allTasks.filter(t => !t.parent_task);
                 const subTasks = allTasks.filter(t => t.parent_task);
                 
                 const uniqueCustomers = [...new Set(allTasks.map(t => t.custom_customer))];
+                uniqueCustomers.sort(); // Sort for consistent ordering
 
+                // Use hash-based color generation for consistent colors
                 const customerColors = {};
-                uniqueCustomers.forEach((cust, idx) => {
-                    const hue = (idx * 57) % 360;
-                    customerColors[cust] = `hsl(${hue}, 70%, 80%)`;
+                uniqueCustomers.forEach(cust => {
+                    customerColors[cust] = getCustomerColor(cust);
                 });
 
-        
+                
                 customerGroups = {};
                 uniqueCustomers.forEach(cust => {
                     const customerMainTasks = mainTasks.filter(t => t.custom_customer === cust);
                     const customerSubTasks = subTasks.filter(t => t.custom_customer === cust);
                     
-
+                    
                     if (customerMainTasks.length > 0) {
                         const mainTask = customerMainTasks[0];
                         customerGroups[cust] = [{ 
@@ -132,7 +146,7 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                             taskName: mainTask.name
                         }];
                         
-                    
+                        // Add subtasks
                         customerSubTasks.forEach(subTask => {
                             customerGroups[cust].push({
                                 name: cust,
@@ -211,6 +225,10 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                     max-height: 75vh;
                                 }
 
+                                .drag-over {
+                                    background-color: #e3f2fd !important;
+                                }
+
                                 @media print {
                                     body * {
                                         visibility: hidden;
@@ -240,7 +258,7 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                 }
                             </style>`).appendTo('head');
 
-                            // Attach print handler
+                    
                             setTimeout(() => {
                                 $('.print-button').on('click', () => {
                                     window.print();
@@ -296,7 +314,7 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                             html += `</tbody></table>`;
                             $(page.body).html(html);
 
-                            // Render tasks in correct rows
+                            
                             allTasks.forEach(task => {
                                 const color = customerColors[task.custom_customer];
                                 const start = new Date(task.exp_start_date);
@@ -305,13 +323,13 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                 for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                                     const dayIndex = weekDates.findIndex(wd => formatDate(wd.date) === formatDate(d));
                                     if (dayIndex !== -1) {
-                                        // Find the correct row index for this task
+                                        
                                         let custRowIndex = 0;
                                         let found = false;
                                         
                                         for (const [custName, groups] of Object.entries(customerGroups)) {
                                             if (custName === task.custom_customer) {
-                                                // Find the specific group/subtask this task belongs to
+                                    
                                                 const groupIndex = groups.findIndex(g => 
                                                     (g.isMain && !task.parent_task) || 
                                                     (g.isSubtask && g.taskName === task.name)
@@ -340,13 +358,13 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                             </div>
                                         `);
                                         
+                                        
                                         el.off('click').on('click', function () {
                                             const subject = $(this).data('subject');
                                             const customer = $(this).data('customer');
                                             const people = $(this).data('people');
-                                            const color = $(this).css('background-color');
                                         
-                                            clipboard = { subject, customer, color, people };
+                                            clipboard = { subject, customer, people }; 
                                         
                                             frappe.show_alert(`Copied: ${subject} (${people} pax)`);
                                         });
@@ -355,16 +373,8 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                     }
                                 }
                             });
-                            
-                            $('.task-cell').off('click').on('click', function () {
-                                const subject = $(this).data('subject');
-                                const color = $(this).css('background-color');
-                                const customer = $(this).data('customer');
-                            
-                                clipboard = { subject, color, custom_customer: customer };
-                                frappe.show_alert(`Copied ${subject}`);
-                            });
 
+                            // Fixed: Use consistent color lookup for allocations
                             allocations.forEach(allocation => {
                                 allocation.details.forEach(detail => {
                                     const date = new Date(detail.activity_date);
@@ -374,18 +384,22 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                         const instIndex = instructors.findIndex(i => i.name === detail.instructor);
                                         const cellId = `inst-${instIndex}-${dayIndex}-${block}`;
                                         const task = allTasks.find(t => t.subject === detail.activity_name);
-                                        const color = customerColors[task?.custom_customer] || '#ddd';
+                                        
+                                        // Use consistent color lookup
+                                        const color = customerColors[task?.custom_customer] || customerColors[allocation.customer] || getCustomerColor(allocation.customer || 'Unknown');
+                                        
                                         const el = $(`<div class="assigned-task" style="background-color: ${color}; padding: 2px 6px; border-radius: 4px; margin-bottom: 2px; cursor: pointer;" title="Click to remove">${detail.activity_name}</div>`);
                                         
                                         el.data('allocation-name', allocation.name);
                                         el.data('activity-date', detail.activity_date);
                                         el.data('instructor', detail.instructor);
+                                        el.data('activity-name', detail.activity_name);
 
                                         el.attr('draggable', true);
                     
                                         el.on('dragstart', function (e) {
                                             e.originalEvent.dataTransfer.setData('text/plain', JSON.stringify({
-                                                activity_name: $(this).text(),
+                                                activity_name: $(this).data('activity-name'),
                                                 allocation_name: $(this).data('allocation-name'),
                                                 activity_date: $(this).data('activity-date'),
                                                 instructor: $(this).data('instructor')
@@ -394,7 +408,10 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                             
                                         el.on('click', function (e) {
                                             if (!e.originalEvent?.dataTransfer) {
-                                            
+                                                const activityName = $(this).data('activity-name');
+                                                const activityDate = $(this).data('activity-date');
+                                                const instructor = $(this).data('instructor');
+                                                
                                                 frappe.call({
                                                     method: 'frappe.client.get',
                                                     args: {
@@ -407,9 +424,9 @@ frappe.pages['activity-assignment'].on_page_load = function(wrapper) {
                                         
                                                         doc.activity_allocation_details = doc.activity_allocation_details.filter(detail =>
                                                             !(
-                                                                detail.activity_name === task.subject &&
-                                                                detail.activity_date === detail.activity_date &&
-                                                                detail.instructor === detail.instructor
+                                                                detail.activity_name === activityName &&
+                                                                detail.activity_date === activityDate &&
+                                                                detail.instructor === instructor
                                                             )
                                                         );
                                         
