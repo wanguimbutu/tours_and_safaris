@@ -11,12 +11,57 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
             <h5 id="week-range-title" class="m-0">This Week</h5>
             <button class="btn btn-sm btn-outline-primary" id="next-week">Next</button>
         </div>
+        <div class="mb-3">
+            <button class="btn btn-sm btn-success" id="create-groups">Create Customer Groups</button>
+        </div>
         <div id="calendar-container" class="table-responsive"></div>
+        
+        <!-- Group Creation Modal -->
+        <div class="modal fade" id="groupCreationModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Create Customer Groups</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="customerSelect">Select Customer:</label>
+                            <select id="customerSelect" class="form-control">
+                                <option value="">Choose a customer...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="parentTaskSelect">Select Activity:</label>
+                            <select id="parentTaskSelect" class="form-control">
+                                <option value="">Choose an activity...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="totalPeople">Total Number of People:</label>
+                            <input type="number" id="totalPeople" class="form-control" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="numberOfGroups">Number of Groups:</label>
+                            <input type="number" id="numberOfGroups" class="form-control" min="1" max="20">
+                        </div>
+                        <div id="groupPreview" class="mt-3"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="createGroupsBtn">Create Groups</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     `);
 	
 	let currentWeekStart = moment().startOf('week');
 	let instructorAssignments = {};
 	let selectedTask = null;
+	let customerTasks = {};
 
 	// Helper Methods
 	const Methods = {
@@ -153,7 +198,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 							status: "Open",
 							custom_is_activity: 1
 						},
-						fields: ["name", "subject", "custom_customer_name", "parent_task", "exp_start_date", "exp_end_date"]
+						fields: ["name", "subject", "custom_customer_name", "parent_task", "exp_start_date", "exp_end_date", "custom_no_of_people"]
 					},
 					callback: function(res) {
 						resolve(res.message || []);
@@ -389,6 +434,53 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			});
 		},
 
+		async createSubtasks(parentTask, numberOfGroups) {
+			const totalPeople = parentTask.custom_no_of_people || 0;
+			const peoplePerGroup = Math.ceil(totalPeople / numberOfGroups);
+			const subtasks = [];
+
+			for (let i = 0; i < numberOfGroups; i++) {
+				const startPerson = i * peoplePerGroup + 1;
+				const endPerson = Math.min((i + 1) * peoplePerGroup, totalPeople);
+				const groupSize = endPerson - startPerson + 1;
+
+				const subtaskData = {
+					doctype: "Task",
+					subject: `${parentTask.subject} - Group ${i + 1}`,
+					parent_task: parentTask.name,
+					custom_customer_name: parentTask.custom_customer_name,
+					custom_is_activity: 1,
+					custom_no_of_people: groupSize,
+					exp_start_date: parentTask.exp_start_date,
+					exp_end_date: parentTask.exp_end_date,
+					status: "Open"
+				};
+
+				try {
+					const result = await new Promise((resolve, reject) => {
+						frappe.call({
+							method: "frappe.client.insert",
+							args: { doc: subtaskData },
+							callback: function(res) {
+								if (res.message) {
+									resolve(res.message);
+								} else {
+									reject(new Error("Failed to create subtask"));
+								}
+							},
+							error: reject
+						});
+					});
+					subtasks.push(result);
+				} catch (error) {
+					console.error(`Error creating subtask ${i + 1}:`, error);
+					frappe.show_alert(`Error creating Group ${i + 1}`, 5);
+				}
+			}
+
+			return subtasks;
+		},
+
 		getWeekDays() {
 			const weekDays = [];
 			for (let i = 0; i < 7; i++) {
@@ -414,15 +506,64 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		},
 
 		makeTaskCellClickable(task, dayIndex, slot, color) {
+			const peopleInfo = task.custom_no_of_people ? ` (${task.custom_no_of_people} people)` : '';
 			return `<td class="assignable-cell" 
 						data-task='${JSON.stringify(task)}'
 						data-day-index="${dayIndex}" 
 						data-slot="${slot}" 
 						style="background-color: ${color}; cursor: pointer;">
-						${task.subject}
+						${task.subject}${peopleInfo}
 					</td>`;
 		}
 	};
+
+	// Modal Functions
+	function populateCustomerDropdown(tasks) {
+		const customers = [...new Set(tasks.map(t => t.custom_customer_name).filter(c => c))];
+		const customerSelect = $('#customerSelect');
+		customerSelect.empty().append('<option value="">Choose a customer...</option>');
+		
+		customers.forEach(customer => {
+			customerSelect.append(`<option value="${customer}">${customer}</option>`);
+		});
+	}
+
+	function populateParentTaskDropdown(customer, tasks) {
+		const customerTasks = tasks.filter(t => 
+			t.custom_customer_name === customer && 
+			!t.parent_task && 
+			t.custom_no_of_people > 0
+		);
+		
+		const taskSelect = $('#parentTaskSelect');
+		taskSelect.empty().append('<option value="">Choose an activity...</option>');
+		
+		customerTasks.forEach(task => {
+			taskSelect.append(`<option value="${task.name}" data-people="${task.custom_no_of_people}">${task.subject} (${task.custom_no_of_people} people)</option>`);
+		});
+	}
+
+	function updateGroupPreview() {
+		const numberOfGroups = parseInt($('#numberOfGroups').val()) || 0;
+		const totalPeople = parseInt($('#totalPeople').val()) || 0;
+		
+		if (numberOfGroups > 0 && totalPeople > 0) {
+			const peoplePerGroup = Math.ceil(totalPeople / numberOfGroups);
+			let previewHtml = '<h6>Group Preview:</h6><ul>';
+			
+			for (let i = 0; i < numberOfGroups; i++) {
+				const startPerson = i * peoplePerGroup + 1;
+				const endPerson = Math.min((i + 1) * peoplePerGroup, totalPeople);
+				const groupSize = endPerson - startPerson + 1;
+				previewHtml += `<li>Group ${i + 1}: ${groupSize} people</li>`;
+			}
+			
+			previewHtml += '</ul>';
+			$('#groupPreview').html(previewHtml);
+		} else {
+			$('#groupPreview').empty();
+		}
+	}
 
 	// Main Functions
 	async function loadTasksAndRenderCalendar() {
@@ -436,6 +577,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			// Populate in-memory assignments from existing data
 			Methods.populateInMemoryAssignments.call(Methods, existingAllocations, currentWeekStart);
 			
+			// Store customer tasks for modal
+			customerTasks = tasks;
+			
 			renderCalendar(tasks, instructors);
 		} catch (error) {
 			console.error('Error loading data:', error);
@@ -447,6 +591,8 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		const weekDays = Methods.getWeekDays();
 		$('#week-range-title').text(`${weekDays[0].format('MMM D')} - ${weekDays[6].format('MMM D, YYYY')}`);
 
+		console.log("All tasks received for rendering:", tasks); // Debug log
+
 		const customerMap = {};
 		const taskMap = {};
 
@@ -457,6 +603,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			customerMap[customer].push(task);
 			taskMap[task.name] = task;
 		});
+
+		console.log("Customer map:", customerMap); // Debug log
+		console.log("Task map:", taskMap); // Debug log
 
 		let html = '<div style="overflow-x: auto;"><table class="table table-bordered"><thead><tr><th>Customer / Instructor</th>';
 		weekDays.forEach(day => {
@@ -500,16 +649,34 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			const mainTasks = custTasks.filter(t => !t.parent_task);
 			const subTasks = custTasks.filter(t => t.parent_task);
 
-			renderTaskRow(`<strong>${customer}</strong>`, mainTasks, color);
+			console.log(`Customer: ${customer}, Main tasks: ${mainTasks.length}, Sub tasks: ${subTasks.length}`); // Debug log
 
+			// Render main customer row with parent tasks
+			if (mainTasks.length > 0) {
+				renderTaskRow(`<strong>${customer}</strong>`, mainTasks, color);
+			}
+
+			// Group subtasks by parent and render them
+			const subtasksByParent = {};
 			subTasks.forEach(sub => {
-				if (!sub.subject && sub.parent_task && taskMap[sub.parent_task]) {
-					sub.subject = taskMap[sub.parent_task].subject;
+				const parentId = sub.parent_task;
+				if (!subtasksByParent[parentId]) {
+					subtasksByParent[parentId] = [];
 				}
-				const parent = taskMap[sub.parent_task];
-				const parentCustomer = parent?.custom_customer_name || sub.custom_customer_name;
-				const colorForSub = Methods.getColorForCustomer(parentCustomer);
-				renderTaskRow(`↳ ${sub.custom_customer_name}`, [sub], colorForSub, true);
+				subtasksByParent[parentId].push(sub);
+			});
+
+			// Render subtasks grouped by parent
+			Object.keys(subtasksByParent).forEach(parentId => {
+				const parent = taskMap[parentId];
+				const parentSubtasks = subtasksByParent[parentId];
+				
+				console.log(`Parent: ${parentId}, Subtasks:`, parentSubtasks); // Debug log
+				
+				parentSubtasks.forEach(sub => {
+					const colorForSub = Methods.getColorForCustomer(customer);
+					renderTaskRow(`&nbsp;&nbsp;↳ ${sub.subject || 'Unnamed Group'}`, [sub], colorForSub, true);
+				});
 			});
 		}
 
@@ -617,6 +784,78 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 	}
 
 	// Event Listeners
+	$('#create-groups').on('click', function() {
+		populateCustomerDropdown(customerTasks);
+		$('#groupCreationModal').modal('show');
+	});
+
+	$('#customerSelect').on('change', function() {
+		const selectedCustomer = $(this).val();
+		if (selectedCustomer) {
+			populateParentTaskDropdown(selectedCustomer, customerTasks);
+		} else {
+			$('#parentTaskSelect').empty().append('<option value="">Choose an activity...</option>');
+			$('#totalPeople').val('');
+		}
+		$('#groupPreview').empty();
+	});
+
+	$('#parentTaskSelect').on('change', function() {
+		const selectedOption = $(this).find('option:selected');
+		const people = selectedOption.data('people') || 0;
+		$('#totalPeople').val(people);
+		updateGroupPreview();
+	});
+
+	$('#numberOfGroups').on('input', function() {
+		updateGroupPreview();
+	});
+
+	$('#createGroupsBtn').on('click', async function() {
+		const customerName = $('#customerSelect').val();
+		const parentTaskName = $('#parentTaskSelect').val();
+		const numberOfGroups = parseInt($('#numberOfGroups').val());
+
+		if (!customerName || !parentTaskName || !numberOfGroups || numberOfGroups < 1) {
+			frappe.show_alert("Please fill all required fields", 5);
+			return;
+		}
+
+		const parentTask = customerTasks.find(t => t.name === parentTaskName);
+		if (!parentTask) {
+			frappe.show_alert("Parent task not found", 5);
+			return;
+		}
+
+		try {
+			$(this).prop('disabled', true).text('Creating Groups...');
+			
+			const createdSubtasks = await Methods.createSubtasks(parentTask, numberOfGroups);
+			
+			if (createdSubtasks.length > 0) {
+				frappe.show_alert(`Successfully created ${createdSubtasks.length} groups`, 3);
+				$('#groupCreationModal').modal('hide');
+				
+				// Clear form
+				$('#customerSelect').val('');
+				$('#parentTaskSelect').empty().append('<option value="">Choose an activity...</option>');
+				$('#totalPeople').val('');
+				$('#numberOfGroups').val('');
+				$('#groupPreview').empty();
+				
+				// Reload calendar to show new subtasks
+				loadTasksAndRenderCalendar();
+			} else {
+				frappe.show_alert("No groups were created", 5);
+			}
+		} catch (error) {
+			console.error('Error creating groups:', error);
+			frappe.show_alert("Error creating groups", 5);
+		} finally {
+			$(this).prop('disabled', false).text('Create Groups');
+		}
+	});
+
 	$('#calendar-container').on('click', '.assignable-cell', function () {
 		const task = JSON.parse($(this).attr('data-task'));
 		selectedTask = task;
