@@ -11,8 +11,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
             <h5 id="week-range-title" class="m-0">This Week</h5>
             <button class="btn btn-sm btn-outline-primary" id="next-week">Next</button>
         </div>
-        <div class="mb-3">
+        <div class="mb-3 d-flex gap-2">
             <button class="btn btn-sm btn-success" id="create-groups">Create Customer Groups</button>
+            <button class="btn btn-sm btn-warning" id="submit-allocations">Submit All Allocations</button>
         </div>
         <div id="calendar-container" class="table-responsive"></div>
         
@@ -189,24 +190,83 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		},
 
 		async fetchTasks() {
-			return new Promise((resolve, reject) => {
-				frappe.call({
-					method: "frappe.client.get_list",
-					args: {
-						doctype: "Task",
-						filters: {
-							status: "Open",
-							custom_is_activity: 1
-						},
-						fields: ["name", "subject", "custom_customer_name", "parent_task", "exp_start_date", "exp_end_date", "custom_no_of_people"]
-					},
-					callback: function(res) {
-						resolve(res.message || []);
-					},
-					error: reject
-				});
-			});
-		},
+            //  Fetch main tasks (that are activities)
+            const parentTasks = await new Promise((resolve, reject) => {
+                frappe.call({
+                    method: "frappe.client.get_list",
+                    args: {
+                        doctype: "Task",
+                        filters: {
+                            status: "Open",
+                            custom_is_activity: 1
+                        },
+                        fields: ["name", "subject", "custom_customer_name", "parent_task", "exp_start_date", "exp_end_date", "custom_no_of_people"]
+                    },
+                    callback: function(res) {
+                        resolve(res.message || []);
+                    },
+                    error: reject
+                });
+            });
+        
+            //Fetch full Task docs to get 'depends_on' children
+            const fullParentTasks = await Promise.all(parentTasks.map(task => {
+                return new Promise((resolve, reject) => {
+                    frappe.call({
+                        method: "frappe.client.get",
+                        args: {
+                            doctype: "Task",
+                            name: task.name
+                        },
+                        callback: function(res) {
+                            resolve(res.message || task);
+                        },
+                        error: function() {
+                            resolve(task);
+                        }
+                    });
+                });
+            }));
+        
+            const allTasks = [...parentTasks]; // include base tasks
+        
+            // For each task, fetch each subtask listed in 'depends_on'
+            for (const parent of fullParentTasks) {
+                if (parent.depends_on && Array.isArray(parent.depends_on)) {
+                    for (const dep of parent.depends_on) {
+                        if (dep.task) {
+                            const subtask = await new Promise((resolve, reject) => {
+                                frappe.call({
+                                    method: "frappe.client.get",
+                                    args: {
+                                        doctype: "Task",
+                                        name: dep.task
+                                    },
+                                    callback: function(res) {
+                                        const st = res.message;
+                                        if (st) {
+                                            // Add parent and customer info for grouping
+                                            st.parent_task = parent.name;
+                                            st.custom_customer_name = parent.custom_customer_name;
+                                        }
+                                        resolve(st);
+                                    },
+                                    error: function() {
+                                        resolve(null);
+                                    }
+                                });
+                            });
+        
+                            if (subtask) {
+                                allTasks.push(subtask);
+                            }
+                        }
+                    }
+                }
+            }
+        
+            return allTasks;
+        },        
 
 		async fetchInstructors() {
 			return new Promise((resolve, reject) => {
@@ -514,6 +574,65 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 						style="background-color: ${color}; cursor: pointer;">
 						${task.subject}${peopleInfo}
 					</td>`;
+		},
+
+		// New method to filter tasks that are active in the current week
+		filterTasksForCurrentWeek(tasks, weekStart) {
+			const weekEnd = moment(weekStart).add(6, 'days');
+			
+			return tasks.filter(task => {
+				const taskStart = moment(task.exp_start_date);
+				const taskEnd = moment(task.exp_end_date || task.exp_start_date);
+				
+				// Check if task overlaps with current week
+				return taskEnd.isSameOrAfter(weekStart) && taskStart.isSameOrBefore(weekEnd);
+			});
+		},
+
+		// New method to fetch and submit draft allocations
+		async fetchDraftAllocations(weekStart) {
+			const weekEnd = moment(weekStart).add(6, 'days');
+			
+			return new Promise((resolve, reject) => {
+				frappe.call({
+					method: "frappe.client.get_list",
+					args: {
+						doctype: "Activity Allocation",
+						fields: ["name", "docstatus"],
+						filters: {
+							start_date: ["<=", weekEnd.format("YYYY-MM-DD")],
+							end_date: [">=", weekStart.format("YYYY-MM-DD")],
+							docstatus: 0  // Draft status
+						}
+					},
+					callback: function(res) {
+						resolve(res.message || []);
+					},
+					error: function(err) {
+						console.error("Error fetching draft allocations:", err);
+						resolve([]);
+					}
+				});
+			});
+		},
+
+		async submitAllocation(docName) {
+			return new Promise((resolve, reject) => {
+				frappe.call({
+					method: "frappe.client.submit",
+					args: {
+						doctype: "Activity Allocation",
+						name: docName
+					},
+					callback: function(res) {
+						resolve(res.message);
+					},
+					error: function(err) {
+						console.error(`Error submitting ${docName}:`, err);
+						reject(err);
+					}
+				});
+			});
 		}
 	};
 
@@ -531,7 +650,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 	function populateParentTaskDropdown(customer, tasks) {
 		const customerTasks = tasks.filter(t => 
 			t.custom_customer_name === customer && 
-			!t.parent_task && 
+			(!t.parent_task || t.parent_task === "" || t.parent_task === null) && 
 			t.custom_no_of_people > 0
 		);
 		
@@ -568,19 +687,22 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 	// Main Functions
 	async function loadTasksAndRenderCalendar() {
 		try {
-			const [tasks, instructors, existingAllocations] = await Promise.all([
+			const [allTasks, instructors, existingAllocations] = await Promise.all([
 				Methods.fetchTasks(),
 				Methods.fetchInstructors(),
 				Methods.fetchExistingAllocations(currentWeekStart)
 			]);
 			
+			// Filter tasks to only show those active in current week
+			const tasksForWeek = Methods.filterTasksForCurrentWeek(allTasks, currentWeekStart);
+			
 			// Populate in-memory assignments from existing data
 			Methods.populateInMemoryAssignments.call(Methods, existingAllocations, currentWeekStart);
 			
-			// Store customer tasks for modal
-			customerTasks = tasks;
+			// Store all customer tasks for modal (not filtered by week)
+			customerTasks = allTasks;
 			
-			renderCalendar(tasks, instructors);
+			renderCalendar(tasksForWeek, instructors);
 		} catch (error) {
 			console.error('Error loading data:', error);
 			frappe.show_alert("Error loading data", 5);
@@ -591,7 +713,38 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		const weekDays = Methods.getWeekDays();
 		$('#week-range-title').text(`${weekDays[0].format('MMM D')} - ${weekDays[6].format('MMM D, YYYY')}`);
 
-		console.log("All tasks received for rendering:", tasks); // Debug log
+		console.log("Tasks filtered for current week:", tasks); // Debug log
+
+		// If no tasks for the week, show empty calendar with just instructors
+		if (tasks.length === 0) {
+			let html = '<div style="overflow-x: auto;"><table class="table table-bordered"><thead><tr><th>Instructor</th>';
+			weekDays.forEach(day => {
+				html += `<th>${day.format('ddd D')}<br>AM</th><th>${day.format('ddd D')}<br>PM</th>`;
+			});
+			html += '</tr></thead><tbody>';
+
+			// Render only instructor rows
+			instructors.forEach(instr => {
+				html += `<tr><td><span class="text-primary">— ${instr.name}</span></td>`;
+				for (let i = 0; i < 7; i++) {
+					["AM", "PM"].forEach(slot => {
+						const assignedTask = (instructorAssignments[instr.name] || []).find(a => a.dayIndex === i && a.slot === slot);
+						if (assignedTask) {
+							html += `<td class="assigned-task" data-instructor="${instr.name}" data-day-index="${i}" data-slot="${slot}" style="background-color: ${Methods.getColorForCustomer(assignedTask.task.custom_customer_name)}; cursor: pointer;">
+										${assignedTask.task.subject} <span style="color:red;cursor:pointer;">&times;</span>
+									 </td>`;
+						} else {
+							html += `<td></td>`;
+						}
+					});
+				}
+				html += '</tr>';
+			});
+
+			html += '</tbody></table></div>';
+			$('#calendar-container').html(html);
+			return;
+		}
 
 		const customerMap = {};
 		const taskMap = {};
@@ -604,8 +757,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			taskMap[task.name] = task;
 		});
 
-		console.log("Customer map:", customerMap); // Debug log
-		console.log("Task map:", taskMap); // Debug log
+		console.log("Customer map for current week:", customerMap); // Debug log
 
 		let html = '<div style="overflow-x: auto;"><table class="table table-bordered"><thead><tr><th>Customer / Instructor</th>';
 		weekDays.forEach(day => {
@@ -643,17 +795,24 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			document.head.appendChild(style);
 		}
 
-		// Render customer rows
+		// Render customer rows (only for customers with tasks in current week)
 		for (const [customer, custTasks] of Object.entries(customerMap)) {
 			const color = Methods.getColorForCustomer(customer);
-			const mainTasks = custTasks.filter(t => !t.parent_task);
-			const subTasks = custTasks.filter(t => t.parent_task);
+			
+			const mainTasks = custTasks.filter(t => !t.parent_task || t.parent_task === "" || t.parent_task === null);
+			const subTasks = custTasks.filter(t => t.parent_task && t.parent_task !== "" && t.parent_task !== null);
 
-			console.log(`Customer: ${customer}, Main tasks: ${mainTasks.length}, Sub tasks: ${subTasks.length}`); // Debug log
+			console.log(`Customer: ${customer}`);
+			console.log(`Main tasks (parent tasks):`, mainTasks);
+			console.log(`Sub tasks:`, subTasks);
 
-			// Render main customer row with parent tasks
+			// Always render customer header row - either with main tasks or empty
 			if (mainTasks.length > 0) {
+				// Render customer row with parent tasks
 				renderTaskRow(`<strong>${customer}</strong>`, mainTasks, color);
+			} else {
+				// Render customer header even if no parent tasks, but with empty slots
+				renderTaskRow(`<strong>${customer}</strong>`, [], color);
 			}
 
 			// Group subtasks by parent and render them
@@ -671,11 +830,20 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				const parent = taskMap[parentId];
 				const parentSubtasks = subtasksByParent[parentId];
 				
-				console.log(`Parent: ${parentId}, Subtasks:`, parentSubtasks); // Debug log
+				console.log(`Parent: ${parentId}, Parent task:`, parent);
+				console.log(`Subtasks for parent:`, parentSubtasks);
 				
+				// Show parent task name if it exists, otherwise show the parent ID
+				const parentName = parent ? parent.subject : `Parent Task (${parentId})`;
+				
+				// Render parent task row
+				const parentTasks = parent ? [parent] : [];
+				renderTaskRow(`&nbsp;&nbsp;➤ ${parentName}`, parentTasks, color, true);
+				
+				// Render each subtask
 				parentSubtasks.forEach(sub => {
 					const colorForSub = Methods.getColorForCustomer(customer);
-					renderTaskRow(`&nbsp;&nbsp;↳ ${sub.subject || 'Unnamed Group'}`, [sub], colorForSub, true);
+					renderTaskRow(`&nbsp;&nbsp;&nbsp;&nbsp;↳ ${sub.subject || 'Unnamed Group'}`, [sub], colorForSub, true);
 				});
 			});
 		}
