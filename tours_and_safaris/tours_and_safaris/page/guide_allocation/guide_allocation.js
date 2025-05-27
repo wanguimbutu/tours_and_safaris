@@ -402,7 +402,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 							end_date: task.exp_end_date,
 							activity_allocation_details: [
 								{
-									activity_name:baseActivityName,  // Added this field
+									activity_name: baseActivityName,  // Added this field
 									activity_date: activityDate,
 									session: sessionMapping[slot] || slot,
 									start_time: `${activityDate} ${startTime}`,
