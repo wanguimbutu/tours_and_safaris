@@ -190,93 +190,63 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		},
 
 		async fetchTasks(weekStart) {
-			// Determine if we’re dealing with a past week
+			const weekEnd = moment(weekStart).add(6, 'days');
 			const isPastWeek = moment(weekStart).isBefore(moment().startOf('week'));
+			const isFutureWeek = moment(weekStart).isAfter(moment().endOf('week'));
 		
-			// Build the filter object: if not past, require "Open" status.
 			const taskFilters = {
-				custom_is_activity: 1
+				custom_is_activity: 1,
 			};
-			if (!isPastWeek) {
-				taskFilters.status = "Open";
+		
+			if (isPastWeek) {
+				// Show all statuses (no status filter)
+			} else if (isFutureWeek) {
+				taskFilters.status = "Open"; // Future = only upcoming Open
+			} else {
+				taskFilters.status = ["in", ["Open", "Working"]]; // Current = Open + Working
 			}
 		
-			// Fetch parent tasks using the filter
-			const parentTasks = await new Promise((resolve, reject) => {
-				frappe.call({
-					method: "frappe.client.get_list",
-					args: {
-						doctype: "Task",
-						filters: taskFilters,
-						fields: [
-							"name", 
-							"subject", 
-							"custom_customer_name", 
-							"custom_customer",
-							"parent_task", 
-							"exp_start_date", 
-							"exp_end_date", 
-							"custom_no_of_people"
-						]
-					},
-					callback: function(res) {
-						resolve(res.message || []);
-					},
-					error: reject
-				});
-			});
+			// Add date overlap filters
+			taskFilters.exp_start_date = ["<=", weekEnd.format("YYYY-MM-DD")];
+			taskFilters.exp_end_date = [">=", weekStart.format("YYYY-MM-DD")];
 		
-			// Fetch full documents for each parent task so we can inspect the `depends_on` field.
+			// Fetch tasks
+			const parentTasks = await frappe.call('frappe.client.get_list', {
+				doctype: "Task",
+				filters: taskFilters,
+				fields: [
+					"name", "subject", "custom_customer_name", "custom_customer",
+					"parent_task", "exp_start_date", "exp_end_date", "custom_no_of_people"
+				]
+			}).then(res => res.message || []);
+		
+			// Fetch full tasks to inspect dependencies
 			const fullParentTasks = await Promise.all(parentTasks.map(task => {
-				return new Promise((resolve, reject) => {
-					frappe.call({
-						method: "frappe.client.get",
-						args: {
-							doctype: "Task",
-							name: task.name
-						},
-						callback: function(res) {
-							resolve(res.message || task);
-						},
-						error: function() {
-							resolve(task);
-						}
-					});
-				});
+				return frappe.call('frappe.client.get', {
+					doctype: "Task",
+					name: task.name
+				}).then(res => res.message || task).catch(() => task);
 			}));
 		
-			// Start with the parent tasks
+			// Add subtasks from depends_on
 			const allTasks = [...parentTasks];
-		
-			// For each parent, check its "depends_on" table
 			for (const parent of fullParentTasks) {
 				if (parent.depends_on && Array.isArray(parent.depends_on)) {
 					for (const dep of parent.depends_on) {
 						if (dep.task) {
-							// Fetch the full subtask
-							const subtask = await new Promise((resolve, reject) => {
-								frappe.call({
-									method: "frappe.client.get",
-									args: {
-										doctype: "Task",
-										name: dep.task
-									},
-									callback: function(res) {
-										const st = res.message;
-										if (st) {
-											// Inherit values from parent if missing
-											st.parent_task = parent.name;
-											st.custom_customer_name = st.custom_customer_name || parent.custom_customer_name;
-											st.exp_start_date = st.exp_start_date || parent.exp_start_date;
-											st.exp_end_date = st.exp_end_date || parent.exp_end_date;
-										}
-										resolve(st);
-									},
-									error: function() {
-										resolve(null);
-									}
-								});
-							});
+							const subtask = await frappe.call('frappe.client.get', {
+								doctype: "Task",
+								name: dep.task
+							}).then(res => {
+								const st = res.message;
+								if (st) {
+									st.parent_task = parent.name;
+									st.custom_customer_name = st.custom_customer_name || parent.custom_customer_name;
+									st.exp_start_date = st.exp_start_date || parent.exp_start_date;
+									st.exp_end_date = st.exp_end_date || parent.exp_end_date;
+								}
+								return st;
+							}).catch(() => null);
 							if (subtask) {
 								allTasks.push(subtask);
 							}
@@ -284,9 +254,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					}
 				}
 			}
+		
 			return allTasks;
 		},
-		
 
 		async fetchInstructors() {
 			return new Promise((resolve, reject) => {
@@ -411,13 +381,15 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		async createActivityAllocation(task, activityDate, slot, instructorName, qualification) {
 			const startTime = slot === "AM" ? "08:00:00" : "13:30:00";
 			const endTime = slot === "AM" ? "12:30:00" : "17:30:00";
-			
+			const fullSubject = task.subject || "";
+			const baseActivityName = fullSubject.split(" - Group")[0].trim() || fullSubject;
+
 			// Map slot to proper session values (check your DocType for exact values)
 			const sessionMapping = {
-				"AM": "Morning",  // or whatever the exact value is in your DocType
-				"PM": "Afternoon" // or whatever the exact value is in your DocType
+				"AM": "HALF DAY",  // or whatever the exact value is in your DocType
+				"PM": "HALF DAY" // or whatever the exact value is in your DocType
 			};
-
+			
 			return new Promise((resolve, reject) => {
 				frappe.call({
 					method: "frappe.client.insert",
@@ -425,12 +397,12 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 						doc: {
 							doctype: "Activity Allocation",
 							customer: task.custom_customer,
-							activity_name: task.subject,
+							activity_name: baseActivityName,	
 							start_date: task.exp_start_date,
 							end_date: task.exp_end_date,
 							activity_allocation_details: [
 								{
-									activity_name: task.subject,  // Added this field
+									activity_name:baseActivityName,  // Added this field
 									activity_date: activityDate,
 									session: sessionMapping[slot] || slot,
 									start_time: `${activityDate} ${startTime}`,
@@ -718,8 +690,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			]);
 			
 			// Filter the tasks for display by the current week dates.
-			const tasksForWeek = Methods.filterTasksForCurrentWeek(allTasks, currentWeekStart);
-			
+			//const tasksForWeek = Methods.filterTasksForCurrentWeek(allTasks, currentWeekStart);
+			const tasksForWeek = allTasks;
+
 			// Populate the in-memory assignments (for instructor rows)
 			Methods.populateInMemoryAssignments.call(Methods, existingAllocations, currentWeekStart);
 			
@@ -748,12 +721,20 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			if (!customerMap[customer]) {
 				customerMap[customer] = { main: [], sub: [] };
 			}
-	
-			if (!task.parent_task) {
-				customerMap[customer].main.push(task);
+			
+			if (!task.parent_task || !taskMap[task.parent_task]) {
+				// Only add if not already added
+				if (!customerMap[customer].main.some(t => t.name === task.name)) {
+					customerMap[customer].main.push(task);
+				}
 			} else {
-				customerMap[customer].sub.push(task);
+				// Only add if not already added
+				if (!customerMap[customer].sub.some(t => t.name === task.name)) {
+					customerMap[customer].sub.push(task);
+				}
 			}
+			
+			
 	
 			taskMap[task.name] = task;
 		});
@@ -794,18 +775,25 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				subtasksByParent[parentId].push(sub);
 			});
 	
-			// Render parent task + its subtasks
+			const renderedParents = new Set();  // Track which parents are already rendered
+
 			Object.entries(subtasksByParent).forEach(([parentId, subList]) => {
+				// Avoid rendering parent again if it's already in the main list
+				if (renderedParents.has(parentId)) return;
+
 				const parent = taskMap[parentId];
 				const parentLabel = parent ? parent.subject : `Parent (${parentId})`;
-				const parentRow = parent ? [parent] : [];
-	
-				renderTaskRow(`&nbsp;&nbsp;➤ ${parentLabel}`, parentRow, color, true);
-	
+
+				if (parent) {
+					renderTaskRow(`&nbsp;&nbsp;➤ ${parentLabel}`, [parent], color, true);
+					renderedParents.add(parentId);
+				}
+
 				subList.forEach(sub => {
 					renderTaskRow(`&nbsp;&nbsp;&nbsp;&nbsp;↳ ${sub.subject || 'Unnamed Subtask'}`, [sub], color, true);
 				});
 			});
+
 		}
 	
 		// Render instructor rows from existing allocations
@@ -942,7 +930,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		updateGroupPreview();
 	});
 
-	$('#createGroupsBtn').on('click', async function() {
+	$('#createGroupsBtn').off('click').on('click', async function() {
 		const customerName = $('#customerSelect').val();
 		const parentTaskName = $('#parentTaskSelect').val();
 		const numberOfGroups = parseInt($('#numberOfGroups').val());
