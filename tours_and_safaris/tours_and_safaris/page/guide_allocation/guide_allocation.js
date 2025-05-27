@@ -189,84 +189,104 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			return colors[index];
 		},
 
-		async fetchTasks() {
-            //  Fetch main tasks (that are activities)
-            const parentTasks = await new Promise((resolve, reject) => {
-                frappe.call({
-                    method: "frappe.client.get_list",
-                    args: {
-                        doctype: "Task",
-                        filters: {
-                            status: "Open",
-                            custom_is_activity: 1
-                        },
-                        fields: ["name", "subject", "custom_customer_name", "parent_task", "exp_start_date", "exp_end_date", "custom_no_of_people"]
-                    },
-                    callback: function(res) {
-                        resolve(res.message || []);
-                    },
-                    error: reject
-                });
-            });
-        
-            //Fetch full Task docs to get 'depends_on' children
-            const fullParentTasks = await Promise.all(parentTasks.map(task => {
-                return new Promise((resolve, reject) => {
-                    frappe.call({
-                        method: "frappe.client.get",
-                        args: {
-                            doctype: "Task",
-                            name: task.name
-                        },
-                        callback: function(res) {
-                            resolve(res.message || task);
-                        },
-                        error: function() {
-                            resolve(task);
-                        }
-                    });
-                });
-            }));
-        
-            const allTasks = [...parentTasks]; // include base tasks
-        
-            // For each task, fetch each subtask listed in 'depends_on'
-            for (const parent of fullParentTasks) {
-                if (parent.depends_on && Array.isArray(parent.depends_on)) {
-                    for (const dep of parent.depends_on) {
-                        if (dep.task) {
-                            const subtask = await new Promise((resolve, reject) => {
-                                frappe.call({
-                                    method: "frappe.client.get",
-                                    args: {
-                                        doctype: "Task",
-                                        name: dep.task
-                                    },
-                                    callback: function(res) {
-                                        const st = res.message;
-                                        if (st) {
-                                            // Add parent and customer info for grouping
-                                            st.parent_task = parent.name;
-                                            st.custom_customer_name = parent.custom_customer_name;
-                                        }
-                                        resolve(st);
-                                    },
-                                    error: function() {
-                                        resolve(null);
-                                    }
-                                });
-                            });
-        
-                            if (subtask) {
-                                allTasks.push(subtask);
-                            }
-                        }
-                    }
-                }
-            }
-        
-            return allTasks;
-        },        
+		async fetchTasks(weekStart) {
+			// Determine if we’re dealing with a past week
+			const isPastWeek = moment(weekStart).isBefore(moment().startOf('week'));
+		
+			// Build the filter object: if not past, require "Open" status.
+			const taskFilters = {
+				custom_is_activity: 1
+			};
+			if (!isPastWeek) {
+				taskFilters.status = "Open";
+			}
+		
+			// Fetch parent tasks using the filter
+			const parentTasks = await new Promise((resolve, reject) => {
+				frappe.call({
+					method: "frappe.client.get_list",
+					args: {
+						doctype: "Task",
+						filters: taskFilters,
+						fields: [
+							"name", 
+							"subject", 
+							"custom_customer_name", 
+							"custom_customer",
+							"parent_task", 
+							"exp_start_date", 
+							"exp_end_date", 
+							"custom_no_of_people"
+						]
+					},
+					callback: function(res) {
+						resolve(res.message || []);
+					},
+					error: reject
+				});
+			});
+		
+			// Fetch full documents for each parent task so we can inspect the `depends_on` field.
+			const fullParentTasks = await Promise.all(parentTasks.map(task => {
+				return new Promise((resolve, reject) => {
+					frappe.call({
+						method: "frappe.client.get",
+						args: {
+							doctype: "Task",
+							name: task.name
+						},
+						callback: function(res) {
+							resolve(res.message || task);
+						},
+						error: function() {
+							resolve(task);
+						}
+					});
+				});
+			}));
+		
+			// Start with the parent tasks
+			const allTasks = [...parentTasks];
+		
+			// For each parent, check its "depends_on" table
+			for (const parent of fullParentTasks) {
+				if (parent.depends_on && Array.isArray(parent.depends_on)) {
+					for (const dep of parent.depends_on) {
+						if (dep.task) {
+							// Fetch the full subtask
+							const subtask = await new Promise((resolve, reject) => {
+								frappe.call({
+									method: "frappe.client.get",
+									args: {
+										doctype: "Task",
+										name: dep.task
+									},
+									callback: function(res) {
+										const st = res.message;
+										if (st) {
+											// Inherit values from parent if missing
+											st.parent_task = parent.name;
+											st.custom_customer_name = st.custom_customer_name || parent.custom_customer_name;
+											st.exp_start_date = st.exp_start_date || parent.exp_start_date;
+											st.exp_end_date = st.exp_end_date || parent.exp_end_date;
+										}
+										resolve(st);
+									},
+									error: function() {
+										resolve(null);
+									}
+								});
+							});
+							if (subtask) {
+								allTasks.push(subtask);
+							}
+						}
+					}
+				}
+			}
+			return allTasks;
+		},
+		
 
 		async fetchInstructors() {
 			return new Promise((resolve, reject) => {
@@ -404,7 +424,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					args: {
 						doc: {
 							doctype: "Activity Allocation",
-							customer: task.custom_customer_name,
+							customer: task.custom_customer,
 							activity_name: task.subject,
 							start_date: task.exp_start_date,
 							end_date: task.exp_end_date,
@@ -509,6 +529,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					subject: `${parentTask.subject} - Group ${i + 1}`,
 					parent_task: parentTask.name,
 					custom_customer_name: parentTask.custom_customer_name,
+					custom_customer: parentTask.custom_customer,	
 					custom_is_activity: 1,
 					custom_no_of_people: groupSize,
 					exp_start_date: parentTask.exp_start_date,
@@ -576,17 +597,21 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					</td>`;
 		},
 
-		// New method to filter tasks that are active in the current week
 		filterTasksForCurrentWeek(tasks, weekStart) {
-			// Only filter out tasks that are more than 30 days old
-			const cutoffDate = moment(weekStart).subtract(30, 'days');
-			
+			const weekEnd = moment(weekStart).add(6, 'days');
 			return tasks.filter(task => {
+				// Ensure the task has a start date; if not, skip it.
+				if (!task.exp_start_date) return false;
+				const taskStart = moment(task.exp_start_date);
 				const taskEnd = moment(task.exp_end_date || task.exp_start_date);
-				return taskEnd.isAfter(cutoffDate);
+				// Use inclusive boundaries to catch tasks that start or end on the week's edges.
+				return taskStart.isBetween(weekStart, weekEnd, 'day', '[]') ||
+					   taskEnd.isBetween(weekStart, weekEnd, 'day', '[]') ||
+					   (taskStart.isBefore(weekStart) && taskEnd.isAfter(weekEnd));
 			});
 		},
-	
+		
+
 		// New method to fetch and submit draft allocations
 		async fetchDraftAllocations(weekStart) {
 			const weekEnd = moment(weekStart).add(6, 'days');
@@ -685,204 +710,116 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 	// Main Functions
 	async function loadTasksAndRenderCalendar() {
 		try {
+			// Pass the current week start so fetchTasks can adjust its filter
 			const [allTasks, instructors, existingAllocations] = await Promise.all([
-				Methods.fetchTasks(),
+				Methods.fetchTasks(currentWeekStart),
 				Methods.fetchInstructors(),
 				Methods.fetchExistingAllocations(currentWeekStart)
 			]);
 			
+			// Filter the tasks for display by the current week dates.
+			const tasksForWeek = Methods.filterTasksForCurrentWeek(allTasks, currentWeekStart);
 			
-			// Populate in-memory assignments from existing data
+			// Populate the in-memory assignments (for instructor rows)
 			Methods.populateInMemoryAssignments.call(Methods, existingAllocations, currentWeekStart);
 			
-			// Store all customer tasks for modal (not filtered by week)
+			// Store all customer tasks for the modal (even if they have no assignments)
 			customerTasks = allTasks;
 			
-			renderCalendar(allTasks, instructors);
+			// Render the calendar passing the tasks for this week and the instructors
+			renderCalendar(tasksForWeek, instructors);
 		} catch (error) {
 			console.error('Error loading data:', error);
 			frappe.show_alert("Error loading data", 5);
 		}
 	}
 	
+	
 	function renderCalendar(tasks, instructors) {
 		const weekDays = Methods.getWeekDays();
-		const weekStart = currentWeekStart;
-		const weekEnd = moment(weekStart).add(6, 'days');
-		
 		$('#week-range-title').text(`${weekDays[0].format('MMM D')} - ${weekDays[6].format('MMM D, YYYY')}`);
 	
-		console.log("All tasks loaded:", tasks); // Debug log
-	
+		// Group tasks by customer and split into main and sub tasks
 		const customerMap = {};
-		const taskMap = {};
+		const taskMap = {}; // For easy access to parent task names
 	
-		// Group ALL tasks by customer, but only include customers with tasks relevant to current week
 		tasks.forEach(task => {
 			const customer = task.custom_customer_name || "Unknown";
-			taskMap[task.name] = task;
-			
-			// Check if this task is relevant to the current week
-			const taskStart = moment(task.exp_start_date);
-			const taskEnd = moment(task.exp_end_date || task.exp_start_date);
-			
-			// Include task if it overlaps with current week OR if it has existing allocations this week
-			const overlapsWeek = taskEnd.isSameOrAfter(weekStart) && taskStart.isSameOrBefore(weekEnd);
-        const hasAllocationThisWeek = Object.values(instructorAssignments).some(assignments => 
-            assignments.some(assignment => 
-                assignment.task.custom_customer_name === customer &&
-                assignment.task.subject === task.subject
-            )
-        );
-        
-        if (overlapsWeek || hasAllocationThisWeek) {
-            if (!customerMap[customer]) customerMap[customer] = [];
-            customerMap[customer].push(task);
-        }
-    });
+			if (!customerMap[customer]) {
+				customerMap[customer] = { main: [], sub: [] };
+			}
 	
-		console.log("Customer map for current week:", customerMap); // Debug log
+			if (!task.parent_task) {
+				customerMap[customer].main.push(task);
+			} else {
+				customerMap[customer].sub.push(task);
+			}
 	
-		// If no relevant customers for this week, show empty calendar with just instructors
-		if (Object.keys(customerMap).length === 0) {
-			let html = '<div style="overflow-x: auto;"><table class="table table-bordered"><thead><tr><th>Instructor</th>';
-			weekDays.forEach(day => {
-				html += `<th>${day.format('ddd D')}<br>AM</th><th>${day.format('ddd D')}<br>PM</th>`;
-			});
-			html += '</tr></thead><tbody>';
-	
-			// Render only instructor rows
-			instructors.forEach(instr => {
-				html += `<tr><td><span class="text-primary">— ${instr.name}</span></td>`;
-				for (let i = 0; i < 7; i++) {
-					["AM", "PM"].forEach(slot => {
-						const assignedTask = (instructorAssignments[instr.name] || []).find(a => a.dayIndex === i && a.slot === slot);
-						if (assignedTask) {
-							html += `<td class="assigned-task" data-instructor="${instr.name}" data-day-index="${i}" data-slot="${slot}" style="background-color: ${Methods.getColorForCustomer(assignedTask.task.custom_customer_name)}; cursor: pointer;">
-										${assignedTask.task.subject} <span style="color:red;cursor:pointer;">&times;</span>
-									 </td>`;
-						} else {
-							html += `<td></td>`;
-						}
-					});
-				}
-				html += '</tr>';
-			});
-	
-			html += '</tbody></table></div>';
-			$('#calendar-container').html(html);
-			return;
-		}
-
-		// Group tasks by customer and map by name
-		tasks.forEach(task => {
-			const customer = task.custom_customer_name || "Unknown";
-			if (!customerMap[customer]) customerMap[customer] = [];
-			customerMap[customer].push(task);
 			taskMap[task.name] = task;
 		});
-
-		console.log("Customer map for current week:", customerMap); // Debug log
-
+	
 		let html = '<div style="overflow-x: auto;"><table class="table table-bordered"><thead><tr><th>Customer / Instructor</th>';
 		weekDays.forEach(day => {
 			html += `<th>${day.format('ddd D')}<br>AM</th><th>${day.format('ddd D')}<br>PM</th>`;
 		});
 		html += '</tr></thead><tbody>';
-
-		function renderTaskRow(nameLabel, tasksToRender, color, indent = false) {
-			html += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${nameLabel}</td>`;
+	
+		// Helper to render a row for tasks (main, parent, sub)
+		function renderTaskRow(label, tasksToRender, color, indent = false) {
+			html += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
 			weekDays.forEach((day, dayIndex) => {
 				const taskAM = Methods.getTaskForSlot(tasksToRender, day, "AM");
 				const taskPM = Methods.getTaskForSlot(tasksToRender, day, "PM");
-
+	
 				html += taskAM ? Methods.makeTaskCellClickable(taskAM, dayIndex, "AM", color) : `<td></td>`;
 				html += taskPM ? Methods.makeTaskCellClickable(taskPM, dayIndex, "PM", color) : `<td></td>`;
 			});
 			html += '</tr>';
 		}
-
-		// Add styles
-		if (!document.getElementById('calendar-styles')) {
-			const style = document.createElement('style');
-			style.id = 'calendar-styles';
-			style.innerHTML = `
-				#calendar-container {
-					overflow-x: auto;
-					white-space: nowrap;
-				}
-				.table thead th, .table tbody td {
-					white-space: nowrap;
-					min-width: 120px;
-					text-align: center;
-				}
-			`;
-			document.head.appendChild(style);
-		}
-
-		// Render customer rows (only for customers with tasks in current week)
-		for (const [customer, custTasks] of Object.entries(customerMap)) {
+	
+		// Render customers
+		for (const [customer, grouped] of Object.entries(customerMap)) {
 			const color = Methods.getColorForCustomer(customer);
-			
-			const mainTasks = custTasks.filter(t => !t.parent_task || t.parent_task === "" || t.parent_task === null);
-			const subTasks = custTasks.filter(t => t.parent_task && t.parent_task !== "" && t.parent_task !== null);
-
-			console.log(`Customer: ${customer}`);
-			console.log(`Main tasks (parent tasks):`, mainTasks);
-			console.log(`Sub tasks:`, subTasks);
-
-			// Always render customer header row - either with main tasks or empty
-			if (mainTasks.length > 0) {
-				// Render customer row with parent tasks
-				renderTaskRow(`<strong>${customer}</strong>`, mainTasks, color);
-			} else {
-				// Render customer header even if no parent tasks, but with empty slots
-				renderTaskRow(`<strong>${customer}</strong>`, [], color);
-			}
-
-			// Group subtasks by parent and render them
+	
+			// Always render the customer header row
+			renderTaskRow(`<strong>${customer}</strong>`, grouped.main, color);
+	
+			// Group subtasks by parent
 			const subtasksByParent = {};
-			subTasks.forEach(sub => {
+			grouped.sub.forEach(sub => {
 				const parentId = sub.parent_task;
 				if (!subtasksByParent[parentId]) {
 					subtasksByParent[parentId] = [];
 				}
 				subtasksByParent[parentId].push(sub);
 			});
-
-			// Render subtasks grouped by parent
-			Object.keys(subtasksByParent).forEach(parentId => {
+	
+			// Render parent task + its subtasks
+			Object.entries(subtasksByParent).forEach(([parentId, subList]) => {
 				const parent = taskMap[parentId];
-				const parentSubtasks = subtasksByParent[parentId];
-				
-				console.log(`Parent: ${parentId}, Parent task:`, parent);
-				console.log(`Subtasks for parent:`, parentSubtasks);
-				
-				// Show parent task name if it exists, otherwise show the parent ID
-				const parentName = parent ? parent.subject : `Parent Task (${parentId})`;
-				
-				// Render parent task row
-				const parentTasks = parent ? [parent] : [];
-				renderTaskRow(`&nbsp;&nbsp;➤ ${parentName}`, parentTasks, color, true);
-				
-				// Render each subtask
-				parentSubtasks.forEach(sub => {
-					const colorForSub = Methods.getColorForCustomer(customer);
-					renderTaskRow(`&nbsp;&nbsp;&nbsp;&nbsp;↳ ${sub.subject || 'Unnamed Group'}`, [sub], colorForSub, true);
+				const parentLabel = parent ? parent.subject : `Parent (${parentId})`;
+				const parentRow = parent ? [parent] : [];
+	
+				renderTaskRow(`&nbsp;&nbsp;➤ ${parentLabel}`, parentRow, color, true);
+	
+				subList.forEach(sub => {
+					renderTaskRow(`&nbsp;&nbsp;&nbsp;&nbsp;↳ ${sub.subject || 'Unnamed Subtask'}`, [sub], color, true);
 				});
 			});
 		}
-
-		// Render instructor rows
+	
+		// Render instructor rows from existing allocations
 		instructors.forEach(instr => {
 			html += `<tr><td><span class="text-primary">— ${instr.name}</span></td>`;
 			for (let i = 0; i < 7; i++) {
 				["AM", "PM"].forEach(slot => {
-					const assignedTask = (instructorAssignments[instr.name] || []).find(a => a.dayIndex === i && a.slot === slot);
+					const assignedTask = (instructorAssignments[instr.name] || []).find(
+						a => a.dayIndex === i && a.slot === slot
+					);
 					if (assignedTask) {
 						html += `<td class="assigned-task" data-instructor="${instr.name}" data-day-index="${i}" data-slot="${slot}" style="background-color: ${Methods.getColorForCustomer(assignedTask.task.custom_customer_name)}; cursor: pointer;">
-									${assignedTask.task.subject} <span style="color:red;cursor:pointer;">&times;</span>
-								 </td>`;
+							${assignedTask.task.subject} <span style="color:red;cursor:pointer;">&times;</span>
+						</td>`;
 					} else {
 						html += `<td></td>`;
 					}
@@ -890,10 +827,11 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			}
 			html += '</tr>';
 		});
-
+	
 		html += '</tbody></table></div>';
 		$('#calendar-container').html(html);
 	}
+	
 
 	// Event Handlers
 	async function handleTaskAssignment(cell) {
