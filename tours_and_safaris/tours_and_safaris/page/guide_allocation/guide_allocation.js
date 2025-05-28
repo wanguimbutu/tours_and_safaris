@@ -1024,32 +1024,58 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 
 	async function handleTaskRemoval(element) {
 		const instructor = element.data('instructor');
-		const dayIndex = parseInt(element.data('dayIndex'));
+		const dayIndex = parseInt(element.data('day-index'));
 		const slot = element.data('slot');
+	
+		// Get the date from the calendar cell
 		const activityDate = moment(currentWeekStart).add(dayIndex, 'days').format("YYYY-MM-DD");
-		const startTime = slot === "AM" ? "08:00:00" : "13:30:00";
-		const fullStart = `${activityDate} ${startTime}`;
-
+	
+		// Get activity_name from the assigned task
+		const assignment = (instructorAssignments[instructor] || []).find(
+			a => a.dayIndex === dayIndex && a.slot === slot
+		);
+	
+		if (!assignment || !assignment.task || !assignment.task.subject) {
+			frappe.show_alert("Assignment info not found", 5);
+			return;
+		}
+	
+		// Clean base activity name (remove group label if present)
+		const activityName = assignment.task.subject.split(" - Group")[0].trim();
+	
+		console.log("Removing via backend:", { instructor, activityDate, activityName });
+	
 		try {
-			// Remove from in-memory
-			if (instructorAssignments[instructor]) {
+			const res = await frappe.call({
+				method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.remove_activity_allocation",  // replace with your actual method or Server Script name
+				args: {
+					instructor: instructor,
+					activity_date: activityDate,
+					activity_name: activityName
+				}
+			});
+	
+			const deleted = res.message;
+	
+			if (deleted.status === "deleted" || deleted.status === "updated") {
+				frappe.show_alert("Activity Allocation removed", 3);
+	
+				// Remove from memory only after successful backend removal
 				instructorAssignments[instructor] = instructorAssignments[instructor].filter(a =>
 					!(a.dayIndex === dayIndex && a.slot === slot)
 				);
+	
+				loadTasksAndRenderCalendar();
+			} else {
+				frappe.show_alert("Could not find matching allocation", 5);
 			}
-
-			// Delete from backend
-			const deleted = await Methods.deleteActivityAllocation(instructor, activityDate, fullStart);
-			if (deleted) {
-				frappe.show_alert("Activity Allocation deleted", 3);
-			}
-			loadTasksAndRenderCalendar();
-
 		} catch (error) {
-			console.error('Error removing assignment:', error);
-			frappe.show_alert("Error removing assignment", 5);
+			console.error("Error removing allocation:", error);
+			frappe.show_alert("Error removing allocation", 5);
 		}
 	}
+	
+	
 
 	// Event Listeners
 	$('#create-groups').on('click', function() {
