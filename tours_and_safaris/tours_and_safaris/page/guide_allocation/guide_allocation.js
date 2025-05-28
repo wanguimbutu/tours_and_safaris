@@ -136,7 +136,8 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 						
 						// Only process if within current week
 						if (dayIndex >= 0 && dayIndex < 7) {
-							const slot = this.getSlotFromSession(detail.session);
+							// Use the improved slot detection
+							const slot = this.getSlotFromSessionAndTime(detail.session, detail.start_time);
 							
 							if (!instructorAssignments[instructor]) {
 								instructorAssignments[instructor] = [];
@@ -166,14 +167,32 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		getSlotFromSession(session) {
 			// Map session values back to AM/PM
 			const sessionToSlot = {
-				"HALF DAY": "AM",
-				"HALF DAY": "PM",
 				"AM": "AM",
-				"PM": "PM"
+				"PM": "PM",
+				"MORNING": "AM",
+				"AFTERNOON": "PM",
+				"HALF_DAY_AM": "AM",
+				"HALF_DAY_PM": "PM"
 			};
 			return sessionToSlot[session] || "AM";
 		},
-
+		getSlotFromSessionAndTime(session, startTime) {
+			// If we have specific AM/PM values, use them
+			if (session === "AM") return "AM";
+			if (session === "PM") return "PM";
+			
+			// For "HALF DAY", determine from start time
+			if (startTime) {
+				const time = moment(startTime, "YYYY-MM-DD HH:mm:ss");
+				const hour = time.hour();
+				
+				// AM slots typically start before 13:00 (1 PM)
+				return hour < 13 ? "AM" : "PM";
+			}
+			
+			// Default fallback
+			return "AM";
+		},
 		getColorForCustomer(customerName) {
 			if (!customerName) customerName = "Unknown";
 			
@@ -945,80 +964,127 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 
 		}
 	
-		// Render instructor rows from existing allocations
-		instructors.forEach(instr => {
-			html += `<tr><td><span class="text-primary">— ${instr.name}</span></td>`;
-			for (let i = 0; i < 7; i++) {
-				["AM", "PM"].forEach(slot => {
-					const assignedTask = (instructorAssignments[instr.name] || []).find(
-						a => a.dayIndex === i && a.slot === slot
-					);
-					if (assignedTask) {
-						html += `<td class="assigned-task" data-instructor="${instr.name}" data-day-index="${i}" data-slot="${slot}" style="background-color: ${Methods.getColorForCustomer(assignedTask.task.custom_customer_name)}; cursor: pointer;">
-							${assignedTask.task.subject} <span style="color:red;cursor:pointer;">&times;</span>
-						</td>`;
-					} else {
-						html += `<td></td>`;
-					}
-				});
-			}
-			html += '</tr>';
-		});
+// Render instructor rows from existing allocations
+instructors.forEach(instr => {
+    html += `<tr><td><span class="text-primary">— ${instr.name}</span></td>`;
+    
+    // For each day of the week
+    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        // For each slot (AM and PM)
+        ["AM", "PM"].forEach(slot => {
+            const assignedTask = (instructorAssignments[instr.name] || []).find(
+                a => a.dayIndex === dayIndex && a.slot === slot
+            );
+            
+            if (assignedTask) {
+                // Render assigned task
+                html += `<td class="assigned-task"
+                    data-task="${assignedTask.task.name}"
+                    data-instructor="${instr.name}"
+                    data-day-index="${dayIndex}"
+                    data-slot="${slot}"
+                    style="background-color: ${Methods.getColorForCustomer(assignedTask.task.custom_customer_name)}; cursor: pointer;">
+                    ${assignedTask.task.subject} <span style="color:red;cursor:pointer;">&times;</span>
+                </td>`;
+            } else {
+                // Render empty assignable slot
+                html += `<td class="assignable-cell"
+                    data-instructor="${instr.name}"
+                    data-day-index="${dayIndex}"
+                    data-slot="${slot}"
+                    style="cursor: pointer; border: 2px dashed #ddd; min-height: 40px; text-align: center;">
+                    <small style="color: #999;">${slot}</small>
+                </td>`;
+            }
+        });
+    }
+    html += '</tr>';
+});
 	
 		html += '</tbody></table></div>';
 		$('#calendar-container').html(html);
 	}
 	
 
-	// Event Handlers
+	// Replace the existing handleTaskAssignment function with this fixed version
 	async function handleTaskAssignment(cell) {
-		if (!selectedTask) return;
-
-		const parentRow = cell.closest('tr');
-		const isInstructorRow = parentRow.find('td:first').text().trim().startsWith("—");
-
-		if (isInstructorRow && cell.is(':empty')) {
-			const instructorName = parentRow.find('td:first').text().replace("—", "").trim();
-			const dayIndex = Math.floor(cell.index() / 2 - 0.5);
-			const slot = cell.index() % 2 === 1 ? "AM" : "PM";
-			const activityDate = moment(currentWeekStart).add(dayIndex, 'days').format("YYYY-MM-DD");
-			const startTime = slot === "AM" ? "08:00:00" : "13:30:00";
-			const fullStart = `${activityDate} ${startTime}`;
-
-			try {
-				// Check if allocation already exists
-				const existing = await Methods.checkExistingAllocation(selectedTask, activityDate, fullStart, instructorName);
-				if (existing) {
-					frappe.show_alert("Activity Allocation already exists", 3);
-					return;
-				}
-
-				// Fetch instructor qualification
-				const qualification = await Methods.fetchInstructorQualification(instructorName, selectedTask.subject);
-
-				// Create activity allocation
-				await Methods.createActivityAllocation(selectedTask, activityDate, slot, instructorName, qualification);
-
-				// Update in-memory assignments
-				if (!instructorAssignments[instructorName]) {
-					instructorAssignments[instructorName] = [];
-				}
-				instructorAssignments[instructorName].push({
-					task: selectedTask,
-					dayIndex: dayIndex,
-					slot: slot
-				});
-
-				frappe.show_alert(`Activity Allocation created for ${instructorName}`, 3);
-				console.log(`Created activity for: ${selectedTask.subject}`);
-				loadTasksAndRenderCalendar();
-
-			} catch (error) {
-				console.error('Error creating assignment:', error);
-				frappe.show_alert("Error creating assignment", 5);
+		if (!selectedTask) {
+			frappe.show_alert("Please select a task first by clicking on it", 3);
+			return;
+		}
+	
+		const instructorName = cell.attr('data-instructor');
+		const dayIndex = parseInt(cell.attr('data-day-index'));
+		const slot = cell.attr('data-slot');
+	
+		console.log('Assignment attempt:', {
+			dayIndex: dayIndex,
+			slot: slot,
+			instructor: instructorName,
+			selectedTask: selectedTask.subject
+		});
+	
+		// Validate required data
+		if (!instructorName || isNaN(dayIndex) || !slot) {
+			console.error('Missing data attributes:', {
+				instructor: instructorName,
+				dayIndex: dayIndex,
+				slot: slot
+			});
+			frappe.show_alert("Error: Missing assignment data", 5);
+			return;
+		}
+	
+		// Check if slot is already assigned
+		const existingAssignment = (instructorAssignments[instructorName] || []).find(
+			a => a.dayIndex === dayIndex && a.slot === slot
+		);
+	
+		if (existingAssignment) {
+			frappe.show_alert("This slot is already assigned", 3);
+			return;
+		}
+	
+		const activityDate = moment(currentWeekStart).add(dayIndex, 'days').format("YYYY-MM-DD");
+		const startTime = slot === "AM" ? "08:00:00" : "13:30:00";
+		const fullStart = `${activityDate} ${startTime}`;
+	
+		try {
+			// Check for existing allocation in backend
+			const existing = await Methods.checkExistingAllocation(selectedTask, activityDate, fullStart, instructorName);
+			if (existing) {
+				frappe.show_alert("Activity Allocation already exists", 3);
+				return;
 			}
-
+	
+			// Get instructor qualification
+			const qualification = await Methods.fetchInstructorQualification(instructorName, selectedTask.subject);
+	
+			// Create the allocation
+			await Methods.createActivityAllocation(selectedTask, activityDate, slot, instructorName, qualification);
+	
+			// Update local assignments
+			if (!instructorAssignments[instructorName]) {
+				instructorAssignments[instructorName] = [];
+			}
+	
+			instructorAssignments[instructorName].push({
+				task: selectedTask,
+				dayIndex: dayIndex,
+				slot: slot,
+				actualDate: activityDate,
+				actualStartTime: fullStart
+			});
+	
+			frappe.show_alert(`${selectedTask.subject} assigned to ${instructorName} on ${moment(activityDate).format('ddd MMM D')} ${slot}`, 3);
+			
+			// Reload calendar and clear selection
 			selectedTask = null;
+			loadTasksAndRenderCalendar();
+	
+		} catch (error) {
+			console.error('Error creating assignment:', error);
+			frappe.show_alert("Error creating assignment", 5);
 		}
 	}
 
@@ -1150,20 +1216,34 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		}
 	});
 
-	$('#calendar-container').on('click', '.assignable-cell', function () {
-		const task = JSON.parse($(this).attr('data-task'));
-		selectedTask = task;
-		frappe.show_alert(`Selected: ${task.subject}`, 2);
-	});
+// Handle task selection (clicking on task cells to select them)
+$('#calendar-container').on('click', '.assignable-cell[data-task]', function(e) {
+	e.stopPropagation();
+	const taskData = $(this).attr('data-task');
+	
+	if (taskData && taskData !== "undefined") {
+		try {
+			const task = JSON.parse(taskData);
+			selectedTask = task;
+			frappe.show_alert(`Selected: ${task.subject}`, 2);
+		} catch (e) {
+			console.error("Failed to parse task JSON:", e, taskData);
+			frappe.show_alert('Error: Invalid task data', 3);
+		}
+	}
+});
 
-	$('#calendar-container').on('click', 'td', function () {
-		handleTaskAssignment($(this));
-	});
+// Handle assignment (clicking on instructor empty slots)
+$('#calendar-container').on('click', '.assignable-cell[data-instructor]', function(e) {
+	e.stopPropagation();
+	handleTaskAssignment($(this));
+});
 
-	$('#calendar-container').on('click', '.assigned-task', function () {
-		handleTaskRemoval($(this));
-	});
-
+// Handle removal (clicking on assigned tasks)
+$('#calendar-container').on('click', '.assigned-task', function(e) {
+	e.stopPropagation();
+	handleTaskRemoval($(this));
+});
 	$('#prev-week').on('click', function() {
 		currentWeekStart.subtract(1, 'week');
 		loadTasksAndRenderCalendar();
