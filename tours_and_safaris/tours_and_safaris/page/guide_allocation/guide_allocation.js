@@ -288,38 +288,110 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					callback: function(res) {
 						const instructorDoc = res.message;
 						let qualification = "";
-
+		
 						console.log("Full Instructor Doc:", instructorDoc); // Debug log
-
+		
 						if (instructorDoc) {
-							// Check different possible field names for activity levels
-							const activityLevels = instructorDoc.activity_levels || 
-													instructorDoc.instructor_activity_levels || 
-													instructorDoc.activities || 
-													[];
-
-							console.log("Activity Levels found:", activityLevels); // Debug log
-
+							// Check all possible field names for activity levels in child table
+							const possibleFieldNames = [
+								'activity_levels', 
+								'instructor_activity_levels', 
+								'activities',
+								'activity_qualifications',
+								'qualifications'
+							];
+		
+							let activityLevels = null;
+							
+							// Find the correct field name
+							for (const fieldName of possibleFieldNames) {
+								if (instructorDoc[fieldName] && Array.isArray(instructorDoc[fieldName])) {
+									activityLevels = instructorDoc[fieldName];
+									console.log(`Found activity levels in field: ${fieldName}`, activityLevels);
+									break;
+								}
+							}
+		
 							if (activityLevels && activityLevels.length > 0) {
-								const activityRow = activityLevels.find(row => {
-									// More flexible matching
-									const rowActivity = row.activity_name || row.activity || row.name;
-									console.log(`Comparing: "${rowActivity}" with "${activityName}"`);
+								console.log("Available activities in instructor doc:", 
+									activityLevels.map(row => {
+										// Log all possible activity name fields
+										return {
+											activity_name: row.activity_name,
+											activity: row.activity,
+											name: row.name,
+											activity_type: row.activity_type
+										};
+									})
+								);
+		
+								// Try different matching strategies
+								let activityRow = null;
+		
+								// Strategy 1: Exact match on activity_name
+								activityRow = activityLevels.find(row => {
+									const rowActivity = row.activity_name || row.activity || row.name || row.activity_type;
 									return rowActivity === activityName;
 								});
-
+		
+								// Strategy 2: Case insensitive match
+								if (!activityRow) {
+									activityRow = activityLevels.find(row => {
+										const rowActivity = (row.activity_name || row.activity || row.name || row.activity_type || '').toLowerCase();
+										return rowActivity === activityName.toLowerCase();
+									});
+								}
+		
+								// Strategy 3: Partial match (contains)
+								if (!activityRow) {
+									activityRow = activityLevels.find(row => {
+										const rowActivity = (row.activity_name || row.activity || row.name || row.activity_type || '').toLowerCase();
+										return rowActivity.includes(activityName.toLowerCase()) || 
+											   activityName.toLowerCase().includes(rowActivity);
+									});
+								}
+		
+								// Strategy 4: Match base activity name (remove "- Group X" suffix)
+								if (!activityRow) {
+									const baseActivityName = activityName.split(' - Group')[0].trim();
+									console.log(`Trying base activity name: ${baseActivityName}`);
+									
+									activityRow = activityLevels.find(row => {
+										const rowActivity = row.activity_name || row.activity || row.name || row.activity_type;
+										return rowActivity === baseActivityName || 
+											   (rowActivity && rowActivity.toLowerCase() === baseActivityName.toLowerCase());
+									});
+								}
+		
 								if (activityRow) {
+									// Try different qualification field names
 									qualification = activityRow.qualification || 
 													activityRow.level || 
-													activityRow.qualification_level || 
+													activityRow.qualification_level ||
+													activityRow.instructor_level ||
+													activityRow.competency_level ||
 													"";
-									console.log("Found qualification:", qualification); // Debug log
+									console.log("Found qualification:", qualification);
 								} else {
 									console.log("No matching activity found. Available activities:", 
-										activityLevels.map(row => row.activity_name || row.activity || row.name));
+										activityLevels.map(row => ({
+											activity_name: row.activity_name,
+											activity: row.activity,
+											name: row.name,
+											activity_type: row.activity_type
+										}))
+									);
 								}
 							} else {
 								console.log("No activity levels found. Available fields:", Object.keys(instructorDoc));
+								
+								// Check if there are any fields that might contain activity data
+								const potentialFields = Object.keys(instructorDoc).filter(key => 
+									key.toLowerCase().includes('activity') || 
+									key.toLowerCase().includes('qualification') ||
+									key.toLowerCase().includes('level')
+								);
+								console.log("Potential activity/qualification fields:", potentialFields);
 							}
 						} else {
 							console.log("No instructor document found");
@@ -334,7 +406,84 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				});
 			});
 		},
-
+		
+		// Enhanced version that also checks the DocType structure
+		async fetchInstructorQualificationEnhanced(instructorName, activityName) {
+			return new Promise((resolve, reject) => {
+				console.log(`Fetching qualification for instructor: ${instructorName}, activity: ${activityName}`);
+				
+				// First, let's get the DocType structure to understand the fields
+				frappe.call({
+					method: "frappe.client.get_meta",
+					args: {
+						doctype: "Instructor"
+					},
+					callback: function(metaRes) {
+						console.log("Instructor DocType Meta:", metaRes.message);
+						
+						// Now get the actual instructor document
+						frappe.call({
+							method: "frappe.client.get",
+							args: {
+								doctype: "Instructor",
+								name: instructorName
+							},
+							callback: function(res) {
+								const instructorDoc = res.message;
+								let qualification = "";
+		
+								if (instructorDoc) {
+									console.log("Full Instructor Doc:", instructorDoc);
+									
+									// If we have meta information, use it to find child table fields
+									if (metaRes.message && metaRes.message.fields) {
+										const childTableFields = metaRes.message.fields.filter(field => 
+											field.fieldtype === 'Table'
+										);
+										console.log("Child table fields found:", childTableFields.map(f => f.fieldname));
+										
+										// Check each child table field
+										for (const field of childTableFields) {
+											const childData = instructorDoc[field.fieldname];
+											if (childData && Array.isArray(childData)) {
+												console.log(`Checking child table: ${field.fieldname}`, childData);
+												
+												const activityRow = childData.find(row => {
+													const baseActivityName = activityName.split(' - Group')[0].trim();
+													const rowActivity = row.activity_name || row.activity || row.name;
+													return rowActivity === activityName || rowActivity === baseActivityName;
+												});
+												
+												if (activityRow) {
+													qualification = activityRow.qualification || 
+																	activityRow.level || 
+																	activityRow.qualification_level ||
+																	"";
+													console.log(`Found qualification in ${field.fieldname}:`, qualification);
+													break;
+												}
+											}
+										}
+									}
+								}
+								
+								resolve(qualification);
+							},
+							error: function(err) {
+								console.error("Error fetching instructor:", err);
+								resolve("");
+							}
+						});
+					},
+					error: function(err) {
+						console.error("Error fetching instructor meta:", err);
+						// Fallback to original method
+						resolve("");
+					}
+				});
+			});
+		},
+		
 		async checkExistingAllocation(task, activityDate, fullStart, instructorName) {
 			return new Promise((resolve, reject) => {
 				// Get all Activity Allocation documents and check their child tables
