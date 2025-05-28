@@ -27,3 +27,19 @@ def remove_activity_allocation(instructor, activity_date, activity_name):
                     return {"status": "updated", "doc": alloc_name}
 
     return {"status": "not_found"}
+
+import frappe
+from frappe.model.document import Document
+from frappe import _
+
+@frappe.whitelist()
+def submit_activity_allocation(name):
+    if not name:
+        frappe.throw(_("Missing document name"))
+    
+    doc = frappe.get_doc("Activity Allocation", name)
+    if doc.docstatus != 0:
+        return {"status": "already_submitted"}
+    
+    doc.submit()
+    return {"status": "submitted", "name": name}

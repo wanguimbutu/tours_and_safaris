@@ -179,8 +179,16 @@ def allocate_instructor(doc, method):
                 else end_time
             )
 
-            from_datetime = datetime.combine(activity_date, start_time)
-            to_datetime = datetime.combine(activity_date, end_time)
+            from_datetime = datetime.combine(
+                activity_date,
+                start_time.time() if isinstance(start_time, datetime) else start_time
+            )
+
+            to_datetime = datetime.combine(
+                activity_date,
+                end_time.time() if isinstance(end_time, datetime) else end_time
+            )
+
 
             time_logs.append({
                 "activity_type": row.activity_name,

@@ -1244,6 +1244,44 @@ $('#calendar-container').on('click', '.assigned-task', function(e) {
 	e.stopPropagation();
 	handleTaskRemoval($(this));
 });
+$('#submit-allocations').on('click', async function () {
+    try {
+        const drafts = await Methods.fetchDraftAllocations(currentWeekStart);
+
+        if (drafts.length === 0) {
+            frappe.show_alert("No draft allocations to submit", 3);
+            return;
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 0; i < drafts.length; i++) {
+            const doc = drafts[i];
+            try {
+                await frappe.call({
+                    method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.submit_activity_allocation",
+                    args: { name: doc.name }
+                });
+                successCount++;
+            } catch (err) {
+                console.error(`Failed to submit ${doc.name}`, err);
+                failCount++;
+            }
+        }
+
+        frappe.show_alert(`Submitted ${successCount} allocations${failCount > 0 ? `, ${failCount} failed.` : ''}`, 5);
+
+        // Reload the calendar to reflect submitted allocations
+        loadTasksAndRenderCalendar();
+
+    } catch (error) {
+        console.error("Error submitting allocations:", error);
+        frappe.show_alert("Error submitting allocations", 5);
+    }
+});
+
+
 	$('#prev-week').on('click', function() {
 		currentWeekStart.subtract(1, 'week');
 		loadTasksAndRenderCalendar();
