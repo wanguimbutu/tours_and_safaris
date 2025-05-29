@@ -274,7 +274,7 @@ def check_allocation_conflict(instructor_name, activity_date, slot):
     
     existing = frappe.db.sql("""
         SELECT name
-        FROM `tabActivity Allocation Detail`
+        FROM `tabActivity Allocation Details`
         WHERE instructor = %s
         AND activity_date = %s
         AND start_time = %s
@@ -290,7 +290,7 @@ def remove_activity_allocation_optimized(instructor, activity_date, activity_nam
         # Find the allocation detail
         allocation_detail = frappe.db.sql("""
             SELECT aad.name as detail_name, aad.parent as allocation_id
-            FROM `tabActivity Allocation Detail` aad
+            FROM `tabActivity Allocation Details` aad
             INNER JOIN `tabActivity Allocation` aa ON aa.name = aad.parent
             WHERE aad.instructor = %s
             AND aad.activity_date = %s
@@ -330,7 +330,7 @@ def submit_week_allocations(week_start_date):
         draft_allocations = frappe.db.sql("""
             SELECT DISTINCT aa.name
             FROM `tabActivity Allocation` aa
-            INNER JOIN `tabActivity Allocation Detail` aad ON aad.parent = aa.name
+            INNER JOIN `tabActivity Allocation Details` aad ON aad.parent = aa.name
             WHERE aa.docstatus = 0
             AND aad.activity_date BETWEEN %s AND %s
         """, (week_start, week_end))

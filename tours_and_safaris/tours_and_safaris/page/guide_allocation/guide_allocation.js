@@ -251,7 +251,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		
 			if (inline) {
 				return `<div class="assignable-cell" 
-					data-task='${JSON.stringify(task)}'
+					data-task-name="${task.name}"
+					data-task-subject="${task.subject}"
+					data-task-customer="${task.custom_customer_name || ''}"
 					data-day-index="${dayIndex}" 
 					data-slot="${slot}" 
 					style="${style}; cursor: pointer;">
@@ -260,7 +262,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			}
 		
 			return `<td class="assignable-cell" 
-				data-task='${JSON.stringify(task)}'
+				data-task-name="${task.name}"
+				data-task-subject="${task.subject}"
+				data-task-customer="${task.custom_customer_name || ''}"
 				data-day-index="${dayIndex}" 
 				data-slot="${slot}" 
 				style="background-color: ${color}; cursor: pointer;">
@@ -312,13 +316,22 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				console.error('Error removing allocation:', error);
 				throw error;
 			}
+		},
+
+		// Helper method to check if a slot is occupied
+		isSlotOccupied(instructorName, dayIndex, slot, instructorAssignments) {
+			const assignments = instructorAssignments[instructorName] || [];
+			return assignments.some(assignment => 
+				assignment.dayIndex === dayIndex && assignment.slot === slot
+			);
 		}
 	};
 
 	// Main Functions
 	async function loadAndRenderCalendar() {
 		try {
-			const data = await Methods.loadWeekData(currentWeekStart);
+			// Force reload to get fresh data
+			const data = await Methods.loadWeekData(currentWeekStart, true);
 			if (data) {
 				renderCalendar(data);
 			}
@@ -328,12 +341,10 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		}
 	}
 	
-	// CONTINUED: Complete client-side based on optimized server
-
 	function renderCalendar(data) {
 		const { tasks, instructors, instructorAssignments } = data;
 		const weekDays = Methods.getWeekDays();
-		const customerMap = {}; // <- FIXED: Define customerMap before use
+		const customerMap = {};
 
 		$('#week-range-title').text(`${weekDays[0].format('MMM D')} - ${weekDays[6].format('MMM D, YYYY')}`);
 
@@ -393,9 +404,24 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 						a => a.dayIndex === dayIndex && a.slot === slot
 					);
 					if (assigned) {
-						html += `<td class="assigned-task" data-instructor="${instr.name}" data-day-index="${dayIndex}" data-slot="${slot}" data-task-name="${assigned.task.name}" data-subject="${assigned.task.subject}" style="background:${Methods.getColorForCustomer(assigned.task.custom_customer_name)}; cursor:pointer;">${assigned.task.subject} <span style="color:red; cursor:pointer;">&times;</span></td>`;
+						html += `<td class="assigned-task" 
+							data-instructor="${instr.name}" 
+							data-day-index="${dayIndex}" 
+							data-slot="${slot}" 
+							data-task-name="${assigned.task.name}" 
+							data-subject="${assigned.task.subject}" 
+							style="background:${Methods.getColorForCustomer(assigned.task.custom_customer_name)}; cursor:pointer; position: relative;">
+							${assigned.task.subject} 
+							<span class="remove-assignment" style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+						</td>`;
 					} else {
-						html += `<td class="assignable-slot" data-instructor="${instr.name}" data-day-index="${dayIndex}" data-slot="${slot}" style="cursor:pointer; border:2px dashed #ccc; text-align:center;"><small>${slot}</small></td>`;
+						html += `<td class="assignable-slot" 
+							data-instructor="${instr.name}" 
+							data-day-index="${dayIndex}" 
+							data-slot="${slot}" 
+							style="cursor:pointer; border:2px dashed #ccc; text-align:center;">
+							<small>${slot}</small>
+						</td>`;
 					}
 				});
 			}
@@ -406,141 +432,224 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		$('#calendar-container').html(html);
 	}
 
-
-// Event handlers
-$('#calendar-container').on('click', '.assignable-cell[data-task]', function () {
-	const taskData = $(this).data('task');
-	if (taskData) {
-		selectedTask = JSON.parse(taskData);
+	// Event handlers - Moved outside renderCalendar and using event delegation
+	$('#calendar-container').on('click', '.assignable-cell', function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		
+		// Clear previous selections
+		$('.assignable-cell').removeClass('selected-task');
+		$(this).addClass('selected-task');
+		
+		// Store selected task data
+		selectedTask = {
+			name: $(this).data('task-name'),
+			subject: $(this).data('task-subject'),
+			custom_customer_name: $(this).data('task-customer')
+		};
+		
 		frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
-	}
-});
-
-$('#calendar-container').on('click', '.assignable-slot', async function () {
-	if (!selectedTask) return frappe.show_alert('Select a task first', 5);
-	const instructor = $(this).data('instructor');
-	const dayIndex = parseInt($(this).data('day-index'));
-	const slot = $(this).data('slot');
-	try {
-		await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
-		await loadAndRenderCalendar();
-	} catch (error) {
-		frappe.show_alert(error.message || 'Error assigning task', 5);
-	}
-});
-
-$('#calendar-container').on('click', '.assigned-task span', async function (e) {
-	e.stopPropagation();
-	const cell = $(this).closest('.assigned-task');
-	const instructor = cell.data('instructor');
-	const dayIndex = parseInt(cell.data('day-index'));
-	const slot = cell.data('slot');
-	const subject = cell.data('subject');
-	try {
-		await Methods.removeAllocation(instructor, dayIndex, slot, subject);
-		await loadAndRenderCalendar();
-	} catch (error) {
-		frappe.show_alert(error.message || 'Error removing allocation', 5);
-	}
-});
-
-$('#submit-allocations').on('click', async () => {
-	try {
-		const res = await frappe.call({
-			method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.submit_week_allocations',
-			args: { week_start_date: currentWeekStart.format('YYYY-MM-DD') }
-		});
-		frappe.show_alert(res.message.message);
-		await loadAndRenderCalendar();
-	} catch (error) {
-		frappe.show_alert('Error submitting allocations', 5);
-	}
-});
-
-$('#create-groups').on('click', function () {
-	populateCustomerDropdown(weekData[currentWeekStart.format('YYYY-MM-DD')].tasks);
-	$('#groupCreationModal').modal('show');
-});
-
-$('#createGroupsBtn').on('click', async function () {
-	const parentTaskName = $('#parentTaskSelect').val();
-	const numberOfGroups = parseInt($('#numberOfGroups').val());
-	if (!parentTaskName || !numberOfGroups) {
-		frappe.show_alert('Please select activity and number of groups', 5);
-		return;
-	}
-	try {
-		$(this).prop('disabled', true);
-		const res = await frappe.call({
-			method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.create_customer_groups_optimized',
-			args: {
-				parent_task_name: parentTaskName,
-				number_of_groups: numberOfGroups
-			}
-		});
-		frappe.show_alert(res.message.message);
-		$('#groupCreationModal').modal('hide');
-		await loadAndRenderCalendar();
-	} catch (error) {
-		frappe.show_alert('Failed to create groups', 5);
-	} finally {
-		$(this).prop('disabled', false);
-	}
-});
-
-$('#prev-week').on('click', () => {
-	currentWeekStart.subtract(7, 'days');
-	loadAndRenderCalendar();
-});
-
-$('#next-week').on('click', () => {
-	currentWeekStart.add(7, 'days');
-	loadAndRenderCalendar();
-});
-
-function populateCustomerDropdown(tasks) {
-	const customers = [...new Set(tasks.map(t => t.custom_customer_name).filter(Boolean))];
-	const select = $('#customerSelect');
-	select.empty().append('<option value="">Choose a customer...</option>');
-	customers.forEach(c => {
-		select.append(`<option value="${c}">${c}</option>`);
+		console.log('Selected task:', selectedTask);
 	});
-}
 
-$('#customerSelect').on('change', function () {
-	const customer = $(this).val();
-	const tasks = weekData[currentWeekStart.format('YYYY-MM-DD')].tasks;
-	const filtered = tasks.filter(t => t.custom_customer_name === customer && !t.parent_task);
-	const select = $('#parentTaskSelect');
-	select.empty().append('<option value="">Choose an activity...</option>');
-	filtered.forEach(task => {
-		select.append(`<option value="${task.name}" data-people="${task.custom_no_of_people}">${task.subject}</option>`);
-	});
-});
-
-$('#parentTaskSelect').on('change', function () {
-	const people = $(this).find(':selected').data('people') || 0;
-	$('#totalPeople').val(people);
-});
-
-$('#numberOfGroups').on('input', function () {
-	const totalPeople = parseInt($('#totalPeople').val()) || 0;
-	const groups = parseInt($(this).val()) || 0;
-	if (groups > 0 && totalPeople > 0) {
-		const perGroup = Math.ceil(totalPeople / groups);
-		let html = '<ul>';
-		for (let i = 0; i < groups; i++) {
-			const start = i * perGroup + 1;
-			const end = Math.min((i + 1) * perGroup, totalPeople);
-			html += `<li>Group ${i + 1}: ${end - start + 1} people</li>`;
+	$('#calendar-container').on('click', '.assignable-slot', async function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		
+		if (!selectedTask) {
+			frappe.show_alert('Please select a task first by clicking on it', 5);
+			return;
 		}
-		html += '</ul>';
-		$('#groupPreview').html(html);
-	} else {
-		$('#groupPreview').empty();
-	}
-});
+		
+		const instructor = $(this).data('instructor');
+		const dayIndex = parseInt($(this).data('day-index'));
+		const slot = $(this).data('slot');
+		
+		console.log('Assigning task:', selectedTask.name, 'to instructor:', instructor, 'on day:', dayIndex, 'slot:', slot);
+		
+		try {
+			// Show loading state
+			$(this).html('<small>Assigning...</small>');
+			
+			const result = await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
+			console.log('Assignment result:', result);
+			
+			frappe.show_alert(`Assigned ${selectedTask.subject} to ${instructor}`, 3);
+			await loadAndRenderCalendar();
+			
+			// Clear selection
+			selectedTask = null;
+			$('.assignable-cell').removeClass('selected-task');
+			
+		} catch (error) {
+			console.error('Assignment error:', error);
+			frappe.show_alert(error.message || 'Error assigning task', 5);
+			// Restore original content
+			$(this).html(`<small>${slot}</small>`);
+		}
+	});
 
-// Initialize
-loadAndRenderCalendar();
+	$('#calendar-container').on('click', '.remove-assignment', async function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		
+		const cell = $(this).closest('.assigned-task');
+		const instructor = cell.data('instructor');
+		const dayIndex = parseInt(cell.data('day-index'));
+		const slot = cell.data('slot');
+		const subject = cell.data('subject');
+		
+		console.log('Removing assignment:', instructor, dayIndex, slot, subject);
+		
+		try {
+			// Show loading state
+			cell.html('<small>Removing...</small>');
+			
+			const result = await Methods.removeAllocation(instructor, dayIndex, slot, subject);
+			console.log('Removal result:', result);
+			
+			frappe.show_alert(`Removed assignment from ${instructor}`, 3);
+			await loadAndRenderCalendar();
+			
+		} catch (error) {
+			console.error('Removal error:', error);
+			frappe.show_alert(error.message || 'Error removing assignment', 5);
+			// Reload to restore original state
+			await loadAndRenderCalendar();
+		}
+	});
+
+	// Prevent assignment when clicking on assigned tasks (not the remove button)
+	$('#calendar-container').on('click', '.assigned-task', function (e) {
+		if (!$(e.target).hasClass('remove-assignment')) {
+			e.preventDefault();
+			e.stopPropagation();
+			frappe.show_alert('This slot is already assigned. Click the × to remove it.', 3);
+		}
+	});
+
+	$('#submit-allocations').on('click', async () => {
+		try {
+			const res = await frappe.call({
+				method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.submit_week_allocations',
+				args: { week_start_date: currentWeekStart.format('YYYY-MM-DD') }
+			});
+			frappe.show_alert(res.message.message);
+			await loadAndRenderCalendar();
+		} catch (error) {
+			frappe.show_alert('Error submitting allocations', 5);
+		}
+	});
+
+	$('#create-groups').on('click', function () {
+		const currentData = weekData[currentWeekStart.format('YYYY-MM-DD')];
+		if (currentData && currentData.tasks) {
+			populateCustomerDropdown(currentData.tasks);
+			$('#groupCreationModal').modal('show');
+		} else {
+			frappe.show_alert('Please wait for data to load', 3);
+		}
+	});
+
+	$('#createGroupsBtn').on('click', async function () {
+		const parentTaskName = $('#parentTaskSelect').val();
+		const numberOfGroups = parseInt($('#numberOfGroups').val());
+		if (!parentTaskName || !numberOfGroups) {
+			frappe.show_alert('Please select activity and number of groups', 5);
+			return;
+		}
+		try {
+			$(this).prop('disabled', true);
+			const res = await frappe.call({
+				method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.create_customer_groups_optimized',
+				args: {
+					parent_task_name: parentTaskName,
+					number_of_groups: numberOfGroups
+				}
+			});
+			frappe.show_alert(res.message.message);
+			$('#groupCreationModal').modal('hide');
+			await loadAndRenderCalendar();
+		} catch (error) {
+			frappe.show_alert('Failed to create groups', 5);
+		} finally {
+			$(this).prop('disabled', false);
+		}
+	});
+
+	$('#prev-week').on('click', () => {
+		currentWeekStart.subtract(7, 'days');
+		loadAndRenderCalendar();
+	});
+
+	$('#next-week').on('click', () => {
+		currentWeekStart.add(7, 'days');
+		loadAndRenderCalendar();
+	});
+
+	function populateCustomerDropdown(tasks) {
+		const customers = [...new Set(tasks.map(t => t.custom_customer_name).filter(Boolean))];
+		const select = $('#customerSelect');
+		select.empty().append('<option value="">Choose a customer...</option>');
+		customers.forEach(c => {
+			select.append(`<option value="${c}">${c}</option>`);
+		});
+	}
+
+	$('#customerSelect').on('change', function () {
+		const customer = $(this).val();
+		const currentData = weekData[currentWeekStart.format('YYYY-MM-DD')];
+		if (currentData && currentData.tasks) {
+			const filtered = currentData.tasks.filter(t => t.custom_customer_name === customer && !t.parent_task);
+			const select = $('#parentTaskSelect');
+			select.empty().append('<option value="">Choose an activity...</option>');
+			filtered.forEach(task => {
+				select.append(`<option value="${task.name}" data-people="${task.custom_no_of_people}">${task.subject}</option>`);
+			});
+		}
+	});
+
+	$('#parentTaskSelect').on('change', function () {
+		const people = $(this).find(':selected').data('people') || 0;
+		$('#totalPeople').val(people);
+	});
+
+	$('#numberOfGroups').on('input', function () {
+		const totalPeople = parseInt($('#totalPeople').val()) || 0;
+		const groups = parseInt($(this).val()) || 0;
+		if (groups > 0 && totalPeople > 0) {
+			const perGroup = Math.ceil(totalPeople / groups);
+			let html = '<ul>';
+			for (let i = 0; i < groups; i++) {
+				const start = i * perGroup + 1;
+				const end = Math.min((i + 1) * perGroup, totalPeople);
+				html += `<li>Group ${i + 1}: ${end - start + 1} people</li>`;
+			}
+			html += '</ul>';
+			$('#groupPreview').html(html);
+		} else {
+			$('#groupPreview').empty();
+		}
+	});
+
+	// Add some CSS for visual feedback
+	$('<style>').prop('type', 'text/css').html(`
+		.selected-task {
+			border: 3px solid #007bff !important;
+			box-shadow: 0 0 5px rgba(0,123,255,0.5);
+		}
+		.assignable-slot:hover {
+			background-color: #e9ecef !important;
+		}
+		.assigned-task:hover {
+			opacity: 0.8;
+		}
+		.remove-assignment:hover {
+			color: #dc3545 !important;
+			font-size: 16px;
+		}
+	`).appendTo('head');
+
+	// Initialize
+	loadAndRenderCalendar();
 }
