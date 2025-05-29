@@ -15,6 +15,12 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
             <button class="btn btn-sm btn-success" id="create-groups">Create Customer Groups</button>
             <button class="btn btn-sm btn-warning" id="submit-allocations">Submit All Allocations</button>
         </div>
+        <div id="loading-indicator" class="text-center" style="display: none;">
+            <div class="spinner-border" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            <p>Loading week data...</p>
+        </div>
         <div id="calendar-container" class="table-responsive"></div>
         
         <!-- Group Creation Modal -->
@@ -60,139 +66,136 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
     `);
 	
 	let currentWeekStart = moment().startOf('week');
-	let instructorAssignments = {};
 	let selectedTask = null;
-	let customerTasks = {};
+	let weekData = {}; // Cache for week data
+	let loadingPromise = null; // Prevent multiple simultaneous loads
 
-	// Helper Methods
+	// Optimized Methods
 	const Methods = {
-		async fetchExistingAllocations(weekStart) {
-			const weekEnd = moment(weekStart).add(6, 'days');
+		async loadWeekData(weekStart, forceReload = false) {
+			const weekKey = weekStart.format('YYYY-MM-DD');
 			
-			return new Promise((resolve, reject) => {
-				// First get all Activity Allocation documents
-				frappe.call({
-					method: "frappe.client.get_list",
+			// Return cached data if available and not forcing reload
+			if (!forceReload && weekData[weekKey]) {
+				return weekData[weekKey];
+			}
+			
+			// If already loading this week, wait for it
+			if (loadingPromise && !forceReload) {
+				return await loadingPromise;
+			}
+			
+			this.showLoading(true);
+			
+			try {
+				loadingPromise = frappe.call({
+					method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.get_week_data",
 					args: {
-						doctype: "Activity Allocation",
-						fields: ["name", "customer", "activity_name", "start_date", "end_date"],
-						filters: {
-							start_date: ["<=", weekEnd.format("YYYY-MM-DD")],
-							end_date: [">=", weekStart.format("YYYY-MM-DD")]
-						}
-					},
-					callback: function(res) {
-						if (res.message && res.message.length > 0) {
-							// Fetch full documents to get child table data
-							Promise.all(res.message.map(allocation => 
-								Methods.fetchFullAllocation(allocation.name)
-							)).then(fullAllocations => {
-								resolve(fullAllocations.filter(doc => doc !== null));
-							}).catch(err => {
-								console.error("Error fetching full allocations:", err);
-								resolve([]);
-							});
-						} else {
-							resolve([]);
-						}
-					},
-					error: function(err) {
-						console.error("Error fetching existing allocations:", err);
-						resolve([]);
+						week_start_date: weekKey
 					}
 				});
-			});
+				
+				const response = await loadingPromise;
+				
+				if (response.message && !response.message.error) {
+					// Process the data for easier consumption
+					const processed = this.processWeekData(response.message);
+					weekData[weekKey] = processed;
+					return processed;
+				} else {
+					throw new Error(response.message?.error || "Failed to load week data");
+				}
+			} catch (error) {
+				console.error('Error loading week data:', error);
+				frappe.show_alert("Error loading week data: " + error.message, 5);
+				return null;
+			} finally {
+				this.showLoading(false);
+				loadingPromise = null;
+			}
 		},
 
-		async fetchFullAllocation(allocationName) {
-			return new Promise((resolve, reject) => {
-				frappe.call({
-					method: "frappe.client.get",
-					args: {
-						doctype: "Activity Allocation",
-						name: allocationName
-					},
-					callback: function(res) {
-						resolve(res.message || null);
-					},
-					error: function(err) {
-						console.error("Error fetching full allocation:", err);
-						resolve(null);
-					}
-				});
-			});
-		},
-
-		populateInMemoryAssignments(allocations, weekStart) {
-			// Clear existing assignments for this week
-			instructorAssignments = {};
+		processWeekData(rawData) {
+			const { tasks, instructors, allocations } = rawData;
 			
-			allocations.forEach(allocation => {
-				if (allocation.activity_allocation_details) {
-					allocation.activity_allocation_details.forEach(detail => {
-						const instructor = detail.instructor;
-						const activityDate = moment(detail.activity_date);
-						const dayIndex = activityDate.diff(weekStart, 'days');
-						
-						// Only process if within current week
-						if (dayIndex >= 0 && dayIndex < 7) {
-							// Use the improved slot detection
-							const slot = this.getSlotFromSessionAndTime(detail.session, detail.start_time);
-							
-							if (!instructorAssignments[instructor]) {
-								instructorAssignments[instructor] = [];
-							}
-							
-							// Create a task-like object for display
-							const taskObj = {
-								name: allocation.name,
-								subject: detail.activity_name || allocation.activity_name,
-								custom_customer_name: allocation.customer,
-								exp_start_date: allocation.start_date,
-								exp_end_date: allocation.end_date
-							};
-							
-							instructorAssignments[instructor].push({
-								task: taskObj,
-								dayIndex: dayIndex,
-								slot: slot,
-								allocationId: allocation.name
-							});
+			// Process instructor qualifications
+			const processedInstructors = instructors.map(instructor => {
+				const qualificationMap = {};
+				if (instructor.qualifications) {
+					instructor.qualifications.split('|').forEach(qual => {
+						const [activity, qualification] = qual.split(':');
+						if (activity) {
+							qualificationMap[activity] = qualification || '';
 						}
 					});
 				}
+				return {
+					...instructor,
+					qualificationMap
+				};
 			});
+			
+			// Process allocations into assignments
+			const instructorAssignments = {};
+			allocations.forEach(allocation => {
+				const instructor = allocation.instructor;
+				const activityDate = moment(allocation.activity_date);
+				const weekStart = moment(rawData.week_start);
+				const dayIndex = activityDate.diff(weekStart, 'days');
+				
+				if (dayIndex >= 0 && dayIndex < 7) {
+					const slot = this.getSlotFromSessionAndTime(allocation.session, allocation.start_time);
+					
+					if (!instructorAssignments[instructor]) {
+						instructorAssignments[instructor] = [];
+					}
+					
+					const taskObj = {
+						name: allocation.allocation_id,
+						subject: allocation.detail_activity_name || allocation.activity_name,
+						custom_customer_name: allocation.customer
+					};
+					
+					instructorAssignments[instructor].push({
+						task: taskObj,
+						dayIndex: dayIndex,
+						slot: slot,
+						allocationId: allocation.allocation_id
+					});
+				}
+			});
+			
+			return {
+				...rawData,
+				instructors: processedInstructors,
+				instructorAssignments,
+				tasks
+			};
 		},
 
-		getSlotFromSession(session) {
-			// Map session values back to AM/PM
-			const sessionToSlot = {
-				"AM": "AM",
-				"PM": "PM",
-				"MORNING": "AM",
-				"AFTERNOON": "PM",
-				"HALF_DAY_AM": "AM",
-				"HALF_DAY_PM": "PM"
-			};
-			return sessionToSlot[session] || "AM";
+		showLoading(show) {
+			if (show) {
+				$('#loading-indicator').show();
+				$('#calendar-container').hide();
+			} else {
+				$('#loading-indicator').hide();
+				$('#calendar-container').show();
+			}
 		},
+
 		getSlotFromSessionAndTime(session, startTime) {
-			// If we have specific AM/PM values, use them
 			if (session === "AM") return "AM";
 			if (session === "PM") return "PM";
 			
-			// For "HALF DAY", determine from start time
 			if (startTime) {
 				const time = moment(startTime, "YYYY-MM-DD HH:mm:ss");
 				const hour = time.hour();
-				
-				// AM slots typically start before 13:00 (1 PM)
 				return hour < 13 ? "AM" : "PM";
 			}
 			
-			// Default fallback
 			return "AM";
 		},
+
 		getColorForCustomer(customerName) {
 			if (!customerName) customerName = "Unknown";
 			
@@ -208,500 +211,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			return colors[index];
 		},
 
-		async fetchTasks(weekStart) {
-			const weekEnd = moment(weekStart).add(6, 'days');
-			const isPastWeek = moment(weekStart).isBefore(moment().startOf('week'));
-			const isFutureWeek = moment(weekStart).isAfter(moment().endOf('week'));
-		
-			const taskFilters = {
-				custom_is_activity: 1,
-			};
-		
-			if (isPastWeek) {
-				// Show all statuses (no status filter)
-			} else if (isFutureWeek) {
-				taskFilters.status = "Open"; // Future = only upcoming Open
-			} else {
-				taskFilters.status = ["in", ["Open", "Working"]]; // Current = Open + Working
-			}
-		
-			// Add date overlap filters
-			taskFilters.exp_start_date = ["<=", weekEnd.format("YYYY-MM-DD")];
-			taskFilters.exp_end_date = [">=", weekStart.format("YYYY-MM-DD")];
-		
-			// Fetch tasks
-			const parentTasks = await frappe.call('frappe.client.get_list', {
-				doctype: "Task",
-				filters: taskFilters,
-				fields: [
-					"name", "subject", "custom_customer_name", "custom_customer",
-					"parent_task", "exp_start_date", "exp_end_date", "custom_no_of_people"
-				]
-			}).then(res => res.message || []);
-		
-			// Fetch full tasks to inspect dependencies
-			const fullParentTasks = await Promise.all(parentTasks.map(task => {
-				return frappe.call('frappe.client.get', {
-					doctype: "Task",
-					name: task.name
-				}).then(res => res.message || task).catch(() => task);
-			}));
-		
-			// Add subtasks from depends_on
-			const allTasks = [...parentTasks];
-			for (const parent of fullParentTasks) {
-				if (parent.depends_on && Array.isArray(parent.depends_on)) {
-					for (const dep of parent.depends_on) {
-						if (dep.task) {
-							const subtask = await frappe.call('frappe.client.get', {
-								doctype: "Task",
-								name: dep.task
-							}).then(res => {
-								const st = res.message;
-								if (st) {
-									st.parent_task = parent.name;
-									st.custom_customer_name = st.custom_customer_name || parent.custom_customer_name;
-									st.exp_start_date = st.exp_start_date || parent.exp_start_date;
-									st.exp_end_date = st.exp_end_date || parent.exp_end_date;
-								}
-								return st;
-							}).catch(() => null);
-							if (subtask) {
-								allTasks.push(subtask);
-							}
-						}
-					}
-				}
-			}
-		
-			return allTasks;
-		},
-
-		async fetchInstructors() {
-			return new Promise((resolve, reject) => {
-				frappe.call({
-					method: "frappe.client.get_list",
-					args: {
-						doctype: "Instructor",
-						filters: { enabled: 1 },
-						fields: ["name"]
-					},
-					callback: function(res) {
-						resolve(res.message || []);
-					},
-					error: reject
-				});
-			});
-		},
-
-		async fetchInstructorQualification(instructorName, activityName) {
-			return new Promise((resolve, reject) => {
-				console.log(`Fetching qualification for instructor: ${instructorName}, activity: ${activityName}`);
-				
-				frappe.call({
-					method: "frappe.client.get",
-					args: {
-						doctype: "Instructor",
-						name: instructorName
-					},
-					callback: function(res) {
-						const instructorDoc = res.message;
-						let qualification = "";
-		
-						console.log("Full Instructor Doc:", instructorDoc); // Debug log
-		
-						if (instructorDoc) {
-							// Check all possible field names for activity levels in child table
-							const possibleFieldNames = [
-								'activity_levels', 
-								'instructor_activity_levels', 
-								'activities',
-								'activity_qualifications',
-								'qualifications'
-							];
-		
-							let activityLevels = null;
-							
-							// Find the correct field name
-							for (const fieldName of possibleFieldNames) {
-								if (instructorDoc[fieldName] && Array.isArray(instructorDoc[fieldName])) {
-									activityLevels = instructorDoc[fieldName];
-									console.log(`Found activity levels in field: ${fieldName}`, activityLevels);
-									break;
-								}
-							}
-		
-							if (activityLevels && activityLevels.length > 0) {
-								console.log("Available activities in instructor doc:", 
-									activityLevels.map(row => {
-										// Log all possible activity name fields
-										return {
-											activity_name: row.activity_name,
-											activity: row.activity,
-											name: row.name,
-											activity_type: row.activity_type
-										};
-									})
-								);
-		
-								// Try different matching strategies
-								let activityRow = null;
-		
-								// Strategy 1: Exact match on activity_name
-								activityRow = activityLevels.find(row => {
-									const rowActivity = row.activity_name || row.activity || row.name || row.activity_type;
-									return rowActivity === activityName;
-								});
-		
-								// Strategy 2: Case insensitive match
-								if (!activityRow) {
-									activityRow = activityLevels.find(row => {
-										const rowActivity = (row.activity_name || row.activity || row.name || row.activity_type || '').toLowerCase();
-										return rowActivity === activityName.toLowerCase();
-									});
-								}
-		
-								// Strategy 3: Partial match (contains)
-								if (!activityRow) {
-									activityRow = activityLevels.find(row => {
-										const rowActivity = (row.activity_name || row.activity || row.name || row.activity_type || '').toLowerCase();
-										return rowActivity.includes(activityName.toLowerCase()) || 
-											   activityName.toLowerCase().includes(rowActivity);
-									});
-								}
-		
-								// Strategy 4: Match base activity name (remove "- Group X" suffix)
-								if (!activityRow) {
-									const baseActivityName = activityName.split(' - Group')[0].trim();
-									console.log(`Trying base activity name: ${baseActivityName}`);
-									
-									activityRow = activityLevels.find(row => {
-										const rowActivity = row.activity_name || row.activity || row.name || row.activity_type;
-										return rowActivity === baseActivityName || 
-											   (rowActivity && rowActivity.toLowerCase() === baseActivityName.toLowerCase());
-									});
-								}
-		
-								if (activityRow) {
-									// Try different qualification field names
-									qualification = activityRow.qualification || 
-													activityRow.level || 
-													activityRow.qualification_level ||
-													activityRow.instructor_level ||
-													activityRow.competency_level ||
-													"";
-									console.log("Found qualification:", qualification);
-								} else {
-									console.log("No matching activity found. Available activities:", 
-										activityLevels.map(row => ({
-											activity_name: row.activity_name,
-											activity: row.activity,
-											name: row.name,
-											activity_type: row.activity_type
-										}))
-									);
-								}
-							} else {
-								console.log("No activity levels found. Available fields:", Object.keys(instructorDoc));
-								
-								// Check if there are any fields that might contain activity data
-								const potentialFields = Object.keys(instructorDoc).filter(key => 
-									key.toLowerCase().includes('activity') || 
-									key.toLowerCase().includes('qualification') ||
-									key.toLowerCase().includes('level')
-								);
-								console.log("Potential activity/qualification fields:", potentialFields);
-							}
-						} else {
-							console.log("No instructor document found");
-						}
-						
-						resolve(qualification);
-					},
-					error: function(err) {
-						console.error("Error fetching instructor:", err);
-						resolve(""); // Return empty string on error rather than rejecting
-					}
-				});
-			});
-		},
-		
-		// Enhanced version that also checks the DocType structure
-		async fetchInstructorQualificationEnhanced(instructorName, activityName) {
-			return new Promise((resolve, reject) => {
-				console.log(`Fetching qualification for instructor: ${instructorName}, activity: ${activityName}`);
-				
-				// First, let's get the DocType structure to understand the fields
-				frappe.call({
-					method: "frappe.client.get_meta",
-					args: {
-						doctype: "Instructor"
-					},
-					callback: function(metaRes) {
-						console.log("Instructor DocType Meta:", metaRes.message);
-						
-						// Now get the actual instructor document
-						frappe.call({
-							method: "frappe.client.get",
-							args: {
-								doctype: "Instructor",
-								name: instructorName
-							},
-							callback: function(res) {
-								const instructorDoc = res.message;
-								let qualification = "";
-		
-								if (instructorDoc) {
-									console.log("Full Instructor Doc:", instructorDoc);
-									
-									// If we have meta information, use it to find child table fields
-									if (metaRes.message && metaRes.message.fields) {
-										const childTableFields = metaRes.message.fields.filter(field => 
-											field.fieldtype === 'Table'
-										);
-										console.log("Child table fields found:", childTableFields.map(f => f.fieldname));
-										
-										// Check each child table field
-										for (const field of childTableFields) {
-											const childData = instructorDoc[field.fieldname];
-											if (childData && Array.isArray(childData)) {
-												console.log(`Checking child table: ${field.fieldname}`, childData);
-												
-												const activityRow = childData.find(row => {
-													const baseActivityName = activityName.split(' - Group')[0].trim();
-													const rowActivity = row.activity_name || row.activity || row.name;
-													return rowActivity === activityName || rowActivity === baseActivityName;
-												});
-												
-												if (activityRow) {
-													qualification = activityRow.qualification || 
-																	activityRow.level || 
-																	activityRow.qualification_level ||
-																	"";
-													console.log(`Found qualification in ${field.fieldname}:`, qualification);
-													break;
-												}
-											}
-										}
-									}
-								}
-								
-								resolve(qualification);
-							},
-							error: function(err) {
-								console.error("Error fetching instructor:", err);
-								resolve("");
-							}
-						});
-					},
-					error: function(err) {
-						console.error("Error fetching instructor meta:", err);
-						// Fallback to original method
-						resolve("");
-					}
-				});
-			});
-		},
-		
-		async checkExistingAllocation(task, activityDate, fullStart, instructorName) {
-			return new Promise((resolve, reject) => {
-				// Get all Activity Allocation documents and check their child tables
-				frappe.call({
-					method: "frappe.client.get_list",
-					args: {
-						doctype: "Activity Allocation",
-						fields: ["name"]
-					},
-					callback: async function(res) {
-						if (res.message && res.message.length > 0) {
-							// Check each allocation's child table
-							for (let allocation of res.message) {
-								try {
-									const fullDoc = await Methods.fetchFullAllocation(allocation.name);
-									if (fullDoc && fullDoc.activity_allocation_details) {
-										const existing = fullDoc.activity_allocation_details.find(detail =>
-											detail.activity_date === activityDate &&
-											detail.start_time === fullStart &&
-											detail.instructor === instructorName
-										);
-										if (existing) {
-											resolve(fullDoc);
-											return;
-										}
-									}
-								} catch (err) {
-									console.error("Error checking allocation:", err);
-								}
-							}
-							resolve(null);
-						} else {
-							resolve(null);
-						}
-					},
-					error: function(err) {
-						console.error("Error checking existing allocation:", err);
-						resolve(null);
-					}
-				});
-			});
-		},
-
-		async createActivityAllocation(task, activityDate, slot, instructorName, qualification) {
-			const startTime = slot === "AM" ? "08:00:00" : "13:30:00";
-			const endTime = slot === "AM" ? "12:30:00" : "17:30:00";
-			const fullSubject = task.subject || "";
-			const baseActivityName = fullSubject.split(" - Group")[0].trim() || fullSubject;
-
-			// Map slot to proper session values (check your DocType for exact values)
-			const sessionMapping = {
-				"AM": "HALF DAY",  // or whatever the exact value is in your DocType
-				"PM": "HALF DAY" // or whatever the exact value is in your DocType
-			};
-			
-			return new Promise((resolve, reject) => {
-				frappe.call({
-					method: "frappe.client.insert",
-					args: {
-						doc: {
-							doctype: "Activity Allocation",
-							customer: task.custom_customer,
-							activity_name: baseActivityName,	
-							start_date: task.exp_start_date,
-							end_date: task.exp_end_date,
-							activity_allocation_details: [
-								{
-									activity_name: baseActivityName,  // Added this field
-									activity_date: activityDate,
-									session: sessionMapping[slot] || slot,
-									start_time: `${activityDate} ${startTime}`,
-									end_time: `${activityDate} ${endTime}`,
-									qualification: qualification || "",
-									instructor: instructorName
-								}
-							]
-						}
-					},
-					callback: function(res) {
-						if (res.message) {
-							resolve(res.message);
-						} else {
-							reject(new Error("Failed to create Activity Allocation"));
-						}
-					},
-					error: function(err) {
-						console.error("Frappe call error:", err);
-						reject(err);
-					}
-				});
-			});
-		},
-
-		async deleteActivityAllocation(instructor, activityDate, fullStart) {
-			return new Promise((resolve, reject) => {
-				// Get all Activity Allocation documents and find the one to delete
-				frappe.call({
-					method: "frappe.client.get_list",
-					args: {
-						doctype: "Activity Allocation",
-						fields: ["name"]
-					},
-					callback: async function(res) {
-						if (res.message && res.message.length > 0) {
-							// Check each allocation's child table
-							for (let allocation of res.message) {
-								try {
-									const fullDoc = await Methods.fetchFullAllocation(allocation.name);
-									if (fullDoc && fullDoc.activity_allocation_details) {
-										const hasMatchingDetail = fullDoc.activity_allocation_details.some(detail =>
-											detail.instructor === instructor &&
-											detail.activity_date === activityDate &&
-											detail.start_time === fullStart
-										);
-										
-										if (hasMatchingDetail) {
-											// Delete the entire Activity Allocation document
-											frappe.call({
-												method: "frappe.client.delete",
-												args: {
-													doctype: "Activity Allocation",
-													name: fullDoc.name
-												},
-												callback: function() {
-													resolve(true);
-												},
-												error: function(err) {
-													console.error("Error deleting allocation:", err);
-													resolve(false);
-												}
-											});
-											return;
-										}
-									}
-								} catch (err) {
-									console.error("Error checking allocation for deletion:", err);
-								}
-							}
-							resolve(false); // No matching allocation found
-						} else {
-							resolve(false);
-						}
-					},
-					error: function(err) {
-						console.error("Error finding allocation to delete:", err);
-						resolve(false);
-					}
-				});
-			});
-		},
-
-		async createSubtasks(parentTask, numberOfGroups) {
-			const totalPeople = parentTask.custom_no_of_people || 0;
-			const peoplePerGroup = Math.ceil(totalPeople / numberOfGroups);
-			const subtasks = [];
-
-			for (let i = 0; i < numberOfGroups; i++) {
-				const startPerson = i * peoplePerGroup + 1;
-				const endPerson = Math.min((i + 1) * peoplePerGroup, totalPeople);
-				const groupSize = endPerson - startPerson + 1;
-
-				const subtaskData = {
-					doctype: "Task",
-					subject: `${parentTask.subject} - Group ${i + 1}`,
-					parent_task: parentTask.name,
-					custom_customer_name: parentTask.custom_customer_name,
-					custom_customer: parentTask.custom_customer,	
-					custom_is_activity: 1,
-					custom_no_of_people: groupSize,
-					exp_start_date: parentTask.exp_start_date,
-					exp_end_date: parentTask.exp_end_date,
-					status: "Open"
-				};
-
-				try {
-					const result = await new Promise((resolve, reject) => {
-						frappe.call({
-							method: "frappe.client.insert",
-							args: { doc: subtaskData },
-							callback: function(res) {
-								if (res.message) {
-									resolve(res.message);
-								} else {
-									reject(new Error("Failed to create subtask"));
-								}
-							},
-							error: reject
-						});
-					});
-					subtasks.push(result);
-				} catch (error) {
-					console.error(`Error creating subtask ${i + 1}:`, error);
-					frappe.show_alert(`Error creating Group ${i + 1}`, 5);
-				}
-			}
-
-			return subtasks;
-		},
-
 		getWeekDays() {
 			const weekDays = [];
 			for (let i = 0; i < 7; i++) {
@@ -710,588 +219,328 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			return weekDays;
 		},
 
-		getTaskForSlot(tasksToRender, day, slot) {
+		getTasksForSlot(tasksToRender, day, slot) {
 			const amStart = day.clone().hour(8).minute(0);
 			const amEnd = day.clone().hour(12).minute(30);
 			const pmStart = day.clone().hour(13).minute(30);
 			const pmEnd = day.clone().hour(17).minute(30);
-
+		
 			const startRange = slot === "AM" ? amStart : pmStart;
 			const endRange = slot === "AM" ? amEnd : pmEnd;
-
-			return tasksToRender.find(task => {
+		
+			return tasksToRender.filter(task => {
 				const start = moment(task.exp_start_date);
 				const end = moment(task.exp_end_date || task.exp_start_date);
 				return endRange.isSameOrAfter(start) && startRange.isSameOrBefore(end);
 			});
 		},
 
-		makeTaskCellClickable(task, dayIndex, slot, color) {
+		makeTaskCellClickable(task, dayIndex, slot, color, inline = false) {
 			const peopleInfo = task.custom_no_of_people ? ` (${task.custom_no_of_people} people)` : '';
-			return `<td class="assignable-cell" 
-						data-task='${JSON.stringify(task)}'
-						data-day-index="${dayIndex}" 
-						data-slot="${slot}" 
-						style="background-color: ${color}; cursor: pointer;">
-						${task.subject}${peopleInfo}
-					</td>`;
-		},
-
-		filterTasksForCurrentWeek(tasks, weekStart) {
-			const weekEnd = moment(weekStart).add(6, 'days');
-			return tasks.filter(task => {
-				// Ensure the task has a start date; if not, skip it.
-				if (!task.exp_start_date) return false;
-				const taskStart = moment(task.exp_start_date);
-				const taskEnd = moment(task.exp_end_date || task.exp_start_date);
-				// Use inclusive boundaries to catch tasks that start or end on the week's edges.
-				return taskStart.isBetween(weekStart, weekEnd, 'day', '[]') ||
-					   taskEnd.isBetween(weekStart, weekEnd, 'day', '[]') ||
-					   (taskStart.isBefore(weekStart) && taskEnd.isAfter(weekEnd));
-			});
-		},
+			const content = `${task.subject}${peopleInfo}`;
 		
-
-		// New method to fetch and submit draft allocations
-		async fetchDraftAllocations(weekStart) {
-			const weekEnd = moment(weekStart).add(6, 'days');
-			
-			return new Promise((resolve, reject) => {
-				frappe.call({
-					method: "frappe.client.get_list",
-					args: {
-						doctype: "Activity Allocation",
-						fields: ["name", "docstatus"],
-						filters: {
-							start_date: ["<=", weekEnd.format("YYYY-MM-DD")],
-							end_date: [">=", weekStart.format("YYYY-MM-DD")],
-							docstatus: 0  // Draft status
-						}
-					},
-					callback: function(res) {
-						resolve(res.message || []);
-					},
-					error: function(err) {
-						console.error("Error fetching draft allocations:", err);
-						resolve([]);
-					}
-				});
-			});
+			const style = `
+				display: inline-block;
+				background-color: ${color};
+				padding: 2px 6px;
+				margin: 2px 0;
+				border-radius: 4px;
+				font-size: 90%;
+				line-height: 1.2;
+			`;
+		
+			if (inline) {
+				return `<div class="assignable-cell" 
+					data-task='${JSON.stringify(task)}'
+					data-day-index="${dayIndex}" 
+					data-slot="${slot}" 
+					style="${style}; cursor: pointer;">
+					${content}
+				</div>`;
+			}
+		
+			return `<td class="assignable-cell" 
+				data-task='${JSON.stringify(task)}'
+				data-day-index="${dayIndex}" 
+				data-slot="${slot}" 
+				style="background-color: ${color}; cursor: pointer;">
+				${content}
+			</td>`;
 		},
 
-		async submitAllocation(docName) {
-			return new Promise((resolve, reject) => {
-				frappe.call({
-					method: "frappe.client.submit",
+		async createAllocation(taskName, dayIndex, slot, instructorName) {
+			const activityDate = moment(currentWeekStart).add(dayIndex, 'days').format("YYYY-MM-DD");
+			
+			try {
+				const response = await frappe.call({
+					method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.create_activity_allocation_optimized",
 					args: {
-						doctype: "Activity Allocation",
-						name: docName
-					},
-					callback: function(res) {
-						resolve(res.message);
-					},
-					error: function(err) {
-						console.error(`Error submitting ${docName}:`, err);
-						reject(err);
+						task_name: taskName,
+						activity_date: activityDate,
+						slot: slot,
+						instructor_name: instructorName
 					}
 				});
-			});
+				
+				if (response.message && response.message.success) {
+					return response.message;
+				} else {
+					throw new Error(response.message?.message || "Failed to create allocation");
+				}
+			} catch (error) {
+				console.error('Error creating allocation:', error);
+				throw error;
+			}
+		},
+
+		async removeAllocation(instructor, dayIndex, slot, taskSubject) {
+			const activityDate = moment(currentWeekStart).add(dayIndex, 'days').format("YYYY-MM-DD");
+			const activityName = taskSubject.split(" - Group")[0].trim();
+			
+			try {
+				const response = await frappe.call({
+					method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.remove_activity_allocation_optimized",
+					args: {
+						instructor: instructor,
+						activity_date: activityDate,
+						activity_name: activityName
+					}
+				});
+				
+				return response.message;
+			} catch (error) {
+				console.error('Error removing allocation:', error);
+				throw error;
+			}
 		}
 	};
 
-	// Modal Functions
-	function populateCustomerDropdown(tasks) {
-		const customers = [...new Set(tasks.map(t => t.custom_customer_name).filter(c => c))];
-		const customerSelect = $('#customerSelect');
-		customerSelect.empty().append('<option value="">Choose a customer...</option>');
-		
-		customers.forEach(customer => {
-			customerSelect.append(`<option value="${customer}">${customer}</option>`);
-		});
-	}
-
-	function populateParentTaskDropdown(customer, tasks) {
-		const customerTasks = tasks.filter(t => 
-			t.custom_customer_name === customer && 
-			(!t.parent_task || t.parent_task === "" || t.parent_task === null) && 
-			t.custom_no_of_people > 0
-		);
-		
-		const taskSelect = $('#parentTaskSelect');
-		taskSelect.empty().append('<option value="">Choose an activity...</option>');
-		
-		customerTasks.forEach(task => {
-			taskSelect.append(`<option value="${task.name}" data-people="${task.custom_no_of_people}">${task.subject} (${task.custom_no_of_people} people)</option>`);
-		});
-	}
-
-	function updateGroupPreview() {
-		const numberOfGroups = parseInt($('#numberOfGroups').val()) || 0;
-		const totalPeople = parseInt($('#totalPeople').val()) || 0;
-		
-		if (numberOfGroups > 0 && totalPeople > 0) {
-			const peoplePerGroup = Math.ceil(totalPeople / numberOfGroups);
-			let previewHtml = '<h6>Group Preview:</h6><ul>';
-			
-			for (let i = 0; i < numberOfGroups; i++) {
-				const startPerson = i * peoplePerGroup + 1;
-				const endPerson = Math.min((i + 1) * peoplePerGroup, totalPeople);
-				const groupSize = endPerson - startPerson + 1;
-				previewHtml += `<li>Group ${i + 1}: ${groupSize} people</li>`;
-			}
-			
-			previewHtml += '</ul>';
-			$('#groupPreview').html(previewHtml);
-		} else {
-			$('#groupPreview').empty();
-		}
-	}
-
 	// Main Functions
-	async function loadTasksAndRenderCalendar() {
+	async function loadAndRenderCalendar() {
 		try {
-			// Pass the current week start so fetchTasks can adjust its filter
-			const [allTasks, instructors, existingAllocations] = await Promise.all([
-				Methods.fetchTasks(currentWeekStart),
-				Methods.fetchInstructors(),
-				Methods.fetchExistingAllocations(currentWeekStart)
-			]);
-			
-			// Filter the tasks for display by the current week dates.
-			//const tasksForWeek = Methods.filterTasksForCurrentWeek(allTasks, currentWeekStart);
-			const tasksForWeek = allTasks;
-
-			// Populate the in-memory assignments (for instructor rows)
-			Methods.populateInMemoryAssignments.call(Methods, existingAllocations, currentWeekStart);
-			
-			// Store all customer tasks for the modal (even if they have no assignments)
-			customerTasks = allTasks;
-			
-			// Render the calendar passing the tasks for this week and the instructors
-			renderCalendar(tasksForWeek, instructors);
+			const data = await Methods.loadWeekData(currentWeekStart);
+			if (data) {
+				renderCalendar(data);
+			}
 		} catch (error) {
-			console.error('Error loading data:', error);
-			frappe.show_alert("Error loading data", 5);
+			console.error('Error loading calendar:', error);
+			frappe.show_alert("Error loading calendar data", 5);
 		}
 	}
 	
-	
-	function renderCalendar(tasks, instructors) {
+	// CONTINUED: Complete client-side based on optimized server
+
+	function renderCalendar(data) {
+		const { tasks, instructors, instructorAssignments } = data;
 		const weekDays = Methods.getWeekDays();
+		const customerMap = {}; // <- FIXED: Define customerMap before use
+
 		$('#week-range-title').text(`${weekDays[0].format('MMM D')} - ${weekDays[6].format('MMM D, YYYY')}`);
-	
-		// Group tasks by customer and split into main and sub tasks
-		const customerMap = {};
-		const taskMap = {}; // For easy access to parent task names
-	
+
 		tasks.forEach(task => {
 			const customer = task.custom_customer_name || "Unknown";
 			if (!customerMap[customer]) {
 				customerMap[customer] = { main: [], sub: [] };
 			}
-			
-			if (!task.parent_task || !taskMap[task.parent_task]) {
-				// Only add if not already added
+
+			if (!task.parent_task) {
 				if (!customerMap[customer].main.some(t => t.name === task.name)) {
 					customerMap[customer].main.push(task);
 				}
 			} else {
-				// Only add if not already added
 				if (!customerMap[customer].sub.some(t => t.name === task.name)) {
 					customerMap[customer].sub.push(task);
 				}
 			}
-			
-			
-	
-			taskMap[task.name] = task;
 		});
-	
+
 		let html = '<div style="overflow-x: auto;"><table class="table table-bordered"><thead><tr><th>Customer / Instructor</th>';
 		weekDays.forEach(day => {
 			html += `<th>${day.format('ddd D')}<br>AM</th><th>${day.format('ddd D')}<br>PM</th>`;
 		});
 		html += '</tr></thead><tbody>';
-	
-		// Helper to render a row for tasks (main, parent, sub)
+
 		function renderTaskRow(label, tasksToRender, color, indent = false) {
 			html += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
 			weekDays.forEach((day, dayIndex) => {
-				const taskAM = Methods.getTaskForSlot(tasksToRender, day, "AM");
-				const taskPM = Methods.getTaskForSlot(tasksToRender, day, "PM");
-	
-				html += taskAM ? Methods.makeTaskCellClickable(taskAM, dayIndex, "AM", color) : `<td></td>`;
-				html += taskPM ? Methods.makeTaskCellClickable(taskPM, dayIndex, "PM", color) : `<td></td>`;
+				const tasksAM = Methods.getTasksForSlot(tasksToRender, day, 'AM');
+				const tasksPM = Methods.getTasksForSlot(tasksToRender, day, 'PM');
+
+				html += `<td style="vertical-align: top;">${
+					tasksAM.map(task => Methods.makeTaskCellClickable(task, dayIndex, 'AM', color, true)).join('')
+				}</td>`;
+
+				html += `<td style="vertical-align: top;">${
+					tasksPM.map(task => Methods.makeTaskCellClickable(task, dayIndex, 'PM', color, true)).join('')
+				}</td>`;
 			});
 			html += '</tr>';
 		}
-	
-		// Render customers
+
 		for (const [customer, grouped] of Object.entries(customerMap)) {
 			const color = Methods.getColorForCustomer(customer);
-	
-			// Always render the customer header row
 			renderTaskRow(`<strong>${customer}</strong>`, grouped.main, color);
-	
-			// Group subtasks by parent
-			const subtasksByParent = {};
 			grouped.sub.forEach(sub => {
-				const parentId = sub.parent_task;
-				if (!subtasksByParent[parentId]) {
-					subtasksByParent[parentId] = [];
-				}
-				subtasksByParent[parentId].push(sub);
+				renderTaskRow(`↳ ${sub.subject}`, [sub], color, true);
 			});
-	
-			const renderedParents = new Set();  // Track which parents are already rendered
-
-			Object.entries(subtasksByParent).forEach(([parentId, subList]) => {
-				// Avoid rendering parent again if it's already in the main list
-				if (renderedParents.has(parentId)) return;
-
-				const parent = taskMap[parentId];
-				const parentLabel = parent ? parent.subject : `Parent (${parentId})`;
-
-				if (parent) {
-					renderTaskRow(`&nbsp;&nbsp;➤ ${parentLabel}`, [parent], color, true);
-					renderedParents.add(parentId);
-				}
-
-				subList.forEach(sub => {
-					renderTaskRow(`&nbsp;&nbsp;&nbsp;&nbsp;↳ ${sub.subject || 'Unnamed Subtask'}`, [sub], color, true);
-				});
-			});
-
 		}
-	
-// Render instructor rows from existing allocations
-instructors.forEach(instr => {
-    html += `<tr><td><span class="text-primary">— ${instr.name}</span></td>`;
-    
-    // For each day of the week
-    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-        // For each slot (AM and PM)
-        ["AM", "PM"].forEach(slot => {
-            const assignedTask = (instructorAssignments[instr.name] || []).find(
-                a => a.dayIndex === dayIndex && a.slot === slot
-            );
-            
-            if (assignedTask) {
-                // Render assigned task
-                html += `<td class="assigned-task"
-                    data-task="${assignedTask.task.name}"
-                    data-instructor="${instr.name}"
-                    data-day-index="${dayIndex}"
-                    data-slot="${slot}"
-                    style="background-color: ${Methods.getColorForCustomer(assignedTask.task.custom_customer_name)}; cursor: pointer;">
-                    ${assignedTask.task.subject} <span style="color:red;cursor:pointer;">&times;</span>
-                </td>`;
-            } else {
-                // Render empty assignable slot
-                html += `<td class="assignable-cell"
-                    data-instructor="${instr.name}"
-                    data-day-index="${dayIndex}"
-                    data-slot="${slot}"
-                    style="cursor: pointer; border: 2px dashed #ddd; min-height: 40px; text-align: center;">
-                    <small style="color: #999;">${slot}</small>
-                </td>`;
-            }
-        });
-    }
-    html += '</tr>';
-});
-	
+
+		instructors.forEach(instr => {
+			html += `<tr><td><span class="text-primary">— ${instr.instructor_name}</span></td>`;
+			for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+				['AM', 'PM'].forEach(slot => {
+					const assigned = (instructorAssignments[instr.name] || []).find(
+						a => a.dayIndex === dayIndex && a.slot === slot
+					);
+					if (assigned) {
+						html += `<td class="assigned-task" data-instructor="${instr.name}" data-day-index="${dayIndex}" data-slot="${slot}" data-task-name="${assigned.task.name}" data-subject="${assigned.task.subject}" style="background:${Methods.getColorForCustomer(assigned.task.custom_customer_name)}; cursor:pointer;">${assigned.task.subject} <span style="color:red; cursor:pointer;">&times;</span></td>`;
+					} else {
+						html += `<td class="assignable-slot" data-instructor="${instr.name}" data-day-index="${dayIndex}" data-slot="${slot}" style="cursor:pointer; border:2px dashed #ccc; text-align:center;"><small>${slot}</small></td>`;
+					}
+				});
+			}
+			html += '</tr>';
+		});
+
 		html += '</tbody></table></div>';
 		$('#calendar-container').html(html);
 	}
-	
 
-	// Replace the existing handleTaskAssignment function with this fixed version
-	async function handleTaskAssignment(cell) {
-		if (!selectedTask) {
-			frappe.show_alert("Please select a task first by clicking on it", 3);
-			return;
-		}
-	
-		const instructorName = cell.attr('data-instructor');
-		const dayIndex = parseInt(cell.attr('data-day-index'));
-		const slot = cell.attr('data-slot');
-	
-		console.log('Assignment attempt:', {
-			dayIndex: dayIndex,
-			slot: slot,
-			instructor: instructorName,
-			selectedTask: selectedTask.subject
+
+// Event handlers
+$('#calendar-container').on('click', '.assignable-cell[data-task]', function () {
+	const taskData = $(this).data('task');
+	if (taskData) {
+		selectedTask = JSON.parse(taskData);
+		frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
+	}
+});
+
+$('#calendar-container').on('click', '.assignable-slot', async function () {
+	if (!selectedTask) return frappe.show_alert('Select a task first', 5);
+	const instructor = $(this).data('instructor');
+	const dayIndex = parseInt($(this).data('day-index'));
+	const slot = $(this).data('slot');
+	try {
+		await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
+		await loadAndRenderCalendar();
+	} catch (error) {
+		frappe.show_alert(error.message || 'Error assigning task', 5);
+	}
+});
+
+$('#calendar-container').on('click', '.assigned-task span', async function (e) {
+	e.stopPropagation();
+	const cell = $(this).closest('.assigned-task');
+	const instructor = cell.data('instructor');
+	const dayIndex = parseInt(cell.data('day-index'));
+	const slot = cell.data('slot');
+	const subject = cell.data('subject');
+	try {
+		await Methods.removeAllocation(instructor, dayIndex, slot, subject);
+		await loadAndRenderCalendar();
+	} catch (error) {
+		frappe.show_alert(error.message || 'Error removing allocation', 5);
+	}
+});
+
+$('#submit-allocations').on('click', async () => {
+	try {
+		const res = await frappe.call({
+			method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.submit_week_allocations',
+			args: { week_start_date: currentWeekStart.format('YYYY-MM-DD') }
 		});
-	
-		// Validate required data
-		if (!instructorName || isNaN(dayIndex) || !slot) {
-			console.error('Missing data attributes:', {
-				instructor: instructorName,
-				dayIndex: dayIndex,
-				slot: slot
-			});
-			frappe.show_alert("Error: Missing assignment data", 5);
-			return;
-		}
-	
-		// Check if slot is already assigned
-		const existingAssignment = (instructorAssignments[instructorName] || []).find(
-			a => a.dayIndex === dayIndex && a.slot === slot
-		);
-	
-		if (existingAssignment) {
-			frappe.show_alert("This slot is already assigned", 3);
-			return;
-		}
-	
-		const activityDate = moment(currentWeekStart).add(dayIndex, 'days').format("YYYY-MM-DD");
-		const startTime = slot === "AM" ? "08:00:00" : "13:30:00";
-		const fullStart = `${activityDate} ${startTime}`;
-	
-		try {
-			// Check for existing allocation in backend
-			const existing = await Methods.checkExistingAllocation(selectedTask, activityDate, fullStart, instructorName);
-			if (existing) {
-				frappe.show_alert("Activity Allocation already exists", 3);
-				return;
-			}
-	
-			// Get instructor qualification
-			const qualification = await Methods.fetchInstructorQualification(instructorName, selectedTask.subject);
-	
-			// Create the allocation
-			await Methods.createActivityAllocation(selectedTask, activityDate, slot, instructorName, qualification);
-	
-			// Update local assignments
-			if (!instructorAssignments[instructorName]) {
-				instructorAssignments[instructorName] = [];
-			}
-	
-			instructorAssignments[instructorName].push({
-				task: selectedTask,
-				dayIndex: dayIndex,
-				slot: slot,
-				actualDate: activityDate,
-				actualStartTime: fullStart
-			});
-	
-			frappe.show_alert(`${selectedTask.subject} assigned to ${instructorName} on ${moment(activityDate).format('ddd MMM D')} ${slot}`, 3);
-			
-			// Reload calendar and clear selection
-			selectedTask = null;
-			loadTasksAndRenderCalendar();
-	
-		} catch (error) {
-			console.error('Error creating assignment:', error);
-			frappe.show_alert("Error creating assignment", 5);
-		}
+		frappe.show_alert(res.message.message);
+		await loadAndRenderCalendar();
+	} catch (error) {
+		frappe.show_alert('Error submitting allocations', 5);
 	}
+});
 
-	async function handleTaskRemoval(element) {
-		const instructor = element.data('instructor');
-		const dayIndex = parseInt(element.data('day-index'));
-		const slot = element.data('slot');
-	
-		// Get the date from the calendar cell
-		const activityDate = moment(currentWeekStart).add(dayIndex, 'days').format("YYYY-MM-DD");
-	
-		// Get activity_name from the assigned task
-		const assignment = (instructorAssignments[instructor] || []).find(
-			a => a.dayIndex === dayIndex && a.slot === slot
-		);
-	
-		if (!assignment || !assignment.task || !assignment.task.subject) {
-			frappe.show_alert("Assignment info not found", 5);
-			return;
-		}
-	
-		// Clean base activity name (remove group label if present)
-		const activityName = assignment.task.subject.split(" - Group")[0].trim();
-	
-		console.log("Removing via backend:", { instructor, activityDate, activityName });
-	
-		try {
-			const res = await frappe.call({
-				method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.remove_activity_allocation",  // replace with your actual method or Server Script name
-				args: {
-					instructor: instructor,
-					activity_date: activityDate,
-					activity_name: activityName
-				}
-			});
-	
-			const deleted = res.message;
-	
-			if (deleted.status === "deleted" || deleted.status === "updated") {
-				frappe.show_alert("Activity Allocation removed", 3);
-	
-				// Remove from memory only after successful backend removal
-				instructorAssignments[instructor] = instructorAssignments[instructor].filter(a =>
-					!(a.dayIndex === dayIndex && a.slot === slot)
-				);
-	
-				loadTasksAndRenderCalendar();
-			} else {
-				frappe.show_alert("Could not find matching allocation", 5);
-			}
-		} catch (error) {
-			console.error("Error removing allocation:", error);
-			frappe.show_alert("Error removing allocation", 5);
-		}
+$('#create-groups').on('click', function () {
+	populateCustomerDropdown(weekData[currentWeekStart.format('YYYY-MM-DD')].tasks);
+	$('#groupCreationModal').modal('show');
+});
+
+$('#createGroupsBtn').on('click', async function () {
+	const parentTaskName = $('#parentTaskSelect').val();
+	const numberOfGroups = parseInt($('#numberOfGroups').val());
+	if (!parentTaskName || !numberOfGroups) {
+		frappe.show_alert('Please select activity and number of groups', 5);
+		return;
 	}
-	
-	
+	try {
+		$(this).prop('disabled', true);
+		const res = await frappe.call({
+			method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.create_customer_groups_optimized',
+			args: {
+				parent_task_name: parentTaskName,
+				number_of_groups: numberOfGroups
+			}
+		});
+		frappe.show_alert(res.message.message);
+		$('#groupCreationModal').modal('hide');
+		await loadAndRenderCalendar();
+	} catch (error) {
+		frappe.show_alert('Failed to create groups', 5);
+	} finally {
+		$(this).prop('disabled', false);
+	}
+});
 
-	// Event Listeners
-	$('#create-groups').on('click', function() {
-		populateCustomerDropdown(customerTasks);
-		$('#groupCreationModal').modal('show');
+$('#prev-week').on('click', () => {
+	currentWeekStart.subtract(7, 'days');
+	loadAndRenderCalendar();
+});
+
+$('#next-week').on('click', () => {
+	currentWeekStart.add(7, 'days');
+	loadAndRenderCalendar();
+});
+
+function populateCustomerDropdown(tasks) {
+	const customers = [...new Set(tasks.map(t => t.custom_customer_name).filter(Boolean))];
+	const select = $('#customerSelect');
+	select.empty().append('<option value="">Choose a customer...</option>');
+	customers.forEach(c => {
+		select.append(`<option value="${c}">${c}</option>`);
 	});
+}
 
-	$('#customerSelect').on('change', function() {
-		const selectedCustomer = $(this).val();
-		if (selectedCustomer) {
-			populateParentTaskDropdown(selectedCustomer, customerTasks);
-		} else {
-			$('#parentTaskSelect').empty().append('<option value="">Choose an activity...</option>');
-			$('#totalPeople').val('');
+$('#customerSelect').on('change', function () {
+	const customer = $(this).val();
+	const tasks = weekData[currentWeekStart.format('YYYY-MM-DD')].tasks;
+	const filtered = tasks.filter(t => t.custom_customer_name === customer && !t.parent_task);
+	const select = $('#parentTaskSelect');
+	select.empty().append('<option value="">Choose an activity...</option>');
+	filtered.forEach(task => {
+		select.append(`<option value="${task.name}" data-people="${task.custom_no_of_people}">${task.subject}</option>`);
+	});
+});
+
+$('#parentTaskSelect').on('change', function () {
+	const people = $(this).find(':selected').data('people') || 0;
+	$('#totalPeople').val(people);
+});
+
+$('#numberOfGroups').on('input', function () {
+	const totalPeople = parseInt($('#totalPeople').val()) || 0;
+	const groups = parseInt($(this).val()) || 0;
+	if (groups > 0 && totalPeople > 0) {
+		const perGroup = Math.ceil(totalPeople / groups);
+		let html = '<ul>';
+		for (let i = 0; i < groups; i++) {
+			const start = i * perGroup + 1;
+			const end = Math.min((i + 1) * perGroup, totalPeople);
+			html += `<li>Group ${i + 1}: ${end - start + 1} people</li>`;
 		}
+		html += '</ul>';
+		$('#groupPreview').html(html);
+	} else {
 		$('#groupPreview').empty();
-	});
-
-	$('#parentTaskSelect').on('change', function() {
-		const selectedOption = $(this).find('option:selected');
-		const people = selectedOption.data('people') || 0;
-		$('#totalPeople').val(people);
-		updateGroupPreview();
-	});
-
-	$('#numberOfGroups').on('input', function() {
-		updateGroupPreview();
-	});
-
-	$('#createGroupsBtn').off('click').on('click', async function() {
-		const customerName = $('#customerSelect').val();
-		const parentTaskName = $('#parentTaskSelect').val();
-		const numberOfGroups = parseInt($('#numberOfGroups').val());
-
-		if (!customerName || !parentTaskName || !numberOfGroups || numberOfGroups < 1) {
-			frappe.show_alert("Please fill all required fields", 5);
-			return;
-		}
-
-		const parentTask = customerTasks.find(t => t.name === parentTaskName);
-		if (!parentTask) {
-			frappe.show_alert("Parent task not found", 5);
-			return;
-		}
-
-		try {
-			$(this).prop('disabled', true).text('Creating Groups...');
-			
-			const createdSubtasks = await Methods.createSubtasks(parentTask, numberOfGroups);
-			
-			if (createdSubtasks.length > 0) {
-				frappe.show_alert(`Successfully created ${createdSubtasks.length} groups`, 3);
-				$('#groupCreationModal').modal('hide');
-				
-				// Clear form
-				$('#customerSelect').val('');
-				$('#parentTaskSelect').empty().append('<option value="">Choose an activity...</option>');
-				$('#totalPeople').val('');
-				$('#numberOfGroups').val('');
-				$('#groupPreview').empty();
-				
-				// Reload calendar to show new subtasks
-				loadTasksAndRenderCalendar();
-			} else {
-				frappe.show_alert("No groups were created", 5);
-			}
-		} catch (error) {
-			console.error('Error creating groups:', error);
-			frappe.show_alert("Error creating groups", 5);
-		} finally {
-			$(this).prop('disabled', false).text('Create Groups');
-		}
-	});
-
-// Handle task selection (clicking on task cells to select them)
-$('#calendar-container').on('click', '.assignable-cell[data-task]', function(e) {
-	e.stopPropagation();
-	const taskData = $(this).attr('data-task');
-	
-	if (taskData && taskData !== "undefined") {
-		try {
-			const task = JSON.parse(taskData);
-			selectedTask = task;
-			frappe.show_alert(`Selected: ${task.subject}`, 2);
-		} catch (e) {
-			console.error("Failed to parse task JSON:", e, taskData);
-			frappe.show_alert('Error: Invalid task data', 3);
-		}
 	}
 });
 
-// Handle assignment (clicking on instructor empty slots)
-$('#calendar-container').on('click', '.assignable-cell[data-instructor]', function(e) {
-	e.stopPropagation();
-	handleTaskAssignment($(this));
-});
-
-// Handle removal (clicking on assigned tasks)
-$('#calendar-container').on('click', '.assigned-task', function(e) {
-	e.stopPropagation();
-	handleTaskRemoval($(this));
-});
-$('#submit-allocations').on('click', async function () {
-    try {
-        const drafts = await Methods.fetchDraftAllocations(currentWeekStart);
-
-        if (drafts.length === 0) {
-            frappe.show_alert("No draft allocations to submit", 3);
-            return;
-        }
-
-        let successCount = 0;
-        let failCount = 0;
-
-        for (let i = 0; i < drafts.length; i++) {
-            const doc = drafts[i];
-            try {
-                await frappe.call({
-                    method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.submit_activity_allocation",
-                    args: { name: doc.name }
-                });
-                successCount++;
-            } catch (err) {
-                console.error(`Failed to submit ${doc.name}`, err);
-                failCount++;
-            }
-        }
-
-        frappe.show_alert(`Submitted ${successCount} allocations${failCount > 0 ? `, ${failCount} failed.` : ''}`, 5);
-
-        // Reload the calendar to reflect submitted allocations
-        loadTasksAndRenderCalendar();
-
-    } catch (error) {
-        console.error("Error submitting allocations:", error);
-        frappe.show_alert("Error submitting allocations", 5);
-    }
-});
-
-
-	$('#prev-week').on('click', function() {
-		currentWeekStart.subtract(1, 'week');
-		loadTasksAndRenderCalendar();
-	});
-
-	$('#next-week').on('click', function() {
-		currentWeekStart.add(1, 'week');
-		loadTasksAndRenderCalendar();
-	});
-
-	// Initialize
-	loadTasksAndRenderCalendar();
+// Initialize
+loadAndRenderCalendar();
 }
