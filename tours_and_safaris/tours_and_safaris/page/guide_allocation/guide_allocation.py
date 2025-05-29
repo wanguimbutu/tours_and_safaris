@@ -44,13 +44,6 @@ def submit_activity_allocation(name):
     doc.submit()
     return {"status": "submitted", "name": name}
 
-# tours_and_safaris/tours_and_safaris/page/guide_allocation/guide_allocation.py
-
-import frappe
-from frappe import _
-import json
-from datetime import datetime, timedelta
-import calendar
 
 @frappe.whitelist()
 def get_week_data(week_start_date):
@@ -406,3 +399,141 @@ def create_customer_groups_optimized(parent_task_name, number_of_groups):
     except Exception as e:
         frappe.log_error(f"Error creating groups: {str(e)}")
         return {"success": False, "message": str(e)}
+    
+
+@frappe.whitelist()
+def create_customer_groups_from_project(customer_name, number_of_groups, total_people):
+    """
+    Create independent group tasks for a customer using people count from project.
+    Also updates original tasks with group information.
+    """
+    try:
+        number_of_groups = int(number_of_groups)
+        total_people = int(total_people)
+
+        if number_of_groups <= 0 or total_people <= 0:
+            return {"success": False, "message": "Invalid number of groups or people count"}
+
+        from datetime import datetime, timedelta
+        today = datetime.now().date()
+        current_week_start = today - timedelta(days=today.weekday())
+        current_week_end = current_week_start + timedelta(days=6)
+
+        # Get all tasks for this customer within the current week
+        base_tasks = frappe.get_list("Task",
+            filters={
+                "custom_customer_name": customer_name,
+                "exp_start_date": ["<=", current_week_end],
+                "exp_end_date": [">=", current_week_start]
+            },
+            fields=["name", "subject", "project", "custom_customer_name",
+                    "exp_start_date", "exp_end_date"]
+        )
+
+        if not base_tasks:
+            return {"success": False, "message": f"No task found for customer '{customer_name}' in the current week"}
+
+        template_task_data = base_tasks[0]
+        template_task = frappe.get_doc("Task", template_task_data.name)
+
+        # Try to fetch people count from project if available
+        if template_task.project:
+            try:
+                project = frappe.get_doc("Project", template_task.project)
+                if project.custom_no_of_people:
+                    project_people_count = int(project.custom_no_of_people)
+                    if project_people_count != total_people:
+                        frappe.msgprint(f"Note: Project has {project_people_count} people, using provided count {total_people}")
+            except Exception:
+                pass  # Ignore project lookup failure
+
+        # Create group information
+        people_per_group = total_people // number_of_groups
+        remainder = total_people % number_of_groups
+        created_groups = []
+        group_names = []
+
+        for i in range(number_of_groups):
+            group_number = i + 1
+            group_people = people_per_group + (1 if i < remainder else 0)
+            group_name = f"Group {group_number} ({group_people} people)"
+            group_names.append(group_name)
+
+            # Create individual group task
+            group_task = frappe.new_doc("Task")
+            group_task.subject = f"{customer_name} - Group {group_number}"
+            group_task.project = template_task.project
+            group_task.custom_customer_name = customer_name
+            group_task.custom_no_of_people = group_people
+            group_task.exp_start_date = template_task.exp_start_date
+            group_task.exp_end_date = template_task.exp_end_date
+            group_task.status = "Open"
+            group_task.description = f"Group {group_number} for {customer_name} ({group_people} people)"
+
+            try:
+                group_task.insert()
+                created_groups.append({
+                    "name": group_task.name,
+                    "subject": group_task.subject,
+                    "people": group_people
+                })
+            except Exception as e:
+                frappe.log_error(f"Error creating group task: {str(e)}")
+                return {"success": False, "message": f"Error creating group {group_number}: {str(e)}"}
+
+        # Update all original tasks with group information
+        groups_text = "\n".join(group_names)
+        
+        for task_data in base_tasks:
+            try:
+                task_doc = frappe.get_doc("Task", task_data.name)
+                task_doc.custom_customer_groups = groups_text
+                task_doc.save()
+            except Exception as e:
+                frappe.log_error(f"Error updating task {task_data.name} with groups: {str(e)}")
+                # Continue with other tasks even if one fails
+
+        frappe.db.commit()
+
+        return {
+            "success": True,
+            "message": f"Successfully created {number_of_groups} groups for {customer_name} and updated {len(base_tasks)} original tasks",
+            "groups": created_groups,
+            "updated_tasks": len(base_tasks)
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error in create_customer_groups_from_project: {str(e)}")
+        return {"success": False, "message": f"Error creating groups: {str(e)}"}
+
+import frappe
+from datetime import datetime, time
+
+@frappe.whitelist()
+def update_task_schedule(task_name, new_date, slot):
+    try:
+        # Convert date string to date object
+        date_obj = frappe.utils.getdate(new_date)
+
+        # Set time based on slot
+        if slot == "AM":
+            assigned_datetime = datetime.combine(date_obj, time(8, 0))
+        else:  # PM
+            assigned_datetime = datetime.combine(date_obj, time(13, 30))
+
+        # Update only the datetime field
+        frappe.db.set_value("Task", task_name, "custom_assigned_date", assigned_datetime)
+
+        return {
+            "success": True,
+            "message": f"Task {task_name} updated to {assigned_datetime.strftime('%Y-%m-%d %H:%M')}",
+            "task_name": task_name,
+            "custom_assigned_date": assigned_datetime.isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error("Update Task Schedule Error", frappe.get_traceback())
+        return {
+            "success": False,
+            "message": f"Error updating task: {str(e)}"
+        }
