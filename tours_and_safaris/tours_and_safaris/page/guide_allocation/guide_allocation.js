@@ -432,7 +432,8 @@ async testBackendConnection() {
 			console.error('Error loading calendar:', error);
 			frappe.show_alert("Error loading calendar data", 5);
 		}
-	}
+	}	// Drag and Dro
+
 	
 	function renderCalendar(data) {
     const { tasks, instructors, instructorAssignments } = data;
@@ -678,58 +679,55 @@ async testBackendConnection() {
 
 		// Handle drop
 		$('#calendar-container').on('drop', '.drop-zone', async function (e) {
-			e.preventDefault();
+    e.preventDefault();
 
-			const originalContent = $(this).html();
+    const originalContent = $(this).html();
 
-			if (!draggedTask || !draggedTask.elementHTML) {
-				console.warn("Dragged task or its HTML is missing — drop cancelled");
-				return;
-			}
+    if (!draggedTask || !draggedTask.elementHTML) {
+        console.warn("Dragged task or its HTML is missing — drop cancelled");
+        $(this).html(originalContent);
+        return;
+    }
 
-			try {
-				const targetDayIndex = parseInt($(this).data('day-index'));
-				const targetSlot = $(this).data('slot') || draggedTask.originalSlot;
-				const targetDay = moment(currentWeekStart).add(targetDayIndex, 'days');
+    try {
+        const targetDayIndex = parseInt($(this).data('day-index'));
+        const targetSlot = $(this).data('slot') || draggedTask.originalSlot;
+        const targetDay = moment(currentWeekStart).add(targetDayIndex, 'days');
 
-				$('.drop-zone').removeClass('drag-over drag-valid drag-invalid');
+        $('.drop-zone').removeClass('drag-over drag-valid drag-invalid');
 
-				const canMove = Methods.canTaskBeMoved({
-					exp_start_date: draggedTask.expStart,
-					exp_end_date: draggedTask.expEnd
-				}, targetDay);
+        const canMove = Methods.canTaskBeMoved({
+            exp_start_date: draggedTask.expStart,
+            exp_end_date: draggedTask.expEnd
+        }, targetDay);
 
-				if (!canMove) {
-					frappe.show_alert(`Task cannot be moved to ${targetDay.format('MMM D')}`, 5);
-					draggedTask = null;
-					return;
-				}
+        if (!canMove) {
+            frappe.show_alert(`Task cannot be moved to ${targetDay.format('MMM D')}`, 5);
+            draggedTask = null;
+            return;
+        }
 
-				if (targetDayIndex === draggedTask.originalDayIndex && targetSlot === draggedTask.originalSlot) {
-					draggedTask = null;
-					return;
-				}
+        if (targetDayIndex === draggedTask.originalDayIndex && targetSlot === draggedTask.originalSlot) {
+            draggedTask = null;
+            return;
+        }
 
-				$(this).html('<small>Moving...</small>');
+        $(this).html('<small>Moving...</small>');
 
-				const newDate = targetDay.format('YYYY-MM-DD');
-				await Methods.updateTaskSchedule(draggedTask.taskName, newDate, targetSlot);
+        const newDate = targetDay.format('YYYY-MM-DD');
+        await Methods.updateTaskSchedule(draggedTask.taskName, newDate, targetSlot);
 
-				const $newElement = $(draggedTask.elementHTML).css('opacity', '1');
-				$newElement.data('day-index', targetDayIndex);
-				$newElement.data('slot', targetSlot);
+        frappe.show_alert(`Moved ${draggedTask.taskSubject} to ${targetDay.format('MMM D')} ${targetSlot}`, 3);
+        await loadAndRenderCalendar();  
 
-				$(this).html('').append($newElement);
-
-				frappe.show_alert(`Moved ${draggedTask.taskSubject} to ${targetDay.format('MMM D')} ${targetSlot}`, 3);
-			} catch (error) {
-				console.error('Error moving task:', error);
-				frappe.show_alert('Error moving task: ' + (error.message || 'Unknown error'), 5);
-				$(this).html(originalContent); 
-			} finally {
-				draggedTask = null;
-			}
-		});
+    } catch (error) {
+        console.error('Error moving task:', error);
+        frappe.show_alert('Error moving task: ' + (error.message || 'Unknown error'), 5);
+        $(this).html(originalContent);
+    } finally {
+        draggedTask = null;
+    }
+});
 	}
 
 	$('#calendar-container').on('click', '.split-groups-btn', function(e) {
