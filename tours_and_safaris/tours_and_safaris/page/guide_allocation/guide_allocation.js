@@ -12,7 +12,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
             <button class="btn btn-sm btn-outline-primary" id="next-week">Next</button>
         </div>
         <div class="mb-3 d-flex gap-2">
-            <button class="btn btn-sm btn-success" id="create-groups">Create Customer Groups</button>
             <button class="btn btn-sm btn-warning" id="submit-allocations">Submit All Allocations</button>
         </div>
         <div id="loading-indicator" class="text-center" style="display: none;">
@@ -23,40 +22,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
         </div>
         <div id="calendar-container" class="table-responsive"></div>
         
-        <!-- Group Creation Modal -->
-        <div class="modal fade" id="groupCreationModal" tabindex="-1" role="dialog">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Create Customer Groups</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label for="customerSelect">Select Customer:</label>
-                            <select id="customerSelect" class="form-control">
-                                <option value="">Choose a customer...</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="totalPeople">Total Number of People:</label>
-                            <input type="number" id="totalPeople" class="form-control" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label for="numberOfGroups">Number of Groups:</label>
-                            <input type="number" id="numberOfGroups" class="form-control" min="1" max="20">
-                        </div>
-                        <div id="groupPreview" class="mt-3"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" id="createGroupsBtn">Create Groups</button>
-                    </div>
-                </div>
-            </div>
-        </div>
     `);
 	
 	let currentWeekStart = moment().startOf('week');
@@ -70,12 +35,10 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		async loadWeekData(weekStart, forceReload = false) {
 			const weekKey = weekStart.format('YYYY-MM-DD');
 			
-			// Return cached data if available and not forcing reload
 			if (!forceReload && weekData[weekKey]) {
 				return weekData[weekKey];
 			}
 			
-			// If already loading this week, wait for it
 			if (loadingPromise && !forceReload) {
 				return await loadingPromise;
 			}
@@ -93,9 +56,19 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				const response = await loadingPromise;
 				
 				if (response.message && !response.message.error) {
-					// Process the data for easier consumption
 					const processed = this.processWeekData(response.message);
 					weekData[weekKey] = processed;
+					
+					
+					const tasksWithGroups = processed.tasks.filter(t => t.custom_customer_groups);
+					if (tasksWithGroups.length > 0) {
+						console.log('Tasks with groups found:', tasksWithGroups.map(t => ({
+							name: t.name,
+							customer: t.custom_customer_name,
+							groups: t.custom_customer_groups
+						})));
+					}
+					
 					return processed;
 				} else {
 					throw new Error(response.message?.error || "Failed to load week data");
@@ -113,17 +86,13 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		processWeekData(rawData) {
 			const { tasks, instructors, allocations } = rawData;
 			
-			// Process tasks to use custom_assigned_date if available
 			const processedTasks = tasks.map(task => {
 				if (task.custom_assigned_date) {
-					// Use the assigned date instead of expected dates for positioning
 					const assignedMoment = moment(task.custom_assigned_date);
 					return {
 						...task,
-						// Keep original dates for validation
 						original_exp_start_date: task.exp_start_date,
 						original_exp_end_date: task.exp_end_date,
-						// Override for positioning
 						exp_start_date: assignedMoment.format('YYYY-MM-DD'),
 						exp_end_date: assignedMoment.format('YYYY-MM-DD'),
 						assigned_slot: assignedMoment.hour() < 13 ? 'AM' : 'PM'
@@ -164,10 +133,13 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 						instructorAssignments[instructor] = [];
 					}
 					
+					const originalTask = tasks.find(t => t.name === allocation.task_name || 
+														t.name.includes(allocation.task_name));
+
 					const taskObj = {
 						name: allocation.allocation_id,
 						subject: allocation.detail_activity_name || allocation.activity_name,
-						custom_customer_name: allocation.customer
+						custom_customer_name: originalTask?.custom_customer_name || allocation.customer || 'Unknown'
 					};
 					
 					instructorAssignments[instructor].push({
@@ -187,7 +159,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			};
 		},
 
-		showLoading(show) {
+				showLoading(show) {
 			if (show) {
 				$('#loading-indicator').show();
 				$('#calendar-container').hide();
@@ -235,7 +207,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 
 		getTasksForSlot(tasksToRender, day, slot) {
 			return tasksToRender.filter(task => {
-				// Check if task has custom assigned date first
+				
 				if (task.custom_assigned_date) {
 					const assignedMoment = moment(task.custom_assigned_date);
 					const taskDay = assignedMoment.clone().startOf('day');
@@ -245,7 +217,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					return taskDay.isSame(currentDay) && taskSlot === slot;
 				}
 				
-				// Otherwise use expected dates
 				const taskStart = moment(task.exp_start_date).startOf('day');
 				const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
 				const currentDay = day.clone().startOf('day');
@@ -254,13 +225,10 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			});
 		},
 
-		// Check if a task can be moved to a specific day
 		canTaskBeMoved(task, targetDay) {
-			// Use original dates for validation, not the assigned dates
 			const taskStart = moment(task.original_exp_start_date || task.exp_start_date);
 			const taskEnd = moment(task.original_exp_end_date || task.exp_end_date || taskStart);
 			
-			// Check if target day is within the task's allowed date range
 			return targetDay.isSameOrAfter(taskStart, 'day') && targetDay.isSameOrBefore(taskEnd, 'day');
 		},
 
@@ -268,7 +236,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			const peopleInfo = task.custom_no_of_people ? ` (${task.custom_no_of_people} people)` : '';
 			const content = `${task.subject}${peopleInfo}`;
 			
-			// Add drag handle icon
 			const dragHandle = '<span class="drag-handle" style="cursor: grab; margin-right: 5px;">⋮⋮</span>';
 		
 			const style = `
@@ -357,9 +324,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			}
 		},
 
-		// New method to update task dates
-		// Replace the existing updateTaskSchedule method in your Methods object with this debug version:
-
 async updateTaskSchedule(taskName, newDate, slot) {
     console.log('updateTaskSchedule called with:', { taskName, newDate, slot });
     
@@ -396,17 +360,14 @@ async updateTaskSchedule(taskName, newDate, slot) {
     } catch (error) {
         console.error('Error in updateTaskSchedule:', error);
         
-        // Check if it's a network error
         if (error.name === 'NetworkError' || error.message.includes('fetch')) {
             throw new Error('Network error - please check your connection');
         }
         
-        // Check if it's a permission error
         if (error.message && error.message.includes('permission')) {
             throw new Error('Permission denied - please check your user permissions');
         }
         
-        // Check if the method doesn't exist
         if (error.message && error.message.includes('method not found')) {
             throw new Error('Backend method not found - please ensure update_task_schedule method exists');
         }
@@ -415,7 +376,29 @@ async updateTaskSchedule(taskName, newDate, slot) {
     }
 }
 ,
-// Also add a helper method to test the backend connection
+async splitCustomerIntoGroups(customerName, totalPeople, numberOfGroups) {
+    try {
+        const response = await frappe.call({
+            method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.split_customer_groups",
+            args: {
+                customer_name: customerName,
+                total_people: totalPeople,
+                number_of_groups: numberOfGroups,
+                week_start_date: currentWeekStart.format('YYYY-MM-DD')
+            }
+        });
+        
+        if (response.message && response.message.success) {
+            return response.message;
+        } else {
+            throw new Error(response.message?.message || "Failed to split customer into groups");
+        }
+    } catch (error) {
+        console.error('Error splitting customer into groups:', error);
+        throw error;
+    }
+},
+
 async testBackendConnection() {
     try {
         console.log('Testing backend connection...');
@@ -435,7 +418,8 @@ async testBackendConnection() {
     }
 }
 	};
-
+	
+	
 	// Main Functions
 	async function loadAndRenderCalendar() {
 		try {
@@ -451,184 +435,187 @@ async testBackendConnection() {
 	}
 	
 	function renderCalendar(data) {
-		const { tasks, instructors, instructorAssignments } = data;
-		const weekDays = Methods.getWeekDays();
-		const customerMap = {};
+    const { tasks, instructors, instructorAssignments } = data;
+    const weekDays = Methods.getWeekDays();
+    const customerMap = {};
 
-		$('#week-range-title').text(`${weekDays[0].format('MMM D')} - ${weekDays[6].format('MMM D, YYYY')}`);
+    $('#week-range-title').text(`${weekDays[0].format('MMM D')} - ${weekDays[6].format('MMM D, YYYY')}`);
 
-		tasks.forEach(task => {
+    tasks.forEach(task => {
         const customer = task.custom_customer_name || "Unknown";
-
-        // Initialize customer bucket
         if (!customerMap[customer]) {
-            customerMap[customer] = { main: [], sub: [] };
+            customerMap[customer] = { 
+                main: [], 
+                sub: [],
+                hasGroups: false,
+                groupsData: [],
+                totalPeople: 0
+            };
         }
+        customerMap[customer].main.push(task);
+        
+        if (task.custom_no_of_people) {
+            customerMap[customer].totalPeople = Math.max(
+                customerMap[customer].totalPeople, 
+                parseInt(task.custom_no_of_people) || 0
+            );
+        }
+        
+        if (task.custom_customer_groups) {
+            try {
+                let groups;
 
-        // Check if task has groups defined and is not already a group task
-        if (task.custom_customer_groups && !task.custom_group_name) {
-			let groups = [];
-
-			try {
-				if (Array.isArray(task.custom_customer_groups)) {
-					groups = task.custom_customer_groups;
-				} else if (typeof task.custom_customer_groups === 'string') {
-					// Try parsing JSON or fallback to comma-split
-					try {
-						groups = JSON.parse(task.custom_customer_groups);
-					} catch (e) {
-						groups = task.custom_customer_groups
-							.split(/[\n,]/)
-							.map(g => g.trim())
-							.filter(g => g);
-					}
-				}
-			} catch (e) {
-				console.warn('Failed to parse groups for task:', task.name, e);
-			}
-
-			if (groups.length > 0) {
-				const totalPeople = parseInt(task.custom_no_of_people) || 0;
-				const peoplePerGroup = Math.ceil(totalPeople / groups.length);
-
-				groups.forEach((groupName, index) => {
-					const groupTask = {
-						...task,
-						name: `${task.name}_group_${index + 1}`,
-						subject: `${task.subject} - ${groupName}`,
-						custom_group_name: groupName,
-						custom_no_of_people: peoplePerGroup,
-						original_task_name: task.name,
-						is_group_task: true
-					};
-
-			customerMap[task.custom_customer_name || 'Unknown'].sub.push(groupTask);
-
-                    customerMap[customer].sub.push(groupTask);
-                });
-            } else {
-                // No valid groups, add to main
-                customerMap[customer].main.push(task);
+                if (typeof task.custom_customer_groups === 'string') {
+                    groups = JSON.parse(task.custom_customer_groups);
+                } else {
+                    groups = task.custom_customer_groups;
+                }
+                
+                if (Array.isArray(groups) && groups.length > 0) {
+                    
+                    const validGroups = groups.filter(group => 
+                        group && 
+                        typeof group === 'object' && 
+                        group.group_name && 
+                        group.people_count !== undefined
+                    );
+                    
+                    if (validGroups.length > 0) {
+                        customerMap[customer].hasGroups = true;
+                        customerMap[customer].groupsData = validGroups;
+                        console.log(`Found ${validGroups.length} groups for ${customer}:`, validGroups);
+                    }
+                }
+            } catch (e) {
+                console.error(`Error parsing customer groups for ${customer}:`, e, task.custom_customer_groups);
             }
-        } else if (!task.is_group_task) {
-            // Regular task or already processed group task
-            customerMap[customer].main.push(task);
         }
     });
 
-		let html = '<div style="overflow-x: auto;"><table class="table table-bordered"><thead><tr><th>Customer / Instructor</th>';
-		weekDays.forEach(day => {
-			html += `<th class="drop-zone" data-day-index="${weekDays.indexOf(day)}">${day.format('ddd D')}<br>AM</th><th class="drop-zone" data-day-index="${weekDays.indexOf(day)}">${day.format('ddd D')}<br>PM</th>`;
-		});
-		html += '</tr></thead><tbody>';
+    console.log('Customer Map with Groups:', customerMap);
 
-		function renderTaskRow(label, tasksToRender, color, indent = false) {
-			html += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
-			
-			const taskPlacements = [];
+    let html = '<div style="overflow-x: auto;"><table class="table table-bordered"><thead><tr><th>Customer / Instructor</th>';
+    weekDays.forEach(day => {
+        html += `<th class="drop-zone" data-day-index="${weekDays.indexOf(day)}">${day.format('ddd D')}<br>AM</th><th class="drop-zone" data-day-index="${weekDays.indexOf(day)}">${day.format('ddd D')}<br>PM</th>`;
+    });
+    html += '</tr></thead><tbody>';
 
-			tasksToRender.forEach(task => {
-				if (task.custom_assigned_date) {
-					// Task has been manually assigned to a specific date/time
-					const assignedMoment = moment(task.custom_assigned_date);
-					const dayIndex = assignedMoment.diff(moment(currentWeekStart), 'days');
-					const slot = assignedMoment.hour() < 13 ? 'AM' : 'PM';
-					
-					if (dayIndex >= 0 && dayIndex < 7) {
-						taskPlacements.push({ task, dayIndex, slot });
-					}
-				} else {
-					// Use expected start date for positioning
-					const taskStart = moment(task.exp_start_date);
-					const dayIndex = taskStart.diff(moment(currentWeekStart), 'days');
-					
-					// Default to AM slot unless specified otherwise
-					const slot = task.assigned_slot || 'AM';
-					
-					if (dayIndex >= 0 && dayIndex < 7) {
-						taskPlacements.push({ task, dayIndex, slot });
-					}
-				}
-			});
+    function renderTaskRow(label, tasksToRender, color, indent = false) {
+        html += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
+        
+        const taskPlacements = [];
 
-			// For each day and slot, find assigned task (if any)
-			weekDays.forEach((day, dayIndex) => {
-				['AM', 'PM'].forEach(slot => {
-					const match = taskPlacements.find(t => t.dayIndex === dayIndex && t.slot === slot);
-					if (match) {
-						html += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px;">${
-							Methods.makeTaskCellClickable(match.task, dayIndex, slot, color, true)
-						}</td>`;
-					} else {
-						html += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px;"></td>`;
-					}
-				});
-			});
+        tasksToRender.forEach(task => {
+            if (task.custom_assigned_date) {
+                const assignedMoment = moment(task.custom_assigned_date);
+                const dayIndex = assignedMoment.diff(moment(currentWeekStart), 'days');
+                const slot = assignedMoment.hour() < 13 ? 'AM' : 'PM';
+                
+                if (dayIndex >= 0 && dayIndex < 7) {
+                    taskPlacements.push({ task, dayIndex, slot });
+                }
+            } else {
+                const taskStart = moment(task.exp_start_date);
+                const dayIndex = taskStart.diff(moment(currentWeekStart), 'days');
+                const slot = task.assigned_slot || 'AM';
+                
+                if (dayIndex >= 0 && dayIndex < 7) {
+                    taskPlacements.push({ task, dayIndex, slot });
+                }
+            }
+        });
 
-			html += '</tr>';
-		}
+        weekDays.forEach((day, dayIndex) => {
+            ['AM', 'PM'].forEach(slot => {
+                const match = taskPlacements.find(t => t.dayIndex === dayIndex && t.slot === slot);
+                if (match) {
+                    html += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px;">${
+                        Methods.makeTaskCellClickable(match.task, dayIndex, slot, color, true)
+                    }</td>`;
+                } else {
+                    html += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px;"></td>`;
+                }
+            });
+        });
 
-		for (const [customer, grouped] of Object.entries(customerMap)) {
-			const color = Methods.getColorForCustomer(customer);
-			
-			// Show customer header if there are main tasks OR sub tasks
-			if (grouped.main.length > 0 || grouped.sub.length > 0) {
-				// Only render main tasks row if there are actual main tasks
-				if (grouped.main.length > 0) {
-					renderTaskRow(`<strong>${customer}</strong>`, grouped.main, color);
-				} else if (grouped.sub.length > 0) {
-					// Show customer header even if only sub tasks exist
-					renderTaskRow(`<strong>${customer}</strong>`, [], color);
-				}
-				
-				// Render grouped tasks with proper indentation
-				grouped.sub.forEach(groupTask => {
-					const groupName = groupTask.custom_group_name || 'Unknown Group';
-					renderTaskRow(`&nbsp;&nbsp;&nbsp;&nbsp;↳ ${groupName}`, [groupTask], color, true);
-				});
-			}
-		}
+        html += '</tr>';
+    }
 
-		instructors.forEach(instr => {
-			html += `<tr><td><span class="text-primary">— ${instr.instructor_name}</span></td>`;
-			for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-				['AM', 'PM'].forEach(slot => {
-					const assigned = (instructorAssignments[instr.name] || []).find(
-						a => a.dayIndex === dayIndex && a.slot === slot
-					);
-					if (assigned) {
-						html += `<td class="assigned-task drop-zone" 
-							data-instructor="${instr.name}" 
-							data-day-index="${dayIndex}" 
-							data-slot="${slot}" 
-							data-task-name="${assigned.task.name}" 
-							data-subject="${assigned.task.subject}" 
-							style="background:${Methods.getColorForCustomer(assigned.task.custom_customer_name)}; cursor:pointer; position: relative; min-height: 40px;">
-							${assigned.task.subject} 
-							<span class="remove-assignment" style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
-						</td>`;
-					} else {
-						html += `<td class="assignable-slot drop-zone" 
-							data-instructor="${instr.name}" 
-							data-day-index="${dayIndex}" 
-							data-slot="${slot}" 
-							style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
-							<small>${slot}</small>
-						</td>`;
-					}
-				});
-			}
-			html += '</tr>';
-		});
+    for (const [customer, grouped] of Object.entries(customerMap)) {
+        const color = Methods.getColorForCustomer(customer);
+        if (grouped.main.length > 0) {
+            const peopleCount = grouped.totalPeople;
+            
+            if (grouped.hasGroups && grouped.groupsData.length > 0) {
+                console.log(`Rendering groups for ${customer}:`, grouped.groupsData);
+                
+            
+                const customerLabel = peopleCount > 0 ? 
+                    `<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>` : 
+                    `<strong>${customer}</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>`;
+                
+                
+                renderTaskRow(customerLabel, [], color);
+                
+            
+                grouped.groupsData.forEach((group, index) => {
+                  
+                    const groupTasks = grouped.main; 
+                    
+                    const groupLabel = `<span class="group-row">├─ ${group.group_name} (${group.people_count} people)</span>`;
+                    renderTaskRow(groupLabel, groupTasks, color, true);
+                });
+            } else {
+                
+                const customerLabel = peopleCount > 0 ? 
+                    `<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-primary split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="split">Split Groups</button>` : 
+                    `<strong>${customer}</strong>`;
+                
+                renderTaskRow(customerLabel, grouped.main, color);
+            }
+        }
+    }
+    // Render instructors 
+    instructors.forEach(instr => {
+        html += `<tr><td><span class="text-primary">— ${instr.instructor_name}</span></td>`;
+        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+            ['AM', 'PM'].forEach(slot => {
+                const assigned = (instructorAssignments[instr.name] || []).find(
+                    a => a.dayIndex === dayIndex && a.slot === slot
+                );
+                if (assigned) {
+                    html += `<td class="assigned-task drop-zone" 
+                        data-instructor="${instr.name}" 
+                        data-day-index="${dayIndex}" 
+                        data-slot="${slot}" 
+                        data-task-name="${assigned.task.name}" 
+                        data-subject="${assigned.task.subject}" 
+                        style="background:${Methods.getColorForCustomer(assigned.task.custom_customer_name)}; cursor:pointer; position: relative; min-height: 40px;">
+                        ${assigned.task.subject} 
+                        <span class="remove-assignment" style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+                    </td>`;
+                } else {
+                    html += `<td class="assignable-slot drop-zone" 
+                        data-instructor="${instr.name}" 
+                        data-day-index="${dayIndex}" 
+                        data-slot="${slot}" 
+                        style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
+                        <small>${slot}</small>
+                    </td>`;
+                }
+            });
+        }
+        html += '</tr>';
+    });
 
-		html += '</tbody></table></div>';
-		$('#calendar-container').html(html);
-		
-		// Initialize drag and drop after rendering
-		initializeDragAndDrop();
+    html += '</tbody></table></div>';
+    $('#calendar-container').html(html);
+    
+    // Initialize drag and drop after rendering
+    initializeDragAndDrop();
 	}
 
-	// Drag and Drop functionality
+	// Drag and Drop function
 	function initializeDragAndDrop() {
 		// Handle drag start
 		$('#calendar-container').on('dragstart', '.draggable-task', function(e) {
@@ -669,13 +656,11 @@ async testBackendConnection() {
 				const targetSlot = $(this).data('slot');
 				const targetDay = moment(currentWeekStart).add(targetDayIndex, 'days');
 				
-				// Check if the task can be moved to this day
 				const canMove = Methods.canTaskBeMoved({
 					exp_start_date: draggedTask.expStart,
 					exp_end_date: draggedTask.expEnd
 				}, targetDay);
 				
-				// Remove previous classes
 				$('.drop-zone').removeClass('drag-over drag-valid drag-invalid');
 				
 				if (canMove) {
@@ -695,9 +680,8 @@ async testBackendConnection() {
 		$('#calendar-container').on('drop', '.drop-zone', async function (e) {
 			e.preventDefault();
 
-			const originalContent = $(this).html(); // Always defined for fallback
+			const originalContent = $(this).html();
 
-			// ✅ Safety check: ensure dragged data exists
 			if (!draggedTask || !draggedTask.elementHTML) {
 				console.warn("Dragged task or its HTML is missing — drop cancelled");
 				return;
@@ -731,7 +715,6 @@ async testBackendConnection() {
 				const newDate = targetDay.format('YYYY-MM-DD');
 				await Methods.updateTaskSchedule(draggedTask.taskName, newDate, targetSlot);
 
-				// ✅ Recreate the dragged element safely from HTML
 				const $newElement = $(draggedTask.elementHTML).css('opacity', '1');
 				$newElement.data('day-index', targetDayIndex);
 				$newElement.data('slot', targetSlot);
@@ -742,13 +725,81 @@ async testBackendConnection() {
 			} catch (error) {
 				console.error('Error moving task:', error);
 				frappe.show_alert('Error moving task: ' + (error.message || 'Unknown error'), 5);
-				$(this).html(originalContent); // fallback UI
+				$(this).html(originalContent); 
 			} finally {
 				draggedTask = null;
 			}
 		});
 	}
-	// Event handlers - Moved outside renderCalendar and using event delegation
+
+	$('#calendar-container').on('click', '.split-groups-btn', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const customer = $(this).data('customer');
+    const totalPeople = $(this).data('people');
+    const action = $(this).data('action');
+    
+    console.log('Split groups clicked:', { customer, totalPeople, action });
+    
+    if (action === 'manage') {
+        
+        frappe.show_alert(`Managing ${$(this).text().match(/\((\d+)\)/)?.[1] || 0} groups for ${customer}`, 5);
+        return;
+    }
+    
+    if (!totalPeople || totalPeople <= 1) {
+        frappe.show_alert('Customer must have more than 1 person to split into groups', 5);
+        return;
+    }
+    
+    const dialog = new frappe.ui.Dialog({
+        title: `Split ${customer} into Groups`,
+        fields: [
+            {
+                label: `Total People: ${totalPeople}`,
+                fieldtype: 'HTML',
+                options: `<p><strong>Total People:</strong> ${totalPeople}</p>`
+            },
+            {
+                label: 'Number of Groups',
+                fieldname: 'number_of_groups',
+                fieldtype: 'Int',
+                reqd: 1,
+                default: 2,
+                description: 'How many groups do you want to create?'
+            }
+        ],
+        primary_action_label: 'Split Groups',
+        primary_action: async (values) => {
+            if (values.number_of_groups < 1 || values.number_of_groups > totalPeople) {
+                frappe.show_alert('Number of groups must be between 1 and total people', 5);
+                return;
+            }
+            
+            try {
+                dialog.hide();
+                frappe.show_alert('Splitting customer into groups...', 3);
+                
+                const result = await Methods.splitCustomerIntoGroups(
+                    customer, 
+                    totalPeople, 
+                    values.number_of_groups
+                );
+                
+                frappe.show_alert(`Successfully split ${customer} into ${values.number_of_groups} groups`, 5);
+                await loadAndRenderCalendar(); 
+                
+            } catch (error) {
+                console.error('Error splitting groups:', error);
+                frappe.show_alert('Error splitting groups: ' + (error.message || 'Unknown error'), 5);
+            }
+        }
+    });
+    
+    dialog.show();
+});
+
 	$('#calendar-container').on('click', '.assignable-cell', function (e) {
 		// Don't trigger selection when dragging
 		if (e.target.classList.contains('drag-handle')) {
@@ -861,81 +912,7 @@ async testBackendConnection() {
 		}
 	});
 
-	$('#create-groups').on('click', function () {
-		const currentData = weekData[currentWeekStart.format('YYYY-MM-DD')];
-		if (currentData && currentData.tasks) {
-			populateCustomerDropdown(currentData.tasks);
-			$('#groupCreationModal').modal('show');
-		} else {
-			frappe.show_alert('Please wait for data to load', 3);
-		}
-	});
-
-	// Replace the create groups button click handler with this simplified version:
-
-$('#createGroupsBtn').off('click').on('click', async function () {
-	const customerName = $('#customerSelect').val();
-	const numberOfGroups = parseInt($('#numberOfGroups').val());
-	const totalPeople = parseInt($('#totalPeople').val());
-
-	if (!customerName || !numberOfGroups || numberOfGroups < 1 || !totalPeople || totalPeople < 1) {
-		frappe.show_alert('Please fill all required fields with valid values', 5);
-		return;
-	}
-
-	if (numberOfGroups > totalPeople) {
-		frappe.show_alert('Number of groups cannot exceed number of people', 5);
-		return;
-	}
-
-	try {
-		$(this).prop('disabled', true).text('Creating Groups...');
-
-		const groupNames = [];
-		for (let i = 1; i <= numberOfGroups; i++) {
-			groupNames.push(`Group ${i}`);
-		}
-
-		const weekKey = currentWeekStart.format('YYYY-MM-DD');
-		const tasks = weekData[weekKey]?.tasks || [];
-
-		const customerTasks = tasks.filter(t => t.custom_customer_name === customerName);
-
-		for (const task of customerTasks) {
-			// Save to the task
-			frappe.call({
-				method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.create_customer_groups',
-				args: {
-					customer_name: customerName,
-					total_people: totalPeople,
-					group_names: groupNames,
-					week_start_date: currentWeekStart.format('YYYY-MM-DD')
-				}
-			});
-
-		}
-
-		frappe.show_alert('Groups saved successfully!', 3);
-
-		// Refresh calendar
-		delete weekData[weekKey];
-		const freshData = await Methods.loadWeekData(currentWeekStart, true);
-		if (freshData) renderCalendar(freshData);
-
-		// Reset modal
-		$('#groupCreationModal').modal('hide');
-		$('#customerSelect').val('');
-		$('#totalPeople').val('');
-		$('#numberOfGroups').val('');
-		$('#groupPreview').empty();
-
-	} catch (error) {
-		console.error('Error creating groups:', error);
-		frappe.show_alert('Failed to save groups: ' + (error.message || 'Unknown error'), 5);
-	} finally {
-		$(this).prop('disabled', false).text('Create Groups');
-	}
-});
+	
 
 	$('#prev-week').on('click', () => {
 		currentWeekStart.subtract(7, 'days');
@@ -947,189 +924,33 @@ $('#createGroupsBtn').off('click').on('click', async function () {
 		loadAndRenderCalendar();
 	});
 
-	function populateCustomerDropdown(tasks) {
-		// Filter tasks for the current week only
-		const weekStart = currentWeekStart.clone();
-		const weekEnd = currentWeekStart.clone().add(6, 'days');
-		
-		const weekTasks = tasks.filter(task => {
-			const taskStart = moment(task.exp_start_date);
-			const taskEnd = moment(task.exp_end_date || task.exp_start_date);
-			
-			// Check if task overlaps with current week
-			return taskStart.isSameOrBefore(weekEnd, 'day') && taskEnd.isSameOrAfter(weekStart, 'day');
-		});
-		
-		console.log('Week tasks filtered:', weekTasks.length, 'out of', tasks.length);
-		
-		// Get unique customers from week tasks
-		const customers = [...new Set(weekTasks.map(t => t.custom_customer_name).filter(Boolean))];
-		
-		console.log('Unique customers for this week:', customers);
-		
-		const select = $('#customerSelect');
-		select.empty().append('<option value="">Choose a customer...</option>');
-		
-		customers.forEach(customerName => {
-			// Store customer tasks data for later use
-			const customerTasks = weekTasks.filter(t => t.custom_customer_name === customerName);
-			select.append(`<option value="${customerName}" data-task-count="${customerTasks.length}">${customerName}</option>`);
-		});
-	}
 	
+		$('<style>').prop('type', 'text/css').html(`
+			.selected-task {
+				border: 3px solid #007bff !important;
+				box-shadow: 0 0 5px rgba(0,customer123,255,0.5);
+			}
+			.assignable-slot:hover {
+				background-color: #e9ecef !important;
+			}
+			.assigned-task:hover {
+				opacity: 0.8;
+			}
+			.remove-assignment:hover {
+				color: #dc3545 !important;
+				font-size: 16px;
+			}
+			.split-groups-btn {
+				margin-left: 10px;
+				font-size: 11px;
+				padding: 2px 6px;
+			}
 
-	$('#customerSelect').on('change', async function () {
-    const customerName = $(this).val();
-    
-    if (!customerName) {
-        $('#totalPeople').val('');
-        $('#groupPreview').empty();
-        return;
-    }
-    
-    try {
-        // Show loading state
-        $('#totalPeople').val('Loading...');
-        $('#groupPreview').html('<p>Loading customer details...</p>');
-        
-        // Get current week data
-        const currentData = weekData[currentWeekStart.format('YYYY-MM-DD')];
-        
-        if (!currentData || !currentData.tasks) {
-            throw new Error('Week data not available');
-        }
-        
-        // Filter tasks for selected customer in current week
-        const customerTasks = currentData.tasks.filter(task => 
-            task.custom_customer_name === customerName
-        );
-        
-        console.log('Customer tasks found:', customerTasks);
-        
-        if (customerTasks.length === 0) {
-            $('#totalPeople').val('0');
-            $('#groupPreview').html('<p class="text-warning">No tasks found for this customer.</p>');
-            return;
-        }
-        
-        let peopleCount = 0;
-        let foundSource = '';
-        
-        // Method 1: Check task's custom_no_of_people field
-        for (const task of customerTasks) {
-            if (task.custom_no_of_people && task.custom_no_of_people > 0) {
-                peopleCount = parseInt(task.custom_no_of_people);
-                foundSource = 'task';
-                break;
-            }
-        }
-        
-        // Method 2: Get from project if task doesn't have it
-        if (peopleCount === 0) {
-            for (const task of customerTasks) {
-                if (task.project) {
-                    try {
-                        const response = await frappe.call({
-                            method: "frappe.client.get_value",
-                            args: {
-                                doctype: "Project",
-                                filters: { name: task.project },
-                                fieldname: ["custom_no_of_people"]
-                            }
-                        });
-                        
-                        if (response.message && response.message.custom_no_of_people) {
-                            peopleCount = parseInt(response.message.custom_no_of_people);
-                            foundSource = 'project';
-                            break;
-                        }
-                    } catch (error) {
-                        console.warn('Error fetching project:', error);
-                        continue;
-                    }
-                }
-            }
-        }
-        
-        // Method 3: Get from customer record
-        if (peopleCount === 0) {
-            try {
-                const response = await frappe.call({
-                    method: "frappe.client.get_value", 
-                    args: {
-                        doctype: "Customer",
-                        filters: { name: customerName },
-                        fieldname: ["custom_no_of_people"]
-                    }
-                });
-                
-                if (response.message && response.message.custom_no_of_people) {
-                    peopleCount = parseInt(response.message.custom_no_of_people);
-                    foundSource = 'customer';
-                }
-            } catch (error) {
-                console.warn('Error fetching customer:', error);
-            }
-        }
-        
-        $('#totalPeople').val(peopleCount || 0);
-        
-        if (peopleCount > 0) {
-            $('#groupPreview').html(`<p class="text-success">Found ${peopleCount} people (from ${foundSource})</p>`);
-        } else {
-            $('#groupPreview').html('<p class="text-warning">No people count found. Please check customer/project settings.</p>');
-        }
-        
-    } catch (error) {
-        console.error('Error:', error);
-        $('#totalPeople').val('0');
-        $('#groupPreview').html(`<p class="text-danger">Error: ${error.message}</p>`);
-    }
-});
-
-	$('#numberOfGroups').on('input', function () {
-    const totalPeople = parseInt($('#totalPeople').val()) || 0;
-    const numberOfGroups = parseInt($(this).val()) || 0;
-    
-    if (numberOfGroups > 0 && totalPeople > 0) {
-        const peoplePerGroup = Math.ceil(totalPeople / numberOfGroups);
-        let html = '<div class="mt-3"><h6>Group Preview:</h6><ul class="list-group">';
-        
-        for (let i = 1; i <= numberOfGroups; i++) {
-            const groupPeople = Math.min(peoplePerGroup, totalPeople - (i - 1) * peoplePerGroup);
-            if (groupPeople > 0) {
-                html += `<li class="list-group-item d-flex justify-content-between">
-                    <span>Group ${i}</span>
-                    <span class="badge badge-primary">${groupPeople} people</span>
-                </li>`;
-            }
-        }
-        
-        html += '</ul></div>';
-        $('#groupPreview').html(html);
-    } else {
-        $('#groupPreview').empty();
-    }
-});
-
-
-	// Add some CSS for visual feedback
-	$('<style>').prop('type', 'text/css').html(`
-		.selected-task {
-			border: 3px solid #007bff !important;
-			box-shadow: 0 0 5px rgba(0,123,255,0.5);
-		}
-		.assignable-slot:hover {
-			background-color: #e9ecef !important;
-		}
-		.assigned-task:hover {
-			opacity: 0.8;
-		}
-		.remove-assignment:hover {
-			color: #dc3545 !important;
-			font-size: 16px;
-		}
-	`).appendTo('head');
+			.group-row {
+				font-style: italic;
+				color: #666;
+			}
+		`).appendTo('head');
 
 	// Initialize
 	loadAndRenderCalendar();

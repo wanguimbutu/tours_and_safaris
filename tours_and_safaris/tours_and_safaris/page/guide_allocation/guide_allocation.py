@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 
 @frappe.whitelist()
 def remove_activity_allocation(instructor, activity_date, activity_name):
@@ -28,9 +29,6 @@ def remove_activity_allocation(instructor, activity_date, activity_name):
 
     return {"status": "not_found"}
 
-import frappe
-from frappe.model.document import Document
-from frappe import _
 
 @frappe.whitelist()
 def submit_activity_allocation(name):
@@ -95,6 +93,7 @@ def get_tasks_for_week(week_start, week_end):
             t.subject,
             t.custom_customer_name,
             t.custom_customer,
+            t.custom_customer_groups,
             t.parent_task,
             t.exp_start_date,
             t.exp_end_date,
@@ -144,7 +143,7 @@ def get_tasks_for_week(week_start, week_end):
             dependent_tasks = frappe.db.sql(f"""
                 SELECT name, subject, custom_customer_name, custom_customer,
                        exp_start_date, exp_end_date, custom_assigned_date, 
-                       custom_no_of_people, status
+                       custom_no_of_people,custom_customer_groups, status
                 FROM `tabTask`
                 WHERE name IN ({','.join(['%s'] * len(dependent_task_names))})
             """, dependent_task_names, as_dict=True)
@@ -364,99 +363,6 @@ def submit_week_allocations(week_start_date):
         frappe.log_error(f"Error in submit_week_allocations: {str(e)}")
         return {"success": False, "message": str(e)}
 
-@frappe.whitelist()
-def create_customer_groups_optimized(parent_task_name, number_of_groups):
-    """Server-side group creation"""
-    try:
-        parent_task = frappe.get_doc("Task", parent_task_name)
-        total_people = parent_task.custom_no_of_people or 0
-        number_of_groups = int(number_of_groups)
-        
-        if total_people <= 0 or number_of_groups <= 0:
-            return {"success": False, "message": "Invalid people count or group number"}
-        
-        people_per_group = (total_people + number_of_groups - 1) // number_of_groups  # Ceiling division
-        created_tasks = []
-        
-        for i in range(number_of_groups):
-            start_person = i * people_per_group + 1
-            end_person = min((i + 1) * people_per_group, total_people)
-            group_size = end_person - start_person + 1
-            
-            subtask = frappe.get_doc({
-                "doctype": "Task",
-                "subject": f"{parent_task.subject} - Group {i + 1}",
-                "parent_task": parent_task.name,
-                "custom_customer_name": parent_task.custom_customer_name,
-                "custom_customer": parent_task.custom_customer,
-                "custom_is_activity": 1,
-                "custom_no_of_people": group_size,
-                "exp_start_date": parent_task.exp_start_date,
-                "exp_end_date": parent_task.exp_end_date,
-                "status": "Open"
-            })
-            
-            subtask.insert()
-            created_tasks.append({
-                "name": subtask.name,
-                "subject": subtask.subject,
-                "people": group_size
-            })
-        
-        return {
-            "success": True,
-            "created_tasks": created_tasks,
-            "message": f"Created {len(created_tasks)} groups successfully"
-        }
-        
-    except Exception as e:
-        frappe.log_error(f"Error creating groups: {str(e)}")
-        return {"success": False, "message": str(e)}
-    
-
-@frappe.whitelist()
-def create_customer_groups(customer_name, total_people, group_names, week_start_date):
-	try:
-		# Validate inputs
-		if not customer_name or not group_names:
-			return {"success": False, "message": "Missing required data"}
-
-		group_count = len(group_names)
-		if group_count == 0 or int(total_people) < 1:
-			return {"success": False, "message": "Invalid group setup"}
-
-		# Determine week date range
-		start = frappe.utils.getdate(week_start_date)
-		end = frappe.utils.add_days(start, 6)
-
-		# Get all tasks for this customer within the week
-		tasks = frappe.get_all("Task",
-			filters={
-				"custom_customer_name": customer_name,
-				"exp_start_date": ["<=", end],
-				"exp_end_date": [">=", start]
-			},
-			fields=["name", "custom_no_of_people"]
-		)
-
-		if not tasks:
-			return {"success": False, "message": "No tasks found for this customer in the given week"}
-
-		# Apply group names to each task
-		for task in tasks:
-			frappe.db.set_value("Task", task.name, "custom_customer_groups", frappe.as_json(group_names))
-
-		return {
-			"success": True,
-			"message": f"Groups assigned to {len(tasks)} task(s) for {customer_name}"
-		}
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Guide Allocation: create_customer_groups")
-		return {"success": False, "message": f"Error: {str(e)}"}
-
-    
-import frappe
-from datetime import datetime, time, timedelta
 
 @frappe.whitelist()
 def update_task_schedule(task_name, new_date, slot):
@@ -535,3 +441,68 @@ def process_task_with_assigned_date(task):
         })
     
     return task
+
+
+@frappe.whitelist()
+def split_customer_groups(customer_name, total_people, number_of_groups, week_start_date):
+    """Split a customer into multiple groups and update tasks"""
+    try:
+        total_people = int(total_people)
+        number_of_groups = int(number_of_groups)
+        
+        if number_of_groups < 1 or number_of_groups > total_people:
+            return {
+                "success": False,
+                "message": "Invalid number of groups"
+            }
+        
+        # Calculate people per group
+        base_people_per_group = total_people // number_of_groups
+        remainder = total_people % number_of_groups
+        
+        # Create groups data
+        groups = []
+        for i in range(number_of_groups):
+            people_in_group = base_people_per_group + (1 if i < remainder else 0)
+            groups.append({
+                "group_name": f"{customer_name} - Group {i + 1}",
+                "people_count": people_in_group
+            })
+        
+        # Get all tasks for this customer in the week
+        week_end_date = frappe.utils.add_days(week_start_date, 6)
+        
+        tasks = frappe.get_all("Task", 
+            filters={
+                "custom_customer_name": customer_name,
+                "exp_start_date": ["between", [week_start_date, week_end_date]]
+            },
+            fields=["name", "subject", "custom_customer_name", "custom_no_of_people"]
+        )
+        
+        if not tasks:
+            return {
+                "success": False,
+                "message": "No tasks found for this customer in the selected week"
+            }
+        
+        # Update tasks with group information
+        groups_json = frappe.as_json(groups)
+        
+        for task in tasks:
+            frappe.db.set_value("Task", task.name, "custom_customer_groups", groups_json)
+        
+        frappe.db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Successfully split {customer_name} into {number_of_groups} groups",
+            "groups": groups
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Error splitting customer groups: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error: {str(e)}"
+        }
