@@ -22,6 +22,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
         </div>
         <div id="calendar-container" class="table-responsive"></div>
         
+
     `);
 	
 	let currentWeekStart = moment().startOf('week');
@@ -206,24 +207,28 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		},
 
 		getTasksForSlot(tasksToRender, day, slot) {
-			return tasksToRender.filter(task => {
-				
+			const filtered = tasksToRender.filter(task => {
+				const currentDay = day.clone().startOf('day');
+
 				if (task.custom_assigned_date) {
 					const assignedMoment = moment(task.custom_assigned_date);
 					const taskDay = assignedMoment.clone().startOf('day');
-					const currentDay = day.clone().startOf('day');
 					const taskSlot = assignedMoment.hour() < 13 ? 'AM' : 'PM';
-					
+
 					return taskDay.isSame(currentDay) && taskSlot === slot;
 				}
-				
+
 				const taskStart = moment(task.exp_start_date).startOf('day');
 				const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
-				const currentDay = day.clone().startOf('day');
-				
+
 				return currentDay.isBetween(taskStart, taskEnd, null, '[]');
 			});
+
+			console.log(`Tasks for ${day.format('YYYY-MM-DD')} ${slot}:`, filtered.map(t => t.subject));
+			return filtered;
 		},
+
+
 
 		canTaskBeMoved(task, targetDay) {
 			const taskStart = moment(task.original_exp_start_date || task.exp_start_date);
@@ -399,6 +404,41 @@ async splitCustomerIntoGroups(customerName, totalPeople, numberOfGroups) {
     }
 },
 
+async loadActivityTypes() {
+    try {
+        const response = await frappe.call({
+            method: "frappe.client.get_list",
+            args: {
+                doctype: "Activity Type",
+                fields: ["name"],
+                limit_page_length: 100
+            }
+        });
+
+        const activities = response.message || [];
+        const $body = $('#activity-list-body');
+        $body.empty();
+
+        activities.forEach(activity => {
+			const row = `
+				<tr>
+					<td>
+						<input type="checkbox" class="activity-checkbox" value="${activity.name}" />
+						${activity.name}
+					</td>
+					<td>${activity.description || ''}</td>
+				</tr>
+			`;
+			$body.append(row);
+		});
+
+    } catch (err) {
+        console.error("Failed to load activity types", err);
+        $('#activity-list-body').html(`<tr><td colspan="2">Error loading activities</td></tr>`);
+    }
+}
+,
+
 async testBackendConnection() {
     try {
         console.log('Testing backend connection...');
@@ -427,6 +467,7 @@ async testBackendConnection() {
 			const data = await Methods.loadWeekData(currentWeekStart, true);
 			if (data) {
 				renderCalendar(data);
+				await Methods.loadActivityTypes();
 			}
 		} catch (error) {
 			console.error('Error loading calendar:', error);
@@ -526,18 +567,40 @@ async testBackendConnection() {
             }
         });
 
-        weekDays.forEach((day, dayIndex) => {
-            ['AM', 'PM'].forEach(slot => {
-                const match = taskPlacements.find(t => t.dayIndex === dayIndex && t.slot === slot);
-                if (match) {
-                    html += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px;">${
-                        Methods.makeTaskCellClickable(match.task, dayIndex, slot, color, true)
-                    }</td>`;
-                } else {
-                    html += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px;"></td>`;
-                }
-            });
-        });
+        const renderedTaskNames = new Set();
+
+		weekDays.forEach((day, dayIndex) => {
+			['AM', 'PM'].forEach(slot => {
+				const slotTasks = Methods.getTasksForSlot(tasksToRender, day, slot).filter(task => {
+					return !renderedTaskNames.has(task.name);
+				});
+
+				let backgroundStyle = '';
+				let overlayTask = tasksToRender.find(task => {
+					// Show range background (not for rendered slot)
+					const taskStart = moment(task.exp_start_date).startOf('day');
+					const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
+					const currentDay = day.clone().startOf('day');
+
+					return currentDay.isBetween(taskStart, taskEnd, null, '[]');
+				});
+
+				if (overlayTask && !renderedTaskNames.has(overlayTask.name)) {
+					backgroundStyle = `background-color: ${color}22;`; // Light highlight
+				}
+
+				html += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px; ${backgroundStyle}">`;
+
+				if (slotTasks.length > 0) {
+					slotTasks.forEach(task => {
+						html += Methods.makeTaskCellClickable(task, dayIndex, slot, color, true);
+						renderedTaskNames.add(task.name);
+					});
+				}
+
+				html += `</td>`;
+			});
+		});
 
         html += '</tr>';
     }
@@ -610,10 +673,35 @@ async testBackendConnection() {
     });
 
     html += '</tbody></table></div>';
+	html += `
+	<div class="mt-4">
+		<h6 style="cursor: pointer;" data-toggle="collapse" data-target="#activity-selector" aria-expanded="false" aria-controls="activity-selector">
+			<span>▶</span> Select Additional Activities for Multiactivity Task
+		</h6>
+		<div id="activity-selector" class="collapse table table-sm table-bordered">
+		<table class="table">
+			<thead>
+			<tr><th>Activity</th><th>Action</th></tr>
+			</thead>
+			<tbody id="activity-list-body">
+			<tr><td colspan="2">Loading activities...</td></tr>
+			</tbody>
+		</table>
+		</div>
+		<div class="mt-2 text-right">
+			<button class="btn btn-sm btn-success" id="add-selected-activities">Add Selected Activities</button>
+		</div>
+	</div>
+	`;
+
     $('#calendar-container').html(html);
+	
+
     
     // Initialize drag and drop after rendering
     initializeDragAndDrop();
+
+	
 	}
 
 	// Drag and Drop function
@@ -638,7 +726,7 @@ async testBackendConnection() {
 			e.originalEvent.dataTransfer.effectAllowed = 'move';
 			e.originalEvent.dataTransfer.setData('text/html', this.outerHTML);
 			
-			console.log('Drag started:', draggedTask);
+			//console.log('Drag started:', draggedTask);
 		});
 
 		// Handle drag end
@@ -797,6 +885,77 @@ async testBackendConnection() {
     
     dialog.show();
 });
+$('#calendar-container').on('click', '.add-activity-btn', async function () {
+    const activityType = $(this).data('activity');
+    
+    if (!selectedTask || selectedTask.subject !== "Multi Activity") {
+        frappe.show_alert("Please select a 'Multiactivity' task in the calendar first.", 5);
+        return;
+    }
+
+    try {
+        const result = await frappe.call({
+            method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.create_multiactivity_task",
+            args: {
+                customer: selectedTask.custom_customer_name,
+                activity_type: activityType,
+                start_date: selectedTask.exp_start_date,
+                end_date: selectedTask.exp_end_date
+            }
+        });
+
+        frappe.show_alert(`Activity "${activityType}" added for ${selectedTask.custom_customer_name}`, 4);
+        await loadAndRenderCalendar();
+		
+    } catch (error) {
+        console.error('Error adding multiactivity task:', error);
+        frappe.show_alert('Failed to add activity', 5);
+    }
+});
+$('#calendar-container').on('click', '#add-selected-activities', async function () {
+    if (!selectedTask || selectedTask.subject !== "Multi Activity") {
+        frappe.show_alert("Please select a 'Multiactivity' task first.", 5);
+        return;
+    }
+
+    const selectedActivities = [];
+    $('.activity-checkbox:checked').each(function () {
+        selectedActivities.push($(this).val());
+    });
+
+    if (selectedActivities.length === 0) {
+        frappe.show_alert("No activities selected.", 5);
+        return;
+    }
+
+    const commonData = {
+        customer: selectedTask.custom_customer_name,
+        start_date: selectedTask.exp_start_date,
+        end_date: selectedTask.exp_end_date,
+        number_of_people: selectedTask.custom_no_of_people
+    };
+
+    frappe.show_alert("Creating selected activity tasks...", 3);
+
+    try {
+        for (let activity of selectedActivities) {
+            await frappe.call({
+                method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.create_multiactivity_task",
+                args: {
+                    ...commonData,
+                    activity_type: activity
+                }
+            });
+        }
+
+        frappe.show_alert(`Created ${selectedActivities.length} activity tasks`, 4);
+        await loadAndRenderCalendar();
+
+    } catch (err) {
+        console.error("Error creating multiactivity tasks:", err);
+        frappe.show_alert("Failed to create some activities", 5);
+    }
+});
 
 	$('#calendar-container').on('click', '.assignable-cell', function (e) {
 		// Don't trigger selection when dragging
@@ -815,7 +974,9 @@ async testBackendConnection() {
 		selectedTask = {
 			name: $(this).data('task-name'),
 			subject: $(this).data('task-subject'),
-			custom_customer_name: $(this).data('task-customer')
+			custom_customer_name: $(this).data('task-customer'),
+			exp_start_date: $(this).data('exp-start'),
+    		exp_end_date: $(this).data('exp-end')
 		};
 		
 		frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
