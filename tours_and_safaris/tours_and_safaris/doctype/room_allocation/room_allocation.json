@@ -15,6 +15,7 @@
   "task",
   "project",
   "reservation",
+  "calendar_info",
   "section_break_xpzm",
   "booked_rooms",
   "section_break_yaig",
@@ -97,12 +98,17 @@
    "fieldtype": "Link",
    "label": "Reservation",
    "options": "Reservation"
+  },
+  {
+   "fieldname": "calendar_info",
+   "fieldtype": "Data",
+   "label": "Calendar Info"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-12 12:30:29.864083",
+ "modified": "2025-06-04 12:44:03.428161",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Room Allocation",

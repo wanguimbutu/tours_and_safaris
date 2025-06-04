@@ -11,14 +11,20 @@ frappe.ui.form.on("Room Allocation", {
                 }
             };
         }
+        update_calendar_info(frm);
  	},
+    customer_name:function(frm){
+        update_calendar_info(frm);
+    },
 	 room_booking_add: function(frm, cdt, cdn) {
         let row = locals[cdt][cdn];
         apply_room_name_filter(frm, row);
+        update_calendar_info(frm);
     },
 	room_booking_remove: function(frm, cdt, cdn) {
 		let row = locals[cdt][cdn];
 		apply_room_name_filter(frm, row);
+        update_calendar_info(frm);
 	},
  });
 
@@ -89,4 +95,9 @@ function apply_room_name_filter(frm, row) {
             }
         };
     };
+}
+function update_calendar_info(frm) {
+    const customer = frm.doc.customer_name || '';
+    const roomNames = (frm.doc.booked_rooms || []).map(r => r.room_name).filter(Boolean);
+    frm.set_value('calendar_info', roomNames.map(name => `${customer} - ${name}`).join(', '));
 }

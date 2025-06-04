@@ -17,6 +17,7 @@ class RoomAllocation(Document):
             availability.check_in_date = self.arrival_date
             availability.check_out_date = self.departure_date
             availability.customer = self.customer
+            availability.calendar_info = self.calendar_info
             availability.insert(ignore_permissions=True) 
             availability.submit() 
             
