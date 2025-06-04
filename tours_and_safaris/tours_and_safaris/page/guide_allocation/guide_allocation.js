@@ -12,8 +12,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
             <button class="btn btn-sm btn-outline-primary" id="next-week">Next</button>
         </div>
         <div class="mb-3 d-flex gap-2">
-            <button class="btn btn-sm btn-warning" id="submit-allocations">Submit All Allocations</button>
-        </div>
+			<button class="btn btn-sm btn-warning" id="submit-allocations">Submit All Allocations</button>
+			<button class="btn btn-sm btn-secondary" id="print-calendar">Print Calendar</button>
+		</div>
         <div id="loading-indicator" class="text-center" style="display: none;">
             <div class="spinner-border" role="status">
                 <span class="sr-only">Loading...</span>
@@ -898,9 +899,12 @@ $('#calendar-container').on('click', '.add-activity-btn', async function () {
             method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.create_multiactivity_task",
             args: {
                 customer: selectedTask.custom_customer_name,
+				customer_name: selectedTask.custom_customer_name,
+				no_of_people: selectedTask.custom_no_of_people,
                 activity_type: activityType,
                 start_date: selectedTask.exp_start_date,
-                end_date: selectedTask.exp_end_date
+                end_date: selectedTask.exp_end_date,
+				project:selectedTask.project
             }
         });
 
@@ -1069,6 +1073,81 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 		} catch (error) {
 			frappe.show_alert('Error submitting allocations', 5);
 		}
+	});
+
+	$('#print-calendar').on('click', function () {
+    const originalTitle = document.title;
+    document.title = "Guide Allocation - Calendar View";
+
+    const calendarHTML = $('#calendar-container').prop('outerHTML');  
+    const weekTitle = $('#week-range-title').text();
+
+    const printWindow = window.open('', '', 'width=1200,height=900');
+
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Guide Allocation</title>
+                <link rel="stylesheet" href="/assets/frappe/css/bootstrap.css">
+                <style>
+					body {
+						font-family: Arial, sans-serif;
+						margin: 20px;
+						color: #000;
+					}
+
+					table {
+						width: 100%;
+						border-collapse: collapse;
+						table-layout: fixed;
+						word-wrap: break-word;
+					}
+
+					th, td {
+						border: 1px solid #999;
+						padding: 6px;
+						vertical-align: top;
+						font-size: 11px;
+					}
+
+					.draggable-task, .assignable-cell, .assigned-task {
+						border-radius: 4px;
+						padding: 2px 5px;
+						font-size: 10px;
+						display: inline-block;
+						margin: 1px;
+						-webkit-print-color-adjust: exact !important;
+						print-color-adjust: exact !important;
+					}
+
+					@media print {
+						* {
+							-webkit-print-color-adjust: exact !important;
+							print-color-adjust: exact !important;
+						}
+					}
+
+					.remove-assignment, .drag-handle, .btn, .split-groups-btn, .collapse, .text-right, .selected-task {
+						display: none !important;
+					}
+				</style>
+
+            </head>
+            <body>
+                <h2>Guide Allocation Calendar: ${weekTitle}</h2>
+                ${calendarHTML}
+            </body>
+        </html>
+		
+    `);
+
+		printWindow.document.close();
+		printWindow.focus();
+		setTimeout(() => {
+			printWindow.print();
+			printWindow.close();
+			document.title = originalTitle;
+		}, 600);
 	});
 
 	

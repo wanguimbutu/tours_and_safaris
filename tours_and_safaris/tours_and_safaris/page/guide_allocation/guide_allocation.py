@@ -512,11 +512,11 @@ def create_multiactivity_task(customer, activity_type, start_date, end_date):
     task = frappe.new_doc("Task")
     task.subject = activity_type
     task.custom_customer = customer
+    task.custom_customer_name = frappe.db.get_value("Customer", customer, "customer_name")
     task.activity_type = activity_type
     task.exp_start_date = start_date
     task.exp_end_date = end_date
     task.custom_is_activity = 1
-    #task.custom_customer_name = frappe.db.get_value("Customer", customer, "customer_name")
     task.status = "Open"
     task.insert()
     return {"success": True, "task": task.name}
