@@ -537,7 +537,7 @@ async testBackendConnection() {
 
     console.log('Customer Map with Groups:', customerMap);
 
-    let html = '<div style="overflow-x: auto;"><table class="table table-bordered"><thead><tr><th>Customer / Instructor</th>';
+    let html = '<div id="calendar-scroll-wrapper" style="max-height: 80vh; overflow-y: auto; overflow-x: auto;"><table class="table table-bordered"><thead><tr><th>Customer / Instructor</th>';
     weekDays.forEach(day => {
         html += `<th class="drop-zone" data-day-index="${weekDays.indexOf(day)}">${day.format('ddd D')}<br>AM</th><th class="drop-zone" data-day-index="${weekDays.indexOf(day)}">${day.format('ddd D')}<br>PM</th>`;
     });
@@ -1187,6 +1187,17 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 			.group-row {
 				font-style: italic;
 				color: #666;
+			}
+			#calendar-scroll-wrapper {
+				max-height: 80vh;
+				overflow-y: auto;
+				overflow-x: auto;
+			}
+			#calendar-scroll-wrapper table thead tr:first-child th {
+				position: sticky;
+				top: 0;
+				background: #f8f9fa;
+				z-index: 10;
 			}
 		`).appendTo('head');
 
