@@ -53,6 +53,16 @@ frappe.ui.form.on('Booking Inquiry', {
                 };
             }
         };
+         if (frm.doc.docstatus === 0 && frm.doc.lead_name && !frm.doc.customer) {
+            frm.add_custom_button("Convert Lead", () => {
+                convert_lead_to_customer(frm.doc.lead_name, function(customer_id, customer_name) {
+                    frm.set_value("customer", customer_id);
+                    frm.set_value("customer_name", customer_name);
+                    frm.save();
+                });
+            });
+        }
+
     },
     new_customer: function(frm) {
         if (frm.doc.new_customer) {
@@ -344,21 +354,43 @@ function handle_reservation_creation(frm) {
 
 function convert_lead_to_customer(lead_name, callback) {
     frappe.call({
-        method: "frappe.client.insert",
+        method: "frappe.client.get",
         args: {
-            doc: {
-                doctype: "Customer",
-                customer: lead_name
-            }
+            doctype: "Lead",
+            name: lead_name
         },
         callback: function(res) {
             if (res.message) {
-                frappe.msgprint(__('Lead converted to Customer: ' + res.message.name));
-                callback(res.message.name);
+                const lead = res.message;
+
+                frappe.call({
+                    method: "frappe.client.insert",
+                    args: {
+                        doc: {
+                            doctype: "Customer",
+                            customer_name: lead.first_name || lead.lead_name,
+                            customer_group: lead.custom_lead_group,
+                            lead_name: lead.name
+                        }
+                    },
+                    callback: function(res2) {
+                        if (res2.message) {
+                            const customer = res2.message;
+
+                            frappe.msgprint(__('Lead converted to Customer: ' + customer.name));
+
+                           
+                            callback(customer.name, customer.customer_name);
+                        }
+                    }
+                });
+            } else {
+                frappe.msgprint(__('Unable to fetch Lead: ' + lead_name));
             }
         }
     });
 }
+
 
 /*function toggle_exchange_rate_field(frm) {
     if (frm.doc.billing_currency && frm.doc.billing_currency !== 'KES') {
