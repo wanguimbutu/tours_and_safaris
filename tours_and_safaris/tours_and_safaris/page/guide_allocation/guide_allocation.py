@@ -508,15 +508,37 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
         }
     
 @frappe.whitelist()
-def create_multiactivity_task(customer, activity_type, start_date, end_date):
+def create_multiactivity_task(customer, activity_type, start_date, end_date,
+                               custom_customer_name=None, custom_no_of_people=None, project=None):
+    frappe.logger().info({
+        "msg": "create_multiactivity_task called",
+        "customer": customer,
+        "activity_type": activity_type,
+        "custom_customer_name": custom_customer_name,
+        "custom_no_of_people": custom_no_of_people,
+        "project": project
+    })
+
     task = frappe.new_doc("Task")
     task.subject = activity_type
     task.custom_customer = customer
-    task.custom_customer_name = frappe.db.get_value("Customer", customer, "customer_name")
+
+    # Validate fallback
+    task.custom_customer_name = (
+        custom_customer_name or frappe.db.get_value("Customer", customer, "customer_name")
+    )
+
     task.activity_type = activity_type
     task.exp_start_date = start_date
     task.exp_end_date = end_date
     task.custom_is_activity = 1
     task.status = "Open"
+
+    if custom_no_of_people:
+        task.custom_no_of_people = custom_no_of_people
+
+    if project:
+        task.project = project
+
     task.insert()
     return {"success": True, "task": task.name}

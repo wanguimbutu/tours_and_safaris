@@ -261,6 +261,8 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					data-task-name="${task.name}"
 					data-task-subject="${task.subject}"
 					data-task-customer="${task.custom_customer_name || ''}"
+					data-task-people="${task.custom_no_of_people || ''}"
+					data-task-project="${task.project || ''}"
 					data-exp-start="${task.original_exp_start_date || task.exp_start_date}"
 					data-exp-end="${task.original_exp_end_date || task.exp_end_date || task.exp_start_date}"
 					data-day-index="${dayIndex}" 
@@ -268,6 +270,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					style="${style}; cursor: grab;">
 					${dragHandle}${content}
 				</div>`;
+
 			}
 		
 			return `<td class="assignable-cell draggable-task" 
@@ -275,6 +278,8 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				data-task-name="${task.name}"
 				data-task-subject="${task.subject}"
 				data-task-customer="${task.custom_customer_name || ''}"
+				data-task-people="${task.custom_no_of_people || ''}"
+				data-task-project="${task.project || ''}"
 				data-exp-start="${task.exp_start_date}"
 				data-exp-end="${task.exp_end_date || task.exp_start_date}"
 				data-day-index="${dayIndex}" 
@@ -282,6 +287,8 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				style="background-color: ${color}; cursor: grab; position: relative;">
 				${dragHandle}${content}
 			</td>`;
+
+
 		},
 
 		async createAllocation(taskName, dayIndex, slot, instructorName) {
@@ -933,22 +940,29 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
     }
 
     const commonData = {
-        customer: selectedTask.custom_customer_name,
-        start_date: selectedTask.exp_start_date,
-        end_date: selectedTask.exp_end_date,
-        number_of_people: selectedTask.custom_no_of_people
-    };
+    customer: selectedTask.custom_customer_name,
+    custom_customer_name: selectedTask.custom_customer_name,  
+    start_date: selectedTask.exp_start_date,
+    end_date: selectedTask.exp_end_date,
+    number_of_people: selectedTask.custom_no_of_people,
+    custom_no_of_people: selectedTask.custom_no_of_people,   
+    project: selectedTask.project                            
+};
+
 
     frappe.show_alert("Creating selected activity tasks...", 3);
-
+	
     try {
         for (let activity of selectedActivities) {
+			console.log("Sending activity with data:", { ...commonData, activity });
+
             await frappe.call({
                 method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.create_multiactivity_task",
                 args: {
                     ...commonData,
                     activity_type: activity
                 }
+				
             });
         }
 
@@ -980,7 +994,10 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 			subject: $(this).data('task-subject'),
 			custom_customer_name: $(this).data('task-customer'),
 			exp_start_date: $(this).data('exp-start'),
-    		exp_end_date: $(this).data('exp-end')
+    		exp_end_date: $(this).data('exp-end'),
+			custom_no_of_people: $(this).data('task-people'),
+			project: $(this).data('task-project')
+
 		};
 		
 		frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
@@ -1079,76 +1096,86 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
     const originalTitle = document.title;
     document.title = "Guide Allocation - Calendar View";
 
-    const calendarHTML = $('#calendar-container').prop('outerHTML');  
+    const calendarClone = $('#calendar-container').clone();
+
+    
+    calendarClone.find('#calendar-scroll-wrapper')
+        .css({
+            'max-height': 'none',
+            'overflow': 'visible'
+        });
+
     const weekTitle = $('#week-range-title').text();
 
     const printWindow = window.open('', '', 'width=1200,height=900');
-
     printWindow.document.write(`
         <html>
-            <head>
-                <title>Guide Allocation</title>
-                <link rel="stylesheet" href="/assets/frappe/css/bootstrap.css">
-                <style>
-					body {
-						font-family: Arial, sans-serif;
-						margin: 20px;
-						color: #000;
-					}
-
-					table {
-						width: 100%;
-						border-collapse: collapse;
-						table-layout: fixed;
-						word-wrap: break-word;
-					}
-
-					th, td {
-						border: 1px solid #999;
-						padding: 6px;
-						vertical-align: top;
-						font-size: 11px;
-					}
-
-					.draggable-task, .assignable-cell, .assigned-task {
-						border-radius: 4px;
-						padding: 2px 5px;
-						font-size: 10px;
-						display: inline-block;
-						margin: 1px;
-						-webkit-print-color-adjust: exact !important;
-						print-color-adjust: exact !important;
-					}
-
-					@media print {
-						* {
-							-webkit-print-color-adjust: exact !important;
-							print-color-adjust: exact !important;
-						}
-					}
-
-					.remove-assignment, .drag-handle, .btn, .split-groups-btn, .collapse, .text-right, .selected-task {
-						display: none !important;
-					}
-				</style>
-
-            </head>
-            <body>
-                <h2>Guide Allocation Calendar: ${weekTitle}</h2>
-                ${calendarHTML}
-            </body>
+        <head>
+            <title>${originalTitle}</title>
+            <link rel="stylesheet" href="/assets/frappe/css/bootstrap.css">
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 20px;
+                    color: #000;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    table-layout: fixed;
+                    word-wrap: break-word;
+                }
+                th, td {
+                    border: 1px solid #999;
+                    padding: 6px;
+                    vertical-align: top;
+                    font-size: 11px;
+                }
+                .draggable-task, .assignable-cell, .assigned-task {
+                    border-radius: 4px;
+                    padding: 2px 5px;
+                    font-size: 10px;
+                    display: inline-block;
+                    margin: 1px;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .remove-assignment, .drag-handle, .btn, .split-groups-btn, .collapse, .text-right, .selected-task {
+                    display: none !important;
+                }
+                @media print {
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    #calendar-scroll-wrapper {
+                        overflow: visible !important;
+                        max-height: none !important;
+                    }
+                    thead th {
+                        position: static !important;
+                        background: #fff !important;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <h2>Guide Allocation Calendar: ${weekTitle}</h2>
+            ${calendarClone.html()}
+        </body>
         </html>
-		
     `);
 
-		printWindow.document.close();
-		printWindow.focus();
-		setTimeout(() => {
-			printWindow.print();
-			printWindow.close();
-			document.title = originalTitle;
-		}, 600);
-	});
+    printWindow.document.close();
+    printWindow.focus();
+
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+        document.title = originalTitle;
+    }, 600);
+});
+
 
 	
 
@@ -1193,12 +1220,27 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 				overflow-y: auto;
 				overflow-x: auto;
 			}
+			@media screen {
 			#calendar-scroll-wrapper table thead tr:first-child th {
 				position: sticky;
 				top: 0;
 				background: #f8f9fa;
 				z-index: 10;
 			}
+		}
+
+		@media print {
+			#calendar-scroll-wrapper {
+				overflow: visible !important;
+				max-height: none !important;
+			}
+
+			#calendar-scroll-wrapper table thead tr:first-child th {
+				position: static !important;
+				background: #fff !important;
+			}
+		}
+
 		`).appendTo('head');
 
 	// Initialize
