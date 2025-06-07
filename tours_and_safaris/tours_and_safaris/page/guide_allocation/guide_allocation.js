@@ -103,7 +103,20 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				return task;
 			});
 			
-			// Process instructor qualifications
+			// Separate parent tasks and subtasks
+			const parentTasks = processedTasks.filter(task => !task.parent_task);
+			const subTasks = processedTasks.filter(task => task.parent_task);
+			
+			// Group subtasks by parent
+			const subTasksByParent = {};
+			subTasks.forEach(subTask => {
+				if (!subTasksByParent[subTask.parent_task]) {
+					subTasksByParent[subTask.parent_task] = [];
+				}
+				subTasksByParent[subTask.parent_task].push(subTask);
+			});
+			
+			// Process instructor qualifications (keep existing logic)
 			const processedInstructors = instructors.map(instructor => {
 				const qualificationMap = {};
 				if (instructor.qualifications) {
@@ -120,7 +133,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				};
 			});
 			
-			// Process allocations into assignments
+			// Process allocations into assignments (keep existing logic)
 			const instructorAssignments = {};
 			allocations.forEach(allocation => {
 				const instructor = allocation.instructor;
@@ -156,6 +169,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			return {
 				...rawData,
 				tasks: processedTasks,
+				parentTasks: parentTasks,
+				subTasks: subTasks,
+				subTasksByParent: subTasksByParent,
 				instructors: processedInstructors,
 				instructorAssignments
 			};
@@ -397,7 +413,8 @@ async splitCustomerIntoGroups(customerName, totalPeople, numberOfGroups) {
                 customer_name: customerName,
                 total_people: totalPeople,
                 number_of_groups: numberOfGroups,
-                week_start_date: currentWeekStart.format('YYYY-MM-DD')
+                week_start_date: currentWeekStart.format('YYYY-MM-DD'),
+                split_tasks: true // Add this flag to indicate we want to split tasks too
             }
         });
         
@@ -411,6 +428,7 @@ async splitCustomerIntoGroups(customerName, totalPeople, numberOfGroups) {
         throw error;
     }
 },
+
 
 async loadActivityTypes() {
     try {
@@ -492,24 +510,34 @@ async testBackendConnection() {
     $('#week-range-title').text(`${weekDays[0].format('MMM D')} - ${weekDays[6].format('MMM D, YYYY')}`);
 
     tasks.forEach(task => {
-        const customer = task.custom_customer_name || "Unknown";
-        if (!customerMap[customer]) {
-            customerMap[customer] = { 
-                main: [], 
-                sub: [],
-                hasGroups: false,
-                groupsData: [],
-                totalPeople: 0
-            };
-        }
-        customerMap[customer].main.push(task);
-        
-        if (task.custom_no_of_people) {
-            customerMap[customer].totalPeople = Math.max(
-                customerMap[customer].totalPeople, 
-                parseInt(task.custom_no_of_people) || 0
-            );
-        }
+		const customer = task.custom_customer_name || "Unknown";
+		if (!customerMap[customer]) {
+			customerMap[customer] = { 
+				main: [], 
+				sub: [],
+				hasGroups: false,
+				groupsData: [],
+				totalPeople: 0,
+				parentTasks: [],
+				subTasks: []
+			};
+		}
+		
+		// Separate parent and sub tasks
+		if (task.parent_task) {
+			customerMap[customer].subTasks.push(task);
+		} else {
+			customerMap[customer].parentTasks.push(task);
+			customerMap[customer].main.push(task);
+		}
+		
+		// Rest of the existing logic for groups and people count...
+		if (task.custom_no_of_people) {
+			customerMap[customer].totalPeople = Math.max(
+				customerMap[customer].totalPeople, 
+				parseInt(task.custom_no_of_people) || 0
+			);
+		}
         
         if (task.custom_customer_groups) {
             try {
@@ -614,39 +642,59 @@ async testBackendConnection() {
     }
 
     for (const [customer, grouped] of Object.entries(customerMap)) {
-        const color = Methods.getColorForCustomer(customer);
-        if (grouped.main.length > 0) {
-            const peopleCount = grouped.totalPeople;
-            
-            if (grouped.hasGroups && grouped.groupsData.length > 0) {
-                console.log(`Rendering groups for ${customer}:`, grouped.groupsData);
-                
-            
-                const customerLabel = peopleCount > 0 ? 
-                    `<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>` : 
-                    `<strong>${customer}</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>`;
-                
-                
-                renderTaskRow(customerLabel, [], color);
-                
-            
-                grouped.groupsData.forEach((group, index) => {
-                  
-                    const groupTasks = grouped.main; 
-                    
-                    const groupLabel = `<span class="group-row">├─ ${group.group_name} (${group.people_count} people)</span>`;
-                    renderTaskRow(groupLabel, groupTasks, color, true);
-                });
-            } else {
-                
-                const customerLabel = peopleCount > 0 ? 
-                    `<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-primary split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="split">Split Groups</button>` : 
-                    `<strong>${customer}</strong>`;
-                
-                renderTaskRow(customerLabel, grouped.main, color);
-            }
-        }
-    }
+		const color = Methods.getColorForCustomer(customer);
+		if (grouped.main.length > 0 || grouped.subTasks.length > 0) {
+			const peopleCount = grouped.totalPeople;
+			
+			if (grouped.hasGroups && grouped.groupsData.length > 0) {
+				// Render main customer row
+				const customerLabel = peopleCount > 0 ? 
+					`<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>` : 
+					`<strong>${customer}</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>`;
+				
+				renderTaskRow(customerLabel, grouped.parentTasks, color);
+				
+				// Render group subtasks
+				grouped.groupsData.forEach((group, index) => {
+					// Find subtasks for this group 
+					const groupSubTasks = grouped.subTasks.filter(subTask => {
+					
+						return subTask.custom_group_name === group.group_name || 
+							subTask.custom_group_index === index ||
+							subTask.subject.includes(group.group_name) ||
+							(subTask.custom_customer_groups && 
+								subTask.custom_customer_groups.includes(group.group_name));
+					});
+					
+					console.log(`Group ${group.group_name} subtasks:`, groupSubTasks.map(t => ({
+						name: t.name,
+						subject: t.subject,
+						custom_group_name: t.custom_group_name,
+						parent_task: t.parent_task
+					})));
+					
+					const groupLabel = `<span class="group-row">├─ ${group.group_name} (${group.people_count} people)</span>`;
+					renderTaskRow(groupLabel, groupSubTasks, color, true);
+				});
+			} else {
+				// Render main customer with option to split
+				const customerLabel = peopleCount > 0 ? 
+					`<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-primary split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="split">Split Groups</button>` : 
+					`<strong>${customer}</strong>`;
+				
+				// Show parent tasks
+				renderTaskRow(customerLabel, grouped.parentTasks, color);
+				
+				// Show any existing subtasks
+				if (grouped.subTasks.length > 0) {
+					grouped.subTasks.forEach(subTask => {
+						const subTaskLabel = `<span class="group-row">├─ ${subTask.subject} ${subTask.custom_group_name ? '(' + subTask.custom_group_name + ')' : ''}</span>`;
+						renderTaskRow(subTaskLabel, [subTask], color, true);
+					});
+				}
+			}
+		}
+	}
     // Render instructors 
     instructors.forEach(instr => {
         html += `<tr><td><span class="text-primary">— ${instr.instructor_name}</span></td>`;

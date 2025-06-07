@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+import json
 
 @frappe.whitelist()
 def remove_activity_allocation(instructor, activity_date, activity_name):
@@ -444,69 +445,138 @@ def process_task_with_assigned_date(task):
 
 
 @frappe.whitelist()
-def split_customer_groups(customer_name, total_people, number_of_groups, week_start_date):
-    """Split a customer into multiple groups and update tasks"""
+def split_customer_groups(customer_name, total_people, number_of_groups, week_start_date, split_tasks=False):
+    """
+    Split a customer into multiple groups and optionally create subtasks for each group
+    """
     try:
         total_people = int(total_people)
         number_of_groups = int(number_of_groups)
         
-        if number_of_groups < 1 or number_of_groups > total_people:
-            return {
-                "success": False,
-                "message": "Invalid number of groups"
-            }
+        if number_of_groups < 1:
+            return {"success": False, "message": "Number of groups must be at least 1"}
+        
+        if number_of_groups > total_people:
+            return {"success": False, "message": "Number of groups cannot exceed total people"}
         
         # Calculate people per group
         base_people_per_group = total_people // number_of_groups
-        remainder = total_people % number_of_groups
+        extra_people = total_people % number_of_groups
         
         # Create groups data
-        groups = []
+        groups_data = []
         for i in range(number_of_groups):
-            people_in_group = base_people_per_group + (1 if i < remainder else 0)
-            groups.append({
-                "group_name": f"{customer_name} - Group {i + 1}",
-                "people_count": people_in_group
-            })
+            people_in_group = base_people_per_group + (1 if i < extra_people else 0)
+            group_data = {
+                "group_name": f"Group {i + 1}",
+                "people_count": people_in_group,
+                "group_index": i
+            }
+            groups_data.append(group_data)
         
-        # Get all tasks for this customer in the week
+        # Find all tasks for this customer in the specified week
         week_end_date = frappe.utils.add_days(week_start_date, 6)
         
-        tasks = frappe.get_all("Task", 
+        # Get parent tasks (tasks without parent_task)
+        parent_tasks = frappe.get_all(
+            "Task",
             filters={
                 "custom_customer_name": customer_name,
-                "exp_start_date": ["between", [week_start_date, week_end_date]]
+                "exp_start_date": ["between", [week_start_date, week_end_date]],
+                "parent_task": ["is", "not set"]
             },
-            fields=["name", "subject", "custom_customer_name", "custom_no_of_people"]
+            fields=["name", "subject", "project", "exp_start_date", "exp_end_date", 
+                   "custom_customer_name", "custom_no_of_people"]
         )
         
-        if not tasks:
-            return {
-                "success": False,
-                "message": "No tasks found for this customer in the selected week"
-            }
+        if not parent_tasks:
+            return {"success": False, "message": f"No tasks found for customer {customer_name} in the specified week"}
         
-        # Update tasks with group information
-        groups_json = frappe.as_json(groups)
+        # Update parent tasks with groups data
+        for parent_task in parent_tasks:
+            task_doc = frappe.get_doc("Task", parent_task.name)
+            task_doc.custom_customer_groups = json.dumps(groups_data)
+            task_doc.save()
         
-        for task in tasks:
-            frappe.db.set_value("Task", task.name, "custom_customer_groups", groups_json)
+        created_subtasks = []
         
-        frappe.db.commit()
+        for parent_task in parent_tasks:
+            try:
+                parent_doc = frappe.get_doc("Task", parent_task.name)
+                
+                # Check if subtasks already exist for this parent
+                existing_subtasks = frappe.get_all(
+                    "Task",
+                    filters={"parent_task": parent_doc.name},
+                    fields=["name"]
+                )
+                
+                # If subtasks already exist, delete them first to avoid duplicates
+                if existing_subtasks:
+                    for existing in existing_subtasks:
+                        frappe.delete_doc("Task", existing.name)
+                    frappe.db.commit()
+                
+                for group in groups_data:
+                    # Create subtask for each group
+                    subtask = frappe.new_doc("Task")
+                    subtask.subject = f"{parent_doc.subject} - {group['group_name']}"
+                    subtask.project = parent_doc.project
+                    subtask.parent_task = parent_doc.name
+                    subtask.exp_start_date = parent_doc.exp_start_date
+                    subtask.exp_end_date = parent_doc.exp_end_date or parent_doc.exp_start_date
+                    subtask.custom_customer_name = parent_doc.custom_customer_name
+                    subtask.custom_no_of_people = group['people_count']
+                    subtask.custom_group_name = group['group_name']
+                    subtask.custom_group_index = group['group_index']
+                    
+                    
+                    if hasattr(parent_doc, 'custom_assigned_date') and parent_doc.custom_assigned_date:
+                        subtask.custom_assigned_date = parent_doc.custom_assigned_date
+                    
+                    # Set status to match parent
+                    if hasattr(parent_doc, 'status'):
+                        subtask.status = parent_doc.status
+                    
+                    # Save the subtask
+                    subtask.insert()
+                    frappe.db.commit()  
+                    
+                    created_subtasks.append({
+                        "name": subtask.name,
+                        "subject": subtask.subject,
+                        "group_name": group['group_name'],
+                        "people_count": group['people_count']
+                    })
+                    
+                    frappe.logger().info(f"Created subtask: {subtask.name} for group {group['group_name']}")
+                    
+            except Exception as subtask_error:
+                frappe.log_error(f"Error creating subtasks for parent {parent_task.name}: {str(subtask_error)}")
         
-        return {
+        response_data = {
             "success": True,
             "message": f"Successfully split {customer_name} into {number_of_groups} groups",
-            "groups": groups
+            "groups_created": groups_data,
+            "parent_tasks_updated": len(parent_tasks),
+            "subtasks_created": len(created_subtasks),
+            "subtasks": created_subtasks
         }
         
+        frappe.logger().info(f"Customer {customer_name} split into {number_of_groups} groups. "
+                           f"Updated {len(parent_tasks)} parent tasks, created {len(created_subtasks)} subtasks")
+        
+        return response_data
+        
+    except ValueError as e:
+        frappe.log_error(f"Invalid input in split_customer_groups: {str(e)}")
+        return {"success": False, "message": "Invalid input values"}
+        
     except Exception as e:
-        frappe.log_error(f"Error splitting customer groups: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Error: {str(e)}"
-        }
+        frappe.log_error(f"Error in split_customer_groups: {str(e)}")
+        return {"success": False, "message": f"Error splitting customer groups: {str(e)}"}
     
+
 @frappe.whitelist()
 def create_multiactivity_task(customer, activity_type, start_date, end_date,
                                custom_customer_name=None, custom_no_of_people=None, project=None):
