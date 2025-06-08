@@ -18,7 +18,7 @@
   {
    "fieldname": "room_number",
    "fieldtype": "Data",
-   "label": "Room Number",
+   "label": "Room Name",
    "unique": 1
   },
   {
@@ -57,7 +57,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-29 13:49:28.917968",
+ "modified": "2025-06-05 08:32:43.071828",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Rooms",

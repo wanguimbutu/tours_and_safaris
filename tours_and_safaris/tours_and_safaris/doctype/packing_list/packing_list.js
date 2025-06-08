@@ -6,7 +6,7 @@ frappe.ui.form.on('Packing List', {
         if (frm.doc.meal_plan) {
             frappe.model.with_doc("Meal Plan", frm.doc.meal_plan, function() {
                 let meal_plan_doc = frappe.model.get_doc("Meal Plan", frm.doc.meal_plan);
-                console.log("Meal Plan Doc (with children):", meal_plan_doc); // 🔍 Inspect this!
+                console.log("Meal Plan Doc (with children):", meal_plan_doc); 
                 render_meal_plan_table_in_packing_list(frm, meal_plan_doc);
             });
         } else {

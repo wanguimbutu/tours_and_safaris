@@ -1,0 +1,53 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-08 15:44:13.287875",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "safari_equipment",
+  "section_break_ahqo",
+  "mountain_equipment"
+ ],
+ "fields": [
+  {
+   "fieldname": "safari_equipment",
+   "fieldtype": "Table",
+   "label": "Safari Equipment",
+   "options": "Safari Equipment"
+  },
+  {
+   "fieldname": "section_break_ahqo",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "mountain_equipment",
+   "fieldtype": "Table",
+   "label": "Mountain Equipment",
+   "options": "Mountain Equipment"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-06-08 15:51:20.321841",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Packing List Equipment",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

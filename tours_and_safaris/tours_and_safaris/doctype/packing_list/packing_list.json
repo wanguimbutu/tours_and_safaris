@@ -15,6 +15,9 @@
   "start_date",
   "end_date",
   "meal_plan",
+  "no_of_people",
+  "no_of_adults",
+  "no_of_children",
   "trip_equipment_section",
   "trip_equipment",
   "general_equipment",
@@ -128,12 +131,27 @@
    "fieldtype": "Link",
    "label": "Meal Plan",
    "options": "Meal Plan"
+  },
+  {
+   "fieldname": "no_of_people",
+   "fieldtype": "Int",
+   "label": "No of People"
+  },
+  {
+   "fieldname": "no_of_adults",
+   "fieldtype": "Int",
+   "label": "No of Adults"
+  },
+  {
+   "fieldname": "no_of_children",
+   "fieldtype": "Int",
+   "label": "No of Children"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-29 10:36:58.513027",
+ "modified": "2025-06-05 15:22:40.715312",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Packing List",

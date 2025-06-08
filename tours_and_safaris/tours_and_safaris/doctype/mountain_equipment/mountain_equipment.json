@@ -1,0 +1,54 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-08 15:48:21.721223",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "item_name",
+  "participant_type",
+  "number_required"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item"
+  },
+  {
+   "fieldname": "item_name",
+   "fieldtype": "Read Only",
+   "in_list_view": 1,
+   "label": "Item Name"
+  },
+  {
+   "fieldname": "participant_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Participant Type",
+   "options": "Adult\nChild"
+  },
+  {
+   "fieldname": "number_required",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Number Required"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-06-08 15:49:55.912065",
+ "modified_by": "Administrator",
+ "module": "Tours and Safaris",
+ "name": "Mountain Equipment",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
