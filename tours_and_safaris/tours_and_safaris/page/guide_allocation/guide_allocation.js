@@ -306,7 +306,36 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 
 
 		},
-
+		getTaskRangeHighlight(task, day, color) {
+			const taskStart = moment(task.original_exp_start_date || task.exp_start_date).startOf('day');
+			const taskEnd = moment(task.original_exp_end_date || task.exp_end_date || task.exp_start_date).startOf('day');
+			const currentDay = day.clone().startOf('day');
+			
+			if (!currentDay.isBetween(taskStart, taskEnd, null, '[]')) {
+				return '';
+			}
+			
+			const isStart = currentDay.isSame(taskStart);
+			const isEnd = currentDay.isSame(taskEnd);
+			const lightColor = color + '33'; 
+			const borderColor = color + '77'; 
+			
+			let classes = 'task-range-highlight';
+			let styles = `background-color: ${lightColor}; border-color: ${borderColor};`;
+			
+			if (isStart && isEnd) {
+				// Single day task
+				styles += ` border: 2px solid ${borderColor}; border-radius: 4px;`;
+			} else if (isStart) {
+				classes += ' task-range-start';
+			} else if (isEnd) {
+				classes += ' task-range-end';
+			} else {
+				classes += ' task-range-middle';
+			}
+			
+			return { classes, styles };
+		},
 		async createAllocation(taskName, dayIndex, slot, instructorName) {
 			const activityDate = moment(currentWeekStart).add(dayIndex, 'days').format("YYYY-MM-DD");
 			
@@ -579,31 +608,31 @@ async testBackendConnection() {
     html += '</tr></thead><tbody>';
 
     function renderTaskRow(label, tasksToRender, color, indent = false) {
-        html += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
-        
-        const taskPlacements = [];
+		html += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
+		
+		const taskPlacements = [];
 
-        tasksToRender.forEach(task => {
-            if (task.custom_assigned_date) {
-                const assignedMoment = moment(task.custom_assigned_date);
-                const dayIndex = assignedMoment.diff(moment(currentWeekStart), 'days');
-                const slot = assignedMoment.hour() < 13 ? 'AM' : 'PM';
-                
-                if (dayIndex >= 0 && dayIndex < 7) {
-                    taskPlacements.push({ task, dayIndex, slot });
-                }
-            } else {
-                const taskStart = moment(task.exp_start_date);
-                const dayIndex = taskStart.diff(moment(currentWeekStart), 'days');
-                const slot = task.assigned_slot || 'AM';
-                
-                if (dayIndex >= 0 && dayIndex < 7) {
-                    taskPlacements.push({ task, dayIndex, slot });
-                }
-            }
-        });
+		tasksToRender.forEach(task => {
+			if (task.custom_assigned_date) {
+				const assignedMoment = moment(task.custom_assigned_date);
+				const dayIndex = assignedMoment.diff(moment(currentWeekStart), 'days');
+				const slot = assignedMoment.hour() < 13 ? 'AM' : 'PM';
+				
+				if (dayIndex >= 0 && dayIndex < 7) {
+					taskPlacements.push({ task, dayIndex, slot });
+				}
+			} else {
+				const taskStart = moment(task.exp_start_date);
+				const dayIndex = taskStart.diff(moment(currentWeekStart), 'days');
+				const slot = task.assigned_slot || 'AM';
+				
+				if (dayIndex >= 0 && dayIndex < 7) {
+					taskPlacements.push({ task, dayIndex, slot });
+				}
+			}
+		});
 
-        const renderedTaskNames = new Set();
+		const renderedTaskNames = new Set();
 
 		weekDays.forEach((day, dayIndex) => {
 			['AM', 'PM'].forEach(slot => {
@@ -612,17 +641,22 @@ async testBackendConnection() {
 				});
 
 				let backgroundStyle = '';
-				let overlayTask = tasksToRender.find(task => {
-					// Show range background (not for rendered slot)
-					const taskStart = moment(task.exp_start_date).startOf('day');
-					const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
-					const currentDay = day.clone().startOf('day');
-
+				
+				// Enhanced background highlighting for date ranges
+				const currentDay = day.clone().startOf('day');
+				
+				// Check if any task's date range covers this day
+				const coveringTasks = tasksToRender.filter(task => {
+					const taskStart = moment(task.original_exp_start_date || task.exp_start_date).startOf('day');
+					const taskEnd = moment(task.original_exp_end_date || task.exp_end_date || task.exp_start_date).startOf('day');
+					
 					return currentDay.isBetween(taskStart, taskEnd, null, '[]');
 				});
 
-				if (overlayTask && !renderedTaskNames.has(overlayTask.name)) {
-					backgroundStyle = `background-color: ${color}22;`; // Light highlight
+				if (coveringTasks.length > 0) {
+					// Use a lighter version of the color (20% opacity)
+					const lightColor = color + '33'; // Adding transparency
+					backgroundStyle = `background-color: ${lightColor}; border: 1px solid ${color}55;`;
 				}
 
 				html += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px; ${backgroundStyle}">`;
@@ -638,8 +672,9 @@ async testBackendConnection() {
 			});
 		});
 
-        html += '</tr>';
-    }
+		html += '</tr>';
+	}
+
 
     for (const [customer, grouped] of Object.entries(customerMap)) {
 		const color = Methods.getColorForCustomer(customer);
@@ -1287,7 +1322,33 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 				position: static !important;
 				background: #fff !important;
 			}
+			
 		}
+			.drop-zone {
+				transition: background-color 0.2s ease;
+			}
+
+			.task-range-highlight {
+				background-color: rgba(0, 0, 0, 0.05);
+				border-left: 3px solid;
+			}
+
+			.task-range-start {
+				border-left: 4px solid;
+				border-top-left-radius: 6px;
+				border-bottom-left-radius: 6px;
+			}
+
+			.task-range-end {
+				border-right: 4px solid;
+				border-top-right-radius: 6px;
+				border-bottom-right-radius: 6px;
+			}
+
+			.task-range-middle {
+				border-top: 2px solid;
+				border-bottom: 2px solid;
+			}
 
 		`).appendTo('head');
 
