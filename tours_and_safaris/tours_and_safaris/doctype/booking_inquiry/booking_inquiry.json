@@ -2,7 +2,7 @@
  "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "format:BIN-{first_name}-{customer_name}-{grade}-{no_of_people}-{inquiry_date}",
+ "autoname": "format:BIN-{first_name}-{customer_name}-{grade}-{no_of_people}-{from_date}",
  "creation": "2025-02-22 10:00:29.543639",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -116,14 +116,14 @@
   },
   {
    "fieldname": "from_date",
-   "fieldtype": "Datetime",
+   "fieldtype": "Date",
    "in_list_view": 1,
    "label": "From Date",
    "reqd": 1
   },
   {
    "fieldname": "to_date",
-   "fieldtype": "Datetime",
+   "fieldtype": "Date",
    "in_list_view": 1,
    "label": "To Date",
    "reqd": 1
@@ -444,7 +444,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-05 15:42:18.370339",
+ "modified": "2025-06-09 09:52:06.552553",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
