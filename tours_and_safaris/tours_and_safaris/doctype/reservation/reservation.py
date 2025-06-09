@@ -77,20 +77,21 @@ def create_sales_order(reservation_name):
         "custom_no_of_children": reservation.no_of_children,
         "currency": reservation.billing_currency,
         "custom_is_consolidated": reservation.is_consolidated,
+        "custom_grade":reservation.grade,
         "items": []
     })
 
     # Check for consolidation
     if reservation.get("is_consolidated"):
-        consolidated_amount = reservation.get("consolidated_amount") or 0
-        sales_order.append("items", {
-            "item_code": "SC-014",
-            "item_name": "Multi Activity",
-            "description": "Consolidated package for reservation services and activities.",
-            "qty": 1,
-            "rate": consolidated_amount,
-            "prevdoc_docname": reservation.quotation
-        })
+        activity = reservation.activities[0] if reservation.activities else None
+
+        if activity:
+            sales_order.append("items", {
+                "item_code": activity.item_code or "SC-014",
+                "item_name": activity.activity_name or "Multi Activity",
+                "qty": activity.qty or 1,
+                "rate": activity.rate or 0
+            })
     else:
         # Add activities
         if reservation.activities:

@@ -192,20 +192,23 @@ def create_quotation(inquiry_name):
         "custom_is_consolidated": inquiry.is_consolidated,
         "custom_consolidated_amount": inquiry.consolidated_amount,
         "custom_remarks": inquiry.remarks,
+        "custom_grade":inquiry.grade,
         "items": []
     })
 
     # Check for consolidation
     if inquiry.get("is_consolidated"):
-        # Add a single consolidated item
-        consolidated_amount = inquiry.get("consolidated_amount") or 0
-        quotation.append("items", {
-            "item_code": "SC-014",
-            "item_name": "Multi Activity",
-            "description": "Consolidated multi-activity package based on selected activities and services.",
-            "qty": 1,
-            "rate": consolidated_amount
-        })
+        # Assume only one activity row exists for consolidated case
+        activity = inquiry.activities[0] if inquiry.activities else None
+
+        if activity:
+            quotation.append("items", {
+                "item_code": activity.item_code or "SC-014",
+                "item_name": activity.activity_name or "Multi Activity",
+                "qty": activity.qty or 1,
+                "rate": activity.rate or 0
+            })
+
 
     else:
         # Add activities
