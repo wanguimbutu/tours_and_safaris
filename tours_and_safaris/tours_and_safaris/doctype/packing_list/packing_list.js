@@ -2,6 +2,31 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on('Packing List', {
+    refresh: function(frm){
+        frm.add_custom_button('Calculate Equipment', () => {
+            if (!frm.doc.no_of_adults && !frm.doc.no_of_children) {
+                frappe.msgprint('Please enter number of adults or children.');
+                return;
+            }
+
+            frappe.call({
+                method: 'tours_and_safaris.tours_and_safaris.doctype.packing_list.packing_list.calculate_and_insert_equipment',
+                args: {
+                    docname: frm.doc.name,
+                    no_of_adults: frm.doc.no_of_adults || 0,
+                    no_of_children: frm.doc.no_of_children || 0,
+                    no_of_guides: frm.doc.no_of_guides || 0
+                },
+                callback: function (r) {
+                    if (!r.exc) {
+                        frappe.msgprint('Equipment calculated and updated.');
+                        frm.reload_doc();  // Refresh to show updated child table
+                    }
+                }
+            });
+        });
+    
+    },
     meal_plan: function(frm) {
         if (frm.doc.meal_plan) {
             frappe.model.with_doc("Meal Plan", frm.doc.meal_plan, function() {

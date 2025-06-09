@@ -11,6 +11,8 @@
   "project",
   "sales_order",
   "naming_series",
+  "trip_type",
+  "customer_group",
   "column_break_wpmn",
   "start_date",
   "end_date",
@@ -146,12 +148,24 @@
    "fieldname": "no_of_children",
    "fieldtype": "Int",
    "label": "No of Children"
+  },
+  {
+   "fieldname": "trip_type",
+   "fieldtype": "Link",
+   "label": "Trip Type",
+   "options": "Item Group"
+  },
+  {
+   "fetch_from": "customer.customer_group",
+   "fieldname": "customer_group",
+   "fieldtype": "Read Only",
+   "label": "Customer Group"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-05 15:22:40.715312",
+ "modified": "2025-06-09 14:35:51.888875",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Packing List",

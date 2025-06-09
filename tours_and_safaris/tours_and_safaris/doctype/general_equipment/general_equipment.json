@@ -12,10 +12,9 @@
  "fields": [
   {
    "fieldname": "equipment_name",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Equipment Name",
-   "options": "Equipment"
+   "label": "Equipment Name"
   },
   {
    "fieldname": "quantity",
@@ -27,7 +26,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-17 12:47:06.444879",
+ "modified": "2025-06-09 15:08:22.723088",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "General Equipment",
