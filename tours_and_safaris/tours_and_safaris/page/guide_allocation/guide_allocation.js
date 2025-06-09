@@ -766,9 +766,9 @@ async testBackendConnection() {
     html += '</tbody></table></div>';
 	html += `
 	<div class="mt-4">
-		<h6 style="cursor: pointer;" data-toggle="collapse" data-target="#activity-selector" aria-expanded="false" aria-controls="activity-selector">
+		<h5 style="cursor: pointer;" data-toggle="collapse" data-target="#activity-selector" aria-expanded="false" aria-controls="activity-selector">
 			<span>▶</span> Select Additional Activities for Multiactivity Task
-		</h6>
+		</h5>
 		<div id="activity-selector" class="collapse table table-sm table-bordered">
 		<table class="table">
 			<thead>
