@@ -31,8 +31,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 	let weekData = {}; // Cache for week data
 	let loadingPromise = null; // Prevent multiple simultaneous loads
 	let draggedTask = null; // Track dragged task
+	let selectedTasks = []; // Track selected tasks for bulk actions
+	let multiSelectMode = false;
 
-	// Optimized Methods
 	const Methods = {
 		async loadWeekData(weekStart, forceReload = false) {
 			const weekKey = weekStart.format('YYYY-MM-DD');
@@ -116,7 +117,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				subTasksByParent[subTask.parent_task].push(subTask);
 			});
 			
-			// Process instructor qualifications (keep existing logic)
 			const processedInstructors = instructors.map(instructor => {
 				const qualificationMap = {};
 				if (instructor.qualifications) {
@@ -133,7 +133,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				};
 			});
 			
-			// Process allocations into assignments (keep existing logic)
 			const instructorAssignments = {};
 			allocations.forEach(allocation => {
 				const instructor = allocation.instructor;
@@ -324,7 +323,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			let styles = `background-color: ${lightColor}; border-color: ${borderColor};`;
 			
 			if (isStart && isEnd) {
-				// Single day task
 				styles += ` border: 2px solid ${borderColor}; border-radius: 4px;`;
 			} else if (isStart) {
 				classes += ' task-range-start';
@@ -443,7 +441,7 @@ async splitCustomerIntoGroups(customerName, totalPeople, numberOfGroups) {
                 total_people: totalPeople,
                 number_of_groups: numberOfGroups,
                 week_start_date: currentWeekStart.format('YYYY-MM-DD'),
-                split_tasks: true // Add this flag to indicate we want to split tasks too
+                split_tasks: true 
             }
         });
         
@@ -513,6 +511,132 @@ async testBackendConnection() {
     }
 }
 	};
+
+	async function assignMultipleTasksFromStartCell(instructorName, strategy) {
+	const weekKey = currentWeekStart.format('YYYY-MM-DD');
+	const data = weekData[weekKey];
+	const assignments = data.instructorAssignments[instructorName] || [];
+	
+	// Find available slots for the instructor
+	const availableSlots = [];
+	for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+	const slotDate = moment(currentWeekStart).add(dayIndex, 'days');
+	
+	['AM', 'PM'].forEach(slot => {
+		if (strategy === 'AM slots only' && slot === 'PM') return;
+		if (strategy === 'PM slots only' && slot === 'AM') return;
+
+		// Check if slot is already taken
+		const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
+		if (isOccupied) return;
+
+		// Validate that each selected task can be assigned to this date
+		const validForAll = selectedTasks.every(task => {
+			const taskStart = moment(task.exp_start_date).startOf('day');
+			const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
+			return slotDate.isBetween(taskStart, taskEnd, null, '[]');
+		});
+
+		if (validForAll) {
+			availableSlots.push({ dayIndex, slot });
+		}
+	});
+}
+
+	
+	if (availableSlots.length < selectedTasks.length) {
+		frappe.show_alert(`Only ${availableSlots.length} slots available, but ${selectedTasks.length} tasks selected`, 5);
+		return;
+	}
+	
+	// Assign tasks to available slots
+	let successCount = 0;
+	for (let i = 0; i < selectedTasks.length && i < availableSlots.length; i++) {
+		const task = selectedTasks[i];
+		const slot = availableSlots[i];
+		
+		try {
+			await Methods.createAllocation(task.name, slot.dayIndex, slot.slot, instructorName);
+			successCount++;
+		} catch (error) {
+			console.error(`Failed to assign ${task.subject}:`, error);
+		}
+	}
+	
+	frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructorName}`, 4);
+	
+	// Clean up and refresh
+	exitMultiSelectMode();
+	await loadAndRenderCalendar();
+}
+
+async function assignMultipleTasksFromStartCell(instructor, startDayIndex, startSlot) {
+	if (selectedTasks.length === 0) {
+		frappe.show_alert('No tasks selected', 3);
+		return;
+	}
+
+	const weekKey = currentWeekStart.format('YYYY-MM-DD');
+	const data = weekData[weekKey];
+	const assignments = data.instructorAssignments[instructor] || [];
+
+	const sequence = [];
+	let dayIndex = startDayIndex;
+	let slot = startSlot;
+
+	// Build the sequence of available cells
+	for (let i = 0; i < 7 * 2; i++) { // Max 14 slots (7 days * 2 slots)
+		if (dayIndex >= 7) break;
+
+		const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
+		if (!isOccupied) {
+			sequence.push({ dayIndex, slot });
+		}
+
+		// Move to next slot
+		if (slot === 'AM') {
+			slot = 'PM';
+		} else {
+			slot = 'AM';
+			dayIndex++;
+		}
+
+		if (sequence.length >= selectedTasks.length) break;
+	}
+
+	if (sequence.length < selectedTasks.length) {
+		frappe.show_alert(`Only ${sequence.length} available slots for ${selectedTasks.length} tasks`, 5);
+		return;
+	}
+
+	// Assign tasks
+	let successCount = 0;
+	for (let i = 0; i < selectedTasks.length; i++) {
+		const task = selectedTasks[i];
+		const target = sequence[i];
+		const taskStart = moment(task.exp_start_date);
+		const taskEnd = moment(task.exp_end_date || task.exp_start_date);
+		const targetDate = moment(currentWeekStart).add(target.dayIndex, 'days');
+
+		if (!targetDate.isBetween(taskStart, taskEnd, null, '[]')) {
+			console.warn(`Skipping ${task.subject} — out of date range`);
+			continue;
+		}
+
+		try {
+			await Methods.createAllocation(task.name, target.dayIndex, target.slot, instructor);
+			successCount++;
+		} catch (error) {
+			console.error(`Failed to assign ${task.subject}`, error);
+		}
+	}
+
+	frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructor}`, 4);
+	exitMultiSelectMode();
+	await loadAndRenderCalendar();
+}
+
+
 	
 	
 	// Main Functions
@@ -528,7 +652,7 @@ async testBackendConnection() {
 			console.error('Error loading calendar:', error);
 			frappe.show_alert("Error loading calendar data", 5);
 		}
-	}	// Drag and Dro
+	}	// Drag and Drop
 
 	
 	function renderCalendar(data) {
@@ -560,7 +684,6 @@ async testBackendConnection() {
 			customerMap[customer].main.push(task);
 		}
 		
-		// Rest of the existing logic for groups and people count...
 		if (task.custom_no_of_people) {
 			customerMap[customer].totalPeople = Math.max(
 				customerMap[customer].totalPeople, 
@@ -654,8 +777,7 @@ async testBackendConnection() {
 				});
 
 				if (coveringTasks.length > 0) {
-					// Use a lighter version of the color (20% opacity)
-					const lightColor = color + '33'; // Adding transparency
+					const lightColor = color + '33'; 
 					backgroundStyle = `background-color: ${lightColor}; border: 1px solid ${color}55;`;
 				}
 
@@ -739,6 +861,8 @@ async testBackendConnection() {
                     a => a.dayIndex === dayIndex && a.slot === slot
                 );
                 if (assigned) {
+					const customerForColor = assigned.task.custom_customer_name || 'Unknown';
+    				const assignedColor = Methods.getColorForCustomer(customerForColor);
                     html += `<td class="assigned-task drop-zone" 
                         data-instructor="${instr.name}" 
                         data-day-index="${dayIndex}" 
@@ -784,6 +908,57 @@ async testBackendConnection() {
 		</div>
 	</div>
 	`;
+	const $buttonContainer = $('.mb-3.d-flex.gap-2');
+		if ($buttonContainer.length && $('#toggle-multi-select').length === 0) {
+			const multiSelectButton = `<button class="btn btn-sm btn-info" id="toggle-multi-select">Multi-Select Mode</button>`;
+			$buttonContainer.append(multiSelectButton);
+		}
+
+		$('#calendar-container').on('click', '.assignable-cell', function (e) {
+			// Don't trigger selection when dragging
+			if (e.target.classList.contains('drag-handle')) {
+				return;
+			}
+			
+			e.preventDefault();
+			e.stopPropagation();
+			
+			const taskData = {
+				name: $(this).data('task-name'),
+				subject: $(this).data('task-subject'),
+				custom_customer_name: $(this).data('task-customer'),
+				exp_start_date: $(this).data('exp-start'),
+				exp_end_date: $(this).data('exp-end'),
+				custom_no_of_people: $(this).data('task-people'),
+				project: $(this).data('task-project'),
+				element: this
+			};
+			
+			if (multiSelectMode) {
+				// Multi-select mode
+				const existingIndex = selectedTasks.findIndex(t => t.name === taskData.name);
+				
+				if (existingIndex >= 0) {
+					// Deselect if already selected
+					selectedTasks.splice(existingIndex, 1);
+					$(this).removeClass('multi-selected-task');
+				} else {
+					// Add to selection
+					selectedTasks.push(taskData);
+					$(this).addClass('multi-selected-task');
+				}
+				
+				updateMultiSelectUI();
+			} else {
+				// Single select mode (existing behavior)
+				$('.assignable-cell').removeClass('selected-task');
+				$(this).addClass('selected-task');
+				
+				selectedTask = taskData;
+				frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
+				console.log('Selected task:', selectedTask);
+			}
+		});
 
     $('#calendar-container').html(html);
 	
@@ -908,6 +1083,66 @@ async testBackendConnection() {
     }
 });
 	}
+
+	function updateMultiSelectUI() {
+	const count = selectedTasks.length;
+	$('#selected-count').text(`${count} task${count !== 1 ? 's' : ''} selected`);
+	$('#assign-multiple').prop('disabled', count === 0);
+}
+
+function exitMultiSelectMode() {
+	multiSelectMode = false;
+	selectedTasks = [];
+	$('#toggle-multi-select').text('Multi-Select Mode').removeClass('btn-warning').addClass('btn-info');
+	$('#multi-select-controls').hide();
+	$('.assignable-cell').removeClass('multi-selected-task');
+	$('.assignable-slot').removeClass('multi-select-mode');
+	frappe.show_alert('Multi-select mode disabled', 2);
+}
+
+function showInstructorSelectionDialog() {
+	// Get current week data for instructors
+	const weekKey = currentWeekStart.format('YYYY-MM-DD');
+	const data = weekData[weekKey];
+	
+	if (!data || !data.instructors) {
+		frappe.show_alert('No instructor data available', 5);
+		return;
+	}
+	
+	const dialog = new frappe.ui.Dialog({
+		title: `Assign ${selectedTasks.length} Tasks`,
+		fields: [
+			{
+				label: 'Selected Tasks',
+				fieldtype: 'HTML',
+				options: `<ul>${selectedTasks.map(t => `<li>${t.subject} (${t.custom_customer_name})</li>`).join('')}</ul>`
+			},
+			{
+				label: 'Instructor',
+				fieldname: 'instructor',
+				fieldtype: 'Select',
+				options: data.instructors.map(i => i.instructor_name).join('\n'),
+				reqd: 1
+			},
+			{
+				label: 'Assignment Strategy',
+				fieldname: 'strategy',
+				fieldtype: 'Select',
+				options: 'Spread across available slots\nAM slots only\nPM slots only',
+				default: 'Spread across available slots',
+				reqd: 1
+			}
+		],
+		primary_action_label: 'Assign All',
+		primary_action: async (values) => {
+			dialog.hide();
+			await assignMultipleTasksFromStartCell(values.instructor, values.strategy);
+		}
+	});
+	
+	dialog.show();
+}
 
 	$('#calendar-container').on('click', '.split-groups-btn', function(e) {
     e.preventDefault();
@@ -1058,69 +1293,38 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
     }
 });
 
-	$('#calendar-container').on('click', '.assignable-cell', function (e) {
-		// Don't trigger selection when dragging
-		if (e.target.classList.contains('drag-handle')) {
-			return;
-		}
-		
-		e.preventDefault();
-		e.stopPropagation();
-		
-		// Clear previous selections
-		$('.assignable-cell').removeClass('selected-task');
-		$(this).addClass('selected-task');
-		
-		// Store selected task data
-		selectedTask = {
-			name: $(this).data('task-name'),
-			subject: $(this).data('task-subject'),
-			custom_customer_name: $(this).data('task-customer'),
-			exp_start_date: $(this).data('exp-start'),
-    		exp_end_date: $(this).data('exp-end'),
-			custom_no_of_people: $(this).data('task-people'),
-			project: $(this).data('task-project')
-
-		};
-		
-		frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
-		console.log('Selected task:', selectedTask);
-	});
 
 	$('#calendar-container').on('click', '.assignable-slot', async function (e) {
 		e.preventDefault();
 		e.stopPropagation();
 		
-		if (!selectedTask) {
-			frappe.show_alert('Please select a task first by clicking on it', 5);
-			return;
-		}
-		
 		const instructor = $(this).data('instructor');
 		const dayIndex = parseInt($(this).data('day-index'));
 		const slot = $(this).data('slot');
 		
-		console.log('Assigning task:', selectedTask.name, 'to instructor:', instructor, 'on day:', dayIndex, 'slot:', slot);
-		
-		try {
-			// Show loading state
-			$(this).html('<small>Assigning...</small>');
-			
-			const result = await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
-			console.log('Assignment result:', result);
-			
-			frappe.show_alert(`Assigned ${selectedTask.subject} to ${instructor}`, 3);
-			await loadAndRenderCalendar();
-			
-			// Clear selection
-			selectedTask = null;
-			$('.assignable-cell').removeClass('selected-task');
-			
-		} catch (error) {
-			console.error('Assignment error:', error);
-			frappe.show_alert(error.message || 'Error assigning task', 5);
-			// Restore original content
-			$(this).html(`<small>${slot}</small>`);
+		if (multiSelectMode && selectedTasks.length > 0) {
+			// Multi-select assignment to this specific slot
+			await assignMultipleTasksFromStartCell(instructor, dayIndex, slot);
+		} else if (selectedTask) {
+			// Single task assignment (existing behavior)
+			try {
+				$(this).html('<small>Assigning...</small>');
+				
+				const result = await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
+				
+				frappe.show_alert(`Assigned ${selectedTask.subject} to ${instructor}`, 3);
+				await loadAndRenderCalendar();
+				
+				selectedTask = null;
+				$('.assignable-cell').removeClass('selected-task');
+				
+			} catch (error) {
+				console.error('Assignment error:', error);
+				frappe.show_alert(error.message || 'Error assigning task', 5);
+				$(this).html(`<small>${slot}</small>`);
+			}
+		} else {
+			frappe.show_alert('Please select a task first by clicking on it', 5);
 		}
 	});
 
@@ -1172,6 +1376,42 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 			await loadAndRenderCalendar();
 		} catch (error) {
 			frappe.show_alert('Error submitting allocations', 5);
+		}
+	});
+
+		
+
+		// Exit multi-select mode
+		$('#exit-multi-select').on('click', exitMultiSelectMode);
+
+		// Clear all selections
+		$(document).on('click', '#clear-selection', function () {
+			selectedTasks = [];
+			$('.assignable-cell').removeClass('multi-selected-task');
+			updateMultiSelectUI();
+		});
+
+		// Assign multiple tasks
+		$(document).on('click', '#assign-multiple', function () {
+			if (selectedTasks.length === 0) {
+				frappe.show_alert('No tasks selected', 3);
+				return;
+			}
+			
+			// Show instructor selection dialog
+			showInstructorSelectionDialog();
+		});
+
+	$(document).on('click', '#toggle-multi-select', function () {
+		multiSelectMode = !multiSelectMode;
+
+		if (multiSelectMode) {
+			$(this).text('Exit Multi-Select').removeClass('btn-info').addClass('btn-warning');
+			$('#multi-select-controls').show();
+			$('.assignable-slot').addClass('multi-select-mode');
+			frappe.show_alert('Multi-select mode enabled. Click tasks to select multiple.', 3);
+		} else {
+			exitMultiSelectMode();
 		}
 	});
 
@@ -1261,7 +1501,6 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 
 
 	
-
 	$('#prev-week').on('click', () => {
 		currentWeekStart.subtract(7, 'days');
 		loadAndRenderCalendar();
@@ -1351,6 +1590,44 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 			}
 
 		`).appendTo('head');
+		const multiSelectStyles = `
+			.multi-select-mode {
+				border: 2px dashed #28a745 !important;
+				background-color: rgba(40, 167, 69, 0.1) !important;
+			}
+			.multi-selected-task {
+				border: 2px solid #28a745 !important;
+				box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+			}
+			.multi-select-controls {
+				position: fixed;
+				top: 20px;
+				right: 20px;
+				background: white;
+				padding: 10px;
+				border: 1px solid #ddd;
+				border-radius: 5px;
+				box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+				z-index: 1000;
+				display: none;
+			}
+		`;
+			$('<style>').prop('type', 'text/css').html(multiSelectStyles).appendTo('head');
+		$(page.body).append(`
+			<div class="multi-select-controls" id="multi-select-controls">
+				<div class="mb-2">
+					<strong>Multi-Select Mode</strong>
+					<button class="btn btn-xs btn-secondary float-right" id="exit-multi-select">Exit</button>
+				</div>
+				<div class="mb-2">
+					<span id="selected-count">0 tasks selected</span>
+				</div>
+				<div>
+					<button class="btn btn-sm btn-success" id="assign-multiple" disabled>Assign Selected</button>
+					<button class="btn btn-sm btn-danger" id="clear-selection">Clear All</button>
+				</div>
+			</div>
+		`);
 
 	// Initialize
 	loadAndRenderCalendar();
