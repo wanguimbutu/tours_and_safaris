@@ -22,6 +22,8 @@ def calculate_and_insert_equipment(docname, no_of_adults, no_of_children, no_of_
     # Clear existing equipment entries
     doc.set("general_equipment", [])
 
+    equipment_list.sort(key=lambda x: x["equipment_name"].lower())
+    
     # Add calculated equipment to the child table
     for equipment in equipment_list:
         doc.append("general_equipment", {
