@@ -5,7 +5,8 @@ import frappe
 from frappe.model.document import Document
 from frappe.utils import getdate, now_datetime,add_days,nowdate,now
 from datetime import datetime
-
+from frappe.desk.calendar import get_events as original_get_events
+import json
 
 class Reservation(Document):
     pass
@@ -244,23 +245,40 @@ def update_calendar_info(doc, method):
     if doc.customer and doc.no_of_people:
         doc.calendar_info = f"{doc.customer} ({doc.no_of_people}) adults:({doc.no_of_adults}) children:({doc.no_of_children})"
 
+from frappe.utils import getdate, now, nowdate
+import frappe
+
 @frappe.whitelist()
 def reschedule_reservation(reservation_name, new_start_date, new_end_date, reason=None):
+    # Parse dates
+    new_start = getdate(new_start_date)
+    new_end = getdate(new_end_date)
+    today = getdate(nowdate())
 
+    # Validate dates
+    if new_end <= new_start:
+        frappe.throw("End Date must be after Start Date.")
+    if new_start < today:
+        frappe.throw("Start Date (also used as Delivery Date) cannot be in the past.")
+
+    # Fetch original reservation
     original = frappe.get_doc("Reservation", reservation_name)
 
     if original.status != "Confirmed Reservation":
         frappe.throw("Only confirmed reservations can be rescheduled.")
 
+    # Mark original as rescheduled
     original.status = "Rescheduled"
     original.rescheduled_on = now()
     original.reschedule_reason = reason
     original.save()
 
+    # Cancel the linked Sales Order if submitted
     sales_order = frappe.get_doc("Sales Order", {"custom_reservation": reservation_name})
     if sales_order.docstatus == 1:
         sales_order.cancel()
 
+        # Cancel linked project, if exists
         if sales_order.project:
             try:
                 project = frappe.get_doc("Project", sales_order.project)
@@ -269,27 +287,80 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, reaso
             except Exception as e:
                 frappe.log_error(f"Failed to cancel project {sales_order.project}: {str(e)}", "Project Status Update Error")
 
+    # Create new reservation based on original
     new_res = frappe.copy_doc(original)
     new_res.name = None
     new_res.status = "Confirmed Reservation"
-    new_res.start_date = new_start_date
-    new_res.end_date = new_end_date
+    new_res.start_date = new_start
+    new_res.end_date = new_end
+    new_res.arrival_date = new_start  # For calendar view
+    new_res.depature_date = new_end   # Spelled as in original model
     new_res.original_reservation = reservation_name
     new_res.rescheduled_on = None
     new_res.reschedule_reason = None
     new_res.flags.ignore_permissions = True
     new_res.insert()
+    new_res.submit()
 
+    # Create amended Sales Order
     amended_so = frappe.copy_doc(sales_order)
     amended_so.name = None
     amended_so.amended_from = sales_order.name
     amended_so.docstatus = 0
     amended_so.custom_reservation = new_res.name
-    amended_so.arrival_date = new_start_date
-    amended_so.depature_date = new_end_date
-    amended_so.delivery_date = new_start_date
+    amended_so.arrival_date = new_start
+    amended_so.depature_date = new_end
+    amended_so.delivery_date = new_start  # Must not be in the past
     amended_so.flags.ignore_permissions = True
     amended_so.insert()
     amended_so.submit()
 
     return amended_so.name
+
+
+@frappe.whitelist()
+def get_events(start, end, filters=None):
+    from frappe.utils import getdate
+
+    start, end = getdate(start), getdate(end)
+
+    conditions = "AND status != 'Rescheduled'"  # Exclude rescheduled
+    if filters:
+        filters = frappe.parse_json(filters)
+        if isinstance(filters, dict):
+            for key, value in filters.items():
+                conditions += f" AND `{key}` = {frappe.db.escape(value)}"
+
+    reservations = frappe.db.sql("""
+        SELECT 
+            name as calendar_info,
+            arrival_date,
+            depature_date,
+            status
+        FROM 
+            `tabReservation`
+        WHERE 
+            (arrival_date BETWEEN %(start)s AND %(end)s OR depature_date BETWEEN %(start)s AND %(end)s)
+            {conditions}
+    """.format(conditions=conditions), {
+        "start": start,
+        "end": end
+    }, as_dict=True)
+
+    events = []
+    for res in reservations:
+        if not res.arrival_date or not res.depature_date:
+            continue  
+
+        color = "#28a745" if res.status == "Confirmed Reservation" else "#6c757d"  
+
+        events.append({
+            "id": res.calendar_info,
+            "title": res.calendar_info,
+            "start": str(res.arrival_date),
+            "end": str(res.depature_date),
+            "allDay": True,
+            "color": color,
+        })
+
+    return events
