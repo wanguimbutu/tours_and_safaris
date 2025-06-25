@@ -317,7 +317,6 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, reaso
 
     return amended_so.name
 
-
 @frappe.whitelist()
 def get_events(start, end, filters=None):
     from frappe.utils import getdate
@@ -355,12 +354,9 @@ def get_events(start, end, filters=None):
 
         color = "#28a745" if res.status == "Confirmed Reservation" else "#6c757d"  
 
-        # Use calendar_info field if available, otherwise fall back to document name
-        title = res.calendar_info if res.calendar_info else res.name
-
         events.append({
             "id": res.name,  # Keep document name as ID for reference
-            "title": title,  # Use calendar_info or document name as fallback
+            "title": res.calendar_info,  # Use calendar_info field
             "start": str(res.arrival_date),
             "end": str(res.depature_date),
             "allDay": True,
