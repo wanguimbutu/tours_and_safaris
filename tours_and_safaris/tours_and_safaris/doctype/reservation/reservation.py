@@ -333,7 +333,8 @@ def get_events(start, end, filters=None):
 
     reservations = frappe.db.sql("""
         SELECT 
-            name as calendar_info,
+            name,
+            calendar_info,
             arrival_date,
             depature_date,
             status
@@ -354,9 +355,12 @@ def get_events(start, end, filters=None):
 
         color = "#28a745" if res.status == "Confirmed Reservation" else "#6c757d"  
 
+        # Use calendar_info field if available, otherwise fall back to document name
+        title = res.calendar_info if res.calendar_info else res.name
+
         events.append({
-            "id": res.calendar_info,
-            "title": res.calendar_info,
+            "id": res.name,  # Keep document name as ID for reference
+            "title": title,  # Use calendar_info or document name as fallback
             "start": str(res.arrival_date),
             "end": str(res.depature_date),
             "allDay": True,
