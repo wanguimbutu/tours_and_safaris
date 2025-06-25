@@ -364,7 +364,6 @@
   {
    "fieldname": "calendar_info",
    "fieldtype": "Read Only",
-   "hidden": 1,
    "in_list_view": 1,
    "label": "Calendar Info"
   },
@@ -389,7 +388,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-09 16:22:45.735056",
+ "modified": "2025-06-25 09:19:12.173354",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
