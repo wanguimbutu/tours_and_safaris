@@ -33,6 +33,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 	let draggedTask = null; // Track dragged task
 	let selectedTasks = []; // Track selected tasks for bulk actions
 	let multiSelectMode = false;
+	let blackoutModeInstructor = null;
+	let blackoutSelections = [];
+
 
 	const Methods = {
 		async loadWeekData(weekStart, forceReload = false) {
@@ -563,7 +566,7 @@ async testBackendConnection() {
 		}
 	}
 	
-	frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructorName}`, 4);
+	//frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructorName}`, 4);
 	
 	// Clean up and refresh
 	exitMultiSelectMode();
@@ -631,7 +634,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 		}
 	}
 
-	frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructor}`, 4);
+	//frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructor}`, 4);
 	exitMultiSelectMode();
 	await loadAndRenderCalendar();
 }
@@ -854,36 +857,60 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 	}
     // Render instructors 
     instructors.forEach(instr => {
-        html += `<tr><td><span class="text-primary">— ${instr.instructor_name}</span></td>`;
+        html += `<tr><td>
+    <span class="text-primary">— ${instr.instructor_name}</span>
+    <button class="btn btn-xs btn-outline-dark ml-2 blackout-toggle" 
+            data-instructor="${instr.name}">
+        <i class="fa fa-eye-slash"></i> Blackout
+    </button>
+</td>`;
+
         for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-            ['AM', 'PM'].forEach(slot => {
-                const assigned = (instructorAssignments[instr.name] || []).find(
-                    a => a.dayIndex === dayIndex && a.slot === slot
-                );
-                if (assigned) {
+			['AM', 'PM'].forEach(slot => {
+				const isBlackout = data.blackouts?.[instr.name]?.[`${dayIndex}_${slot}`];
+				const assigned = (instructorAssignments[instr.name] || []).find(
+					a => a.dayIndex === dayIndex && a.slot === slot
+				);
+
+				if (isBlackout) {
+					html += `<td class="blackout-slot drop-zone" 
+						data-instructor="${instr.name}" 
+						data-day-index="${dayIndex}" 
+						data-slot="${slot}" 
+						style="background: repeating-linear-gradient(45deg,#ccc,#ccc 10px,#bbb 10px,#bbb 20px); 
+							color: #555; 
+							text-align: center; 
+							min-height: 40px; 
+							cursor: not-allowed;">
+						<em>Blackout</em>
+					</td>`;
+				} else if (assigned) {
 					const customerForColor = assigned.task.custom_customer_name || 'Unknown';
-    				const assignedColor = Methods.getColorForCustomer(customerForColor);
-                    html += `<td class="assigned-task drop-zone" 
-                        data-instructor="${instr.name}" 
-                        data-day-index="${dayIndex}" 
-                        data-slot="${slot}" 
-                        data-task-name="${assigned.task.name}" 
-                        data-subject="${assigned.task.subject}" 
-                        style="background:${Methods.getColorForCustomer(assigned.task.custom_customer_name)}; cursor:pointer; position: relative; min-height: 40px;">
-                        ${assigned.task.subject} 
-                        <span class="remove-assignment" style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
-                    </td>`;
-                } else {
-                    html += `<td class="assignable-slot drop-zone" 
-                        data-instructor="${instr.name}" 
-                        data-day-index="${dayIndex}" 
-                        data-slot="${slot}" 
-                        style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
-                        <small>${slot}</small>
-                    </td>`;
-                }
-            });
-        }
+					const assignedColor = Methods.getColorForCustomer(customerForColor);
+
+					html += `<td class="assigned-task drop-zone" 
+						data-instructor="${instr.name}" 
+						data-day-index="${dayIndex}" 
+						data-slot="${slot}" 
+						data-task-name="${assigned.task.name}" 
+						data-subject="${assigned.task.subject}" 
+						style="background:${assignedColor}; cursor:pointer; position: relative; min-height: 40px;">
+						${assigned.task.subject} 
+						<span class="remove-assignment" 
+							style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+					</td>`;
+				} else {
+					html += `<td class="assignable-slot drop-zone" 
+						data-instructor="${instr.name}" 
+						data-day-index="${dayIndex}" 
+						data-slot="${slot}" 
+						style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
+						<small>${slot}</small>
+					</td>`;
+				}
+			});
+		}
+
         html += '</tr>';
     });
 
@@ -955,7 +982,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				$(this).addClass('selected-task');
 				
 				selectedTask = taskData;
-				frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
+				//frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
 				console.log('Selected task:', selectedTask);
 			}
 		});
@@ -1071,7 +1098,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
         const newDate = targetDay.format('YYYY-MM-DD');
         await Methods.updateTaskSchedule(draggedTask.taskName, newDate, targetSlot);
 
-        frappe.show_alert(`Moved ${draggedTask.taskSubject} to ${targetDay.format('MMM D')} ${targetSlot}`, 3);
+        //frappe.show_alert(`Moved ${draggedTask.taskSubject} to ${targetDay.format('MMM D')} ${targetSlot}`, 3);
         await loadAndRenderCalendar();  
 
     } catch (error) {
@@ -1233,7 +1260,7 @@ $('#calendar-container').on('click', '.add-activity-btn', async function () {
             }
         });
 
-        frappe.show_alert(`Activity "${activityType}" added for ${selectedTask.custom_customer_name}`, 4);
+       // frappe.show_alert(`Activity "${activityType}" added for ${selectedTask.custom_customer_name}`, 4);
         await loadAndRenderCalendar();
 		
     } catch (error) {
@@ -1284,7 +1311,7 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
             });
         }
 
-        frappe.show_alert(`Created ${selectedActivities.length} activity tasks`, 4);
+        //frappe.show_alert(`Created ${selectedActivities.length} activity tasks`, 4);
         await loadAndRenderCalendar();
 
     } catch (err) {
@@ -1302,6 +1329,21 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 		const dayIndex = parseInt($(this).data('day-index'));
 		const slot = $(this).data('slot');
 		
+		if (blackoutModeInstructor === instructor) {
+		const $cell = $(this);
+		const alreadySelected = blackoutSelections.find(b => b.dayIndex === dayIndex && b.slot === slot);
+
+		if (alreadySelected) {
+			blackoutSelections = blackoutSelections.filter(b => !(b.dayIndex === dayIndex && b.slot === slot));
+			$cell.removeClass('blackout-selected');
+		} else {
+			blackoutSelections.push({ instructor, dayIndex, slot });
+			$cell.addClass('blackout-selected');
+		}
+
+		return; 
+	
+    }
 		if (multiSelectMode && selectedTasks.length > 0) {
 			// Multi-select assignment to this specific slot
 			await assignMultipleTasksFromStartCell(instructor, dayIndex, slot);
@@ -1312,7 +1354,7 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 				
 				const result = await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
 				
-				frappe.show_alert(`Assigned ${selectedTask.subject} to ${instructor}`, 3);
+				//frappe.show_alert(`Assigned ${selectedTask.subject} to ${instructor}`, 3);
 				await loadAndRenderCalendar();
 				
 				selectedTask = null;
@@ -1366,6 +1408,37 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 		}
 	});
 
+	$('#calendar-container').on('click', '.blackout-toggle', function (e) {
+		e.preventDefault();
+		const instructor = $(this).data('instructor');
+
+		if (blackoutModeInstructor === instructor) {
+			blackoutModeInstructor = null;
+			blackoutSelections = [];
+			$('.blackout-selected').removeClass('blackout-selected');
+			$('.blackout-toggle').removeClass('btn-danger').addClass('btn-outline-dark').html('<i class="fa fa-eye-slash"></i> Blackout');
+			$('#submit-blackouts').remove(); // 🧹 remove button
+			frappe.show_alert(`Blackout mode OFF for ${instructor}`, 3);
+		} else {
+			blackoutModeInstructor = instructor;
+			blackoutSelections = [];
+			$('.blackout-toggle').removeClass('btn-danger').addClass('btn-outline-dark').html('<i class="fa fa-eye-slash"></i> Blackout');
+			$(this).removeClass('btn-outline-dark').addClass('btn-danger').html('<i class="fa fa-ban"></i> Blackout ON');
+
+			// 🆕 Add submit button
+			if (!$('#submit-blackouts').length) {
+				$(this).after(`
+					<button id="submit-blackouts" class="btn btn-sm btn-success ml-2">
+						<i class="fa fa-check-circle"></i> Submit Blackouts
+					</button>
+				`);
+			}
+
+			frappe.show_alert(`Blackout mode ON for ${instructor}`, 3);
+		}
+	});
+
+
 	$('#submit-allocations').on('click', async () => {
 		try {
 			const res = await frappe.call({
@@ -1379,7 +1452,35 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 		}
 	});
 
-		
+		$(document).on('click', '#submit-blackouts', async function () {
+    if (blackoutSelections.length === 0) {
+        frappe.show_alert("No blackout slots selected.", 4);
+        return;
+    }
+
+    try {
+        const response = await frappe.call({
+            method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.bulk_toggle_blackouts',
+            args: {
+                instructor: blackoutModeInstructor,
+                slots: blackoutSelections,
+                week_start_date: currentWeekStart.format('YYYY-MM-DD')
+            }
+        });
+
+        frappe.show_alert(`Updated ${blackoutSelections.length} blackout slots`, 3);
+
+        blackoutSelections = [];
+        blackoutModeInstructor = null;
+        $('.blackout-selected').removeClass('blackout-selected');
+        $('#submit-blackouts').remove();
+        await loadAndRenderCalendar();
+    } catch (err) {
+        console.error('Bulk blackout failed:', err);
+        frappe.show_alert('Error submitting blackout slots', 5);
+    }
+});
+
 
 		// Exit multi-select mode
 		$('#exit-multi-select').on('click', exitMultiSelectMode);
@@ -1588,6 +1689,20 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 				border-top: 2px solid;
 				border-bottom: 2px solid;
 			}
+				.blackout-slot:hover {
+					background-color: #999 !important;
+					color: white !important;
+				}
+				.blackout-toggle.btn-danger {
+					background: #dc3545;
+					color: white;
+					border: none;
+				}
+
+			.blackout-selected {
+			background-color: #ffcccc !important;
+			border: 2px solid #cc0000 !important;
+		}
 
 		`).appendTo('head');
 		const multiSelectStyles = `

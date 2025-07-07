@@ -1,6 +1,9 @@
+from datetime import timedelta
 import frappe
 from frappe import _
 import json
+
+from frappe.utils import getdate
 
 @frappe.whitelist()
 def remove_activity_allocation(instructor, activity_date, activity_name):
@@ -48,7 +51,7 @@ def submit_activity_allocation(name):
 def get_week_data(week_start_date):
     """
     Single API call to get all data needed for a week
-    Returns: tasks, instructors, existing_allocations, instructor_qualifications
+    Returns: tasks, instructors, existing_allocations, instructor_qualifications, blackouts
     """
     try:
         week_start = frappe.utils.getdate(week_start_date)
@@ -57,14 +60,30 @@ def get_week_data(week_start_date):
         tasks = get_tasks_for_week(week_start, week_end)
         instructors = get_active_instructors()
         allocations = get_existing_allocations_optimized(week_start, week_end)
-        
+
+        # ✅ Fetch instructor blackouts for the week
+        blackouts = frappe.get_all(
+            "Instructor Blackout",
+            filters={"date": ["between", [week_start, week_end]]},
+            fields=["instructor", "date", "slot"]
+        )
+
+        # ✅ Build blackout map as { instructor: { "dayIndex_slot": True } }
+        blackout_map = {}
+        for b in blackouts:
+            day_index = (b.date - week_start).days
+            key = f"{day_index}_{b.slot}"
+            blackout_map.setdefault(b.instructor, {})[key] = True
+
         return {
             "tasks": tasks,
-            "instructors": instructors, 
+            "instructors": instructors,
             "allocations": allocations,
+            "blackouts": blackout_map,  # ✅ Added blackout support here
             "week_start": str(week_start),
             "week_end": str(week_end)
         }
+
     except Exception as e:
         frappe.log_error(f"Error in get_week_data: {str(e)}")
         return {"error": str(e)}
@@ -612,3 +631,67 @@ def create_multiactivity_task(customer, activity_type, start_date, end_date,
 
     task.insert()
     return {"success": True, "task": task.name}
+
+@frappe.whitelist()
+def toggle_blackout(instructor, day_index, slot, week_start_date):
+    week_start = getdate(week_start_date)
+    day_index = int(day_index)
+    date = week_start + timedelta(days=day_index)
+
+    existing = frappe.get_all(
+        "Instructor Blackout",
+        filters={"instructor": instructor, "date": date, "slot": slot},
+        limit=1
+    )
+
+    if existing:
+        # Remove blackout
+        frappe.delete_doc("Instructor Blackout", existing[0].name)
+        return {"message": "Blackout removed"}
+    else:
+        # Add blackout
+        doc = frappe.get_doc({
+            "doctype": "Instructor Blackout",
+            "instructor": instructor,
+            "date": date,
+            "slot": slot,
+            "week_start_date": week_start
+        })
+        doc.insert()
+        return {"message": "Blackout added"}
+
+@frappe.whitelist()
+def bulk_toggle_blackouts(instructor, slots, week_start_date):
+    import json
+    from frappe.utils import getdate, add_days
+
+    week_start = getdate(week_start_date)
+    slots = json.loads(slots) if isinstance(slots, str) else slots
+    toggled = []
+
+    for s in slots:
+        day_index = int(s["dayIndex"])
+        slot = s["slot"]
+        date = add_days(week_start, day_index)
+
+        existing = frappe.get_all("Instructor Blackout", filters={
+            "instructor": instructor,
+            "date": date,
+            "slot": slot
+        })
+
+        if existing:
+            frappe.delete_doc("Instructor Blackout", existing[0].name)
+        else:
+            doc = frappe.get_doc({
+                "doctype": "Instructor Blackout",
+                "instructor": instructor,
+                "date": date,
+                "slot": slot,
+                "week_start_date": week_start
+            })
+            doc.insert()
+
+        toggled.append(f"{date} {slot}")
+
+    return {"message": f"Toggled {len(toggled)} blackout slots."}

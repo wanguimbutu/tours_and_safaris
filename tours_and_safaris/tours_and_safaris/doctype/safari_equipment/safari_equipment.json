@@ -37,13 +37,13 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Participant Type",
-   "options": "Adult Child"
+   "options": "Adult\nChild"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-08 15:50:24.649662",
+ "modified": "2025-06-09 10:39:33.155700",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Safari Equipment",
