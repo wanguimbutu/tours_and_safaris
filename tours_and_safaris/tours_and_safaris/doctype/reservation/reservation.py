@@ -323,7 +323,8 @@ def get_events(start, end, filters=None):
 
     start, end = getdate(start), getdate(end)
 
-    conditions = "AND status != 'Rescheduled'"  # Exclude rescheduled
+    # Exclude rescheduled and cancelled documents
+    conditions = "AND status != 'Rescheduled' AND docstatus != 2"  
     if filters:
         filters = frappe.parse_json(filters)
         if isinstance(filters, dict):
@@ -355,8 +356,8 @@ def get_events(start, end, filters=None):
         color = "#28a745" if res.status == "Confirmed Reservation" else "#6c757d"  
 
         events.append({
-            "id": res.name,  # Keep document name as ID for reference
-            "title": res.calendar_info,  # Use calendar_info field
+            "id": res.name,
+            "title": res.calendar_info,
             "start": str(res.arrival_date),
             "end": str(res.depature_date),
             "allDay": True,
