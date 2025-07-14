@@ -640,7 +640,44 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 }
 
 
-	
+	async function assignTaskAcrossWeek(task, instructorName) {
+	const weekKey = currentWeekStart.format('YYYY-MM-DD');
+	const data = weekData[weekKey];
+	const assignments = data.instructorAssignments[instructorName] || [];
+
+	const taskStart = moment(task.exp_start_date).startOf('day');
+	const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
+
+	let successCount = 0;
+
+	for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+		const slotDate = moment(currentWeekStart).add(dayIndex, 'days');
+
+		// ✅ Only assign if slotDate is within task range
+		if (!slotDate.isBetween(taskStart, taskEnd, null, '[]')) continue;
+
+		for (let slot of ['AM', 'PM']) {
+			const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
+			if (isOccupied) continue;
+
+			try {
+				await Methods.createAllocation(task.name, dayIndex, slot, instructorName);
+				successCount++;
+				break; // one assignment per day
+			} catch (err) {
+				console.error(`Failed to assign on ${slotDate.format('ddd')} ${slot}`, err);
+			}
+		}
+	}
+
+	if (successCount === 0) {
+		frappe.show_alert(`No available slots for ${instructorName} in task date range`, 5);
+	} else {
+		frappe.show_alert(`Assigned "${task.subject}" to ${instructorName} on ${successCount} day(s)`, 4);
+		await loadAndRenderCalendar();
+	}
+}
+
 	
 	// Main Functions
 	async function loadAndRenderCalendar() {
@@ -1321,15 +1358,16 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 });
 
 
-	$('#calendar-container').on('click', '.assignable-slot', async function (e) {
-		e.preventDefault();
-		e.stopPropagation();
-		
-		const instructor = $(this).data('instructor');
-		const dayIndex = parseInt($(this).data('day-index'));
-		const slot = $(this).data('slot');
-		
-		if (blackoutModeInstructor === instructor) {
+$('#calendar-container').on('click', '.assignable-slot', async function (e) {
+	e.preventDefault();
+	e.stopPropagation();
+
+	const instructor = $(this).data('instructor');
+	const dayIndex = parseInt($(this).data('day-index'));
+	const slot = $(this).data('slot');
+
+	// Handle blackout mode
+	if (blackoutModeInstructor === instructor) {
 		const $cell = $(this);
 		const alreadySelected = blackoutSelections.find(b => b.dayIndex === dayIndex && b.slot === slot);
 
@@ -1340,35 +1378,36 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 			blackoutSelections.push({ instructor, dayIndex, slot });
 			$cell.addClass('blackout-selected');
 		}
+		return;
+	}
 
-		return; 
-	
-    }
-		if (multiSelectMode && selectedTasks.length > 0) {
-			// Multi-select assignment to this specific slot
-			await assignMultipleTasksFromStartCell(instructor, dayIndex, slot);
-		} else if (selectedTask) {
-			// Single task assignment (existing behavior)
-			try {
-				$(this).html('<small>Assigning...</small>');
-				
-				const result = await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
-				
-				//frappe.show_alert(`Assigned ${selectedTask.subject} to ${instructor}`, 3);
-				await loadAndRenderCalendar();
-				
-				selectedTask = null;
-				$('.assignable-cell').removeClass('selected-task');
-				
-			} catch (error) {
-				console.error('Assignment error:', error);
-				frappe.show_alert(error.message || 'Error assigning task', 5);
-				$(this).html(`<small>${slot}</small>`);
-			}
-		} else {
-			frappe.show_alert('Please select a task first by clicking on it', 5);
+	// Multi-select mode (you can remove this if you're not using it anymore)
+	if (multiSelectMode && selectedTasks.length > 0) {
+		await assignMultipleTasksFromStartCell(instructor, dayIndex, slot);
+		return;
+	}
+
+	// ✅ Assign single selected task
+	if (selectedTask) {
+		try {
+			$(this).html('<small>Assigning...</small>');
+
+			await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
+
+			await loadAndRenderCalendar(); // Reflect the assignment
+			// DO NOT clear selectedTask — user may want to keep assigning
+			// selectedTask = null; ❌
+			// $('.assignable-cell').removeClass('selected-task'); ❌
+
+		} catch (error) {
+			console.error('Assignment error:', error);
+			frappe.show_alert(error.message || 'Error assigning task', 5);
+			$(this).html(`<small>${slot}</small>`);
 		}
-	});
+	} else {
+		frappe.show_alert('Please select a task first by clicking on it', 4);
+	}
+});
 
 	$('#calendar-container').on('click', '.remove-assignment', async function (e) {
 		e.preventDefault();
@@ -1437,6 +1476,33 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 			frappe.show_alert(`Blackout mode ON for ${instructor}`, 3);
 		}
 	});
+
+	$('#calendar-container').on('click', 'td span.text-primary', async function (e) {
+	e.preventDefault();
+	e.stopPropagation();
+
+	const instructorName = $(this).text().replace(/^[-–—]\s*/, '').trim();
+
+	if (!instructorName) {
+		frappe.show_alert("Invalid instructor", 4);
+		return;
+	}
+
+	// Multi-task (multi-select mode)
+	if (multiSelectMode && selectedTasks.length > 0) {
+		for (const task of selectedTasks) {
+			await assignTaskAcrossWeek(task, instructorName);
+		}
+	} 
+	// Single task mode
+	else if (selectedTask) {
+		await assignTaskAcrossWeek(selectedTask, instructorName);
+	} 
+	else {
+		frappe.show_alert("Please select a task first", 4);
+	}
+});
+
 
 
 	$('#submit-allocations').on('click', async () => {
@@ -1703,6 +1769,11 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 			background-color: #ffcccc !important;
 			border: 2px solid #cc0000 !important;
 		}
+			td span.text-primary {
+				cursor: pointer;
+				text-decoration: underline;
+			}
+
 
 		`).appendTo('head');
 		const multiSelectStyles = `
