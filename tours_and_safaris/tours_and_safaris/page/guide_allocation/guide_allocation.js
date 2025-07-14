@@ -156,8 +156,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					const taskObj = {
 						name: allocation.allocation_id,
 						subject: allocation.detail_activity_name || allocation.activity_name,
-						custom_customer_name: originalTask?.custom_customer_name || allocation.customer || 'Unknown',
-						custom_group_name: originalTask?.custom_group_name || originalTask?.custom_group_index || null,
+						custom_customer_name: originalTask?.custom_customer_name || allocation.customer || 'Unknown'
 					};
 					
 					instructorAssignments[instructor].push({
@@ -896,9 +895,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 						data-task-name="${assigned.task.name}" 
 						data-subject="${assigned.task.subject}" 
 						style="background:${assignedColor}; cursor:pointer; position: relative; min-height: 40px;">
-						${assigned.task.custom_group_name 
-							? `${assigned.task.subject} - ${assigned.task.custom_group_name}` 
-							: assigned.task.subject}
+						${assigned.task.subject} 
 						<span class="remove-assignment" 
 							style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
 					</td>`;
@@ -939,7 +936,10 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 	</div>
 	`;
 	const $buttonContainer = $('.mb-3.d-flex.gap-2');
-	
+		if ($buttonContainer.length && $('#toggle-multi-select').length === 0) {
+			const multiSelectButton = `<button class="btn btn-sm btn-info" id="toggle-multi-select">Multi-Select Mode</button>`;
+			$buttonContainer.append(multiSelectButton);
+		}
 
 		$('#calendar-container').on('click', '.assignable-cell', function (e) {
 			// Don't trigger selection when dragging
@@ -961,29 +961,32 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				element: this
 			};
 			
-			if (e.ctrlKey || e.metaKey) {
+			if (multiSelectMode) {
+				// Multi-select mode
 				const existingIndex = selectedTasks.findIndex(t => t.name === taskData.name);
-
+				
 				if (existingIndex >= 0) {
+					// Deselect if already selected
 					selectedTasks.splice(existingIndex, 1);
 					$(this).removeClass('multi-selected-task');
 				} else {
+					// Add to selection
 					selectedTasks.push(taskData);
 					$(this).addClass('multi-selected-task');
 				}
-
-				// Update all visual selections
-				$('.assignable-cell').removeClass('multi-selected-task');
-				selectedTasks.forEach(task => {
-					$(`.assignable-cell[data-task-name="${task.name}"]`).addClass('multi-selected-task');
-				});
+				
+				updateMultiSelectUI();
 			} else {
-				// Single select (clear all)
-				selectedTasks = [taskData];
-				$('.assignable-cell').removeClass('multi-selected-task');
-				$(this).addClass('multi-selected-task');
+				// Single select mode (existing behavior)
+				$('.assignable-cell').removeClass('selected-task');
+				$(this).addClass('selected-task');
+				
+				selectedTask = taskData;
+				//frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
+				console.log('Selected task:', selectedTask);
 			}
 		});
+
     $('#calendar-container').html(html);
 	
 
@@ -1341,47 +1344,27 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 		return; 
 	
     }
-		if (selectedTasks.length > 0) {
+		if (multiSelectMode && selectedTasks.length > 0) {
+			// Multi-select assignment to this specific slot
 			await assignMultipleTasksFromStartCell(instructor, dayIndex, slot);
 		} else if (selectedTask) {
+			// Single task assignment (existing behavior)
 			try {
-				const taskStart = moment(selectedTask.exp_start_date).startOf('day');
-				const taskEnd = moment(selectedTask.exp_end_date || selectedTask.exp_start_date).startOf('day');
-				const taskDays = taskEnd.diff(taskStart, 'days') + 1;
-
-				const doFullRange = e.ctrlKey || e.shiftKey;  // 👈 Hold Ctrl or Shift to apply full task range
-
-				const assignments = [];
-
-				if (doFullRange) {
-					for (let i = 0; i < taskDays; i++) {
-						const assignDay = moment(taskStart).add(i, 'days');
-						const dayIndex = assignDay.diff(currentWeekStart, 'days');
-
-						if (dayIndex < 0 || dayIndex > 6) continue;
-						assignments.push({ dayIndex, slot });
-					}
-				} else {
-					assignments.push({ dayIndex, slot }); // Just assign clicked slot
-				}
-
 				$(this).html('<small>Assigning...</small>');
-
-				for (const a of assignments) {
-					await Methods.createAllocation(selectedTask.name, a.dayIndex, a.slot, instructor);
-				}
-
-				frappe.show_alert(`Assigned ${selectedTask.subject} to ${instructor}${doFullRange ? ` for ${taskDays} days` : ''}`, 3);
+				
+				const result = await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
+				
+				//frappe.show_alert(`Assigned ${selectedTask.subject} to ${instructor}`, 3);
 				await loadAndRenderCalendar();
-
+				
 				selectedTask = null;
 				$('.assignable-cell').removeClass('selected-task');
+				
 			} catch (error) {
 				console.error('Assignment error:', error);
 				frappe.show_alert(error.message || 'Error assigning task', 5);
 				$(this).html(`<small>${slot}</small>`);
 			}
-
 		} else {
 			frappe.show_alert('Please select a task first by clicking on it', 5);
 		}
@@ -1720,10 +1703,6 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 			background-color: #ffcccc !important;
 			border: 2px solid #cc0000 !important;
 		}
-			.multi-selected-task {
-        border: 2px solid #28a745 !important;
-        box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
-    }
 
 		`).appendTo('head');
 		const multiSelectStyles = `
