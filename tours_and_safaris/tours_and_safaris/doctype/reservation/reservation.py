@@ -79,6 +79,7 @@ def create_sales_order(reservation_name):
         "currency": reservation.billing_currency,
         "custom_is_consolidated": reservation.is_consolidated,
         "custom_grade":reservation.grade,
+        "custom_is_meals_at_camp":reservation.is_meals_at_camp,
         "items": []
     })
 

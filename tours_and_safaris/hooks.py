@@ -74,8 +74,9 @@ add_to_apps_screen = [
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/tours_and_safaris/css/tours_and_safaris.css"
-#app_include_js = "/assets/tours_and_safaris/js/activity_allocation_list.js"
+#app_include_css = "/assets/tours_and_safaris/css/tours_and_safaris.css"
+#app_include_js = [ "/assets/tours_and_safaris/js/calendar_reservation.js"]
+
 
 # include js, css files in header of web template
 # web_include_css = "/assets/tours_and_safaris/css/tours_and_safaris.css"
@@ -226,6 +227,7 @@ add_to_apps_screen = [
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "tours_and_safaris.event.get_events"
 # }
+
 override_doctype_dashboards = {
     "Booking Inquiry": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry_dashboard.get_data",
     "Reservation": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation_dashboard.get_data"

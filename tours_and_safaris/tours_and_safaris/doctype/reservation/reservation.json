@@ -49,6 +49,7 @@
   "section_break_sfmh",
   "transport_service",
   "dietary_requirements_section",
+  "is_meals_at_camp",
   "meals",
   "dietary_requirements",
   "section_break_vqzr",
@@ -383,12 +384,18 @@
    "fieldname": "grade",
    "fieldtype": "Data",
    "label": "Grade"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_meals_at_camp",
+   "fieldtype": "Check",
+   "label": "Is Meals At Camp"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-25 09:19:12.173354",
+ "modified": "2025-07-17 12:42:39.353270",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",

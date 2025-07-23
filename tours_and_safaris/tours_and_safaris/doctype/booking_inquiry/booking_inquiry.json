@@ -47,6 +47,7 @@
   "transport_service",
   "meals_and_menu_section",
   "meals_required",
+  "is_meals_at_camp",
   "meals",
   "diet_preferences",
   "section_break_xphs",
@@ -439,12 +440,18 @@
    "fieldname": "grade",
    "fieldtype": "Data",
    "label": "Grade"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_meals_at_camp",
+   "fieldtype": "Check",
+   "label": "Is Meals At Camp"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-06-09 09:52:06.552553",
+ "modified": "2025-07-17 14:23:09.222691",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",

@@ -193,6 +193,7 @@ def create_quotation(inquiry_name):
         "custom_consolidated_amount": inquiry.consolidated_amount,
         "custom_remarks": inquiry.remarks,
         "custom_grade":inquiry.grade,
+        "custom_is_meals_at_camp":inquiry.is_meals_at_camp,
         "items": []
     })
 
