@@ -14,6 +14,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
         <div class="mb-3 d-flex gap-2">
 			<button class="btn btn-sm btn-warning" id="submit-allocations">Submit All Allocations</button>
 			<button class="btn btn-sm btn-secondary" id="print-calendar">Print Calendar</button>
+
 		</div>
         <div id="loading-indicator" class="text-center" style="display: none;">
             <div class="spinner-border" role="status">
@@ -35,6 +36,10 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 	let multiSelectMode = false;
 	let blackoutModeInstructor = null;
 	let blackoutSelections = [];
+	let isDragging = false;
+	let dragStartCell = null;
+	let dragCurrentCell = null;
+	let selectedRangeCells = [];
 
 
 	const Methods = {
@@ -1447,6 +1452,134 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 		}
 	});
 
+	$('#calendar-container').on('mousedown', '.assignable-slot', function (e) {
+			isDragging = true;
+			selectedRangeCells = [];
+			$('.assignable-slot').removeClass('multi-cell-selected');
+
+			dragStartCell = getCellMeta(this);
+			dragCurrentCell = dragStartCell;
+
+			selectRange(dragStartCell, dragCurrentCell);
+			e.preventDefault();
+		});
+
+		$('#calendar-container').on('mouseenter', '.assignable-slot', function (e) {
+			if (isDragging) {
+				dragCurrentCell = getCellMeta(this);
+				selectRange(dragStartCell, dragCurrentCell);
+			}
+		});
+
+		$(document).on('mouseup', function () {
+			isDragging = false;
+		});
+
+		function getCellMeta(cell) {
+			return {
+				instructor: $(cell).data('instructor'),
+				dayIndex: parseInt($(cell).data('day-index')),
+				slot: $(cell).data('slot'),
+				element: cell
+			};
+		}
+
+		function selectRange(start, end) {
+			selectedRangeCells = [];
+
+			const instructors = $('#calendar-container .assignable-slot')
+				.map(function () {
+					return $(this).data('instructor');
+				}).get()
+				.filter((v, i, a) => a.indexOf(v) === i); // unique instructors
+
+			const instructorStart = instructors.indexOf(start.instructor);
+			const instructorEnd = instructors.indexOf(end.instructor);
+
+			const minInstructor = Math.min(instructorStart, instructorEnd);
+			const maxInstructor = Math.max(instructorStart, instructorEnd);
+
+			const dayStart = Math.min(start.dayIndex, end.dayIndex);
+			const dayEnd = Math.max(start.dayIndex, end.dayIndex);
+
+			const slotOrder = ['AM', 'PM'];
+			const slotStart = slotOrder.indexOf(start.slot);
+			const slotEnd = slotOrder.indexOf(end.slot);
+			const minSlot = Math.min(slotStart, slotEnd);
+			const maxSlot = Math.max(slotStart, slotEnd);
+
+			$('.assignable-slot').each(function () {
+				const instr = $(this).data('instructor');
+				const day = $(this).data('day-index');
+				const slot = $(this).data('slot');
+
+				const iIndex = instructors.indexOf(instr);
+				const sIndex = slotOrder.indexOf(slot);
+
+				if (
+					iIndex >= minInstructor && iIndex <= maxInstructor &&
+					day >= dayStart && day <= dayEnd &&
+					sIndex >= minSlot && sIndex <= maxSlot
+				) {
+					$(this).addClass('multi-cell-selected');
+					selectedRangeCells.push({
+						instructor: instr,
+						dayIndex: day,
+						slot: slot
+					});
+				}
+			});
+
+		}
+		
+		$(document).on('keydown', async function (e) {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+				e.preventDefault();
+
+				if (!selectedTask) {
+					frappe.show_alert("Please select a task to paste.", 4);
+					return;
+				}
+
+				if (!selectedRangeCells || selectedRangeCells.length === 0) {
+					frappe.show_alert("No cells selected. Highlight cells first.", 4);
+					return;
+				}
+
+				let taskStart = moment(selectedTask.exp_start_date).startOf('day');
+				let taskEnd = moment(selectedTask.exp_end_date || selectedTask.exp_start_date).startOf('day');
+
+				let count = 0;
+				for (const cell of selectedRangeCells) {
+					const cellDate = moment(currentWeekStart).add(cell.dayIndex, 'days').startOf('day');
+					const inRange = cellDate.isBetween(taskStart, taskEnd, null, '[]');
+
+					if (!inRange) {
+						console.warn(`Skipped ${cell.instructor} ${cell.dayIndex} ${cell.slot} (out of range)`);
+						continue;
+					}
+
+					try {
+						await Methods.createAllocation(
+							selectedTask.name,
+							cell.dayIndex,
+							cell.slot,
+							cell.instructor
+						);
+						count++;
+					} catch (err) {
+						console.error(`Failed to assign to ${cell.instructor} ${cell.dayIndex} ${cell.slot}`, err);
+					}
+				}
+
+				frappe.show_alert(`Assigned to ${count} cell${count !== 1 ? 's' : ''}`, 3);
+				selectedRangeCells = [];
+				$('.multi-cell-selected').removeClass('multi-cell-selected');
+				await loadAndRenderCalendar();
+			}
+		});
+
+
 	$('#calendar-container').on('click', '.blackout-toggle', function (e) {
 		e.preventDefault();
 		const instructor = $(this).data('instructor');
@@ -1772,6 +1905,10 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 			td span.text-primary {
 				cursor: pointer;
 				text-decoration: underline;
+			}
+			.multi-cell-selected {
+				outline: 2px solid #28a745;
+				background-color: rgba(40, 167, 69, 0.1);
 			}
 
 
