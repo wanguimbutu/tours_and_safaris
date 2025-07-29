@@ -1434,48 +1434,55 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 		});
 
 	$('#calendar-container').on('click', '.remove-assignment', async function (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const cell = $(this).closest('.assigned-task');
-    const instructor = cell.data('instructor');
-    const dayIndex = parseInt(cell.data('day-index'));
-    const slot = cell.data('slot');
-    const subject = cell.data('subject');
+			e.preventDefault();
+			e.stopPropagation();
 
-    console.log('Removing assignment:', instructor, dayIndex, slot, subject);
+			const cell = $(this).closest('.assigned-task');
+			const instructor = cell.data('instructor');
+			const dayIndex = parseInt(cell.data('day-index'));
+			const slot = cell.data('slot');
 
-    try {
-        // Show loading state
-        cell.html('<small>Removing...</small>');
+			// Safe access to subject
+			let subject = cell.data('subject');
 
-        const result = await Methods.removeAllocation(instructor, dayIndex, slot, subject);
-        console.log('Removal result:', result);
+			// Fallback: Try to extract subject from DOM if missing
+			if (!subject) {
+				subject = cell.text().trim().split('\n')[0] || '';
+				console.warn('Subject missing from data attribute. Falling back to text content:', subject);
+			}
 
-        frappe.show_alert(`Removed assignment from ${instructor}`, 3);
+			console.log('Removing assignment:', instructor, dayIndex, slot, subject);
 
-        // VISUAL REPLACEMENT of slot with unassigned look
-			cell
-			.removeClass('assigned-task')
-			.addClass('assignable-slot')
-			.html(`<small>${slot}</small>`)
-			.css({
-				backgroundColor: '',
-				cursor: 'pointer',
-				position: 'relative'
-			});
+			try {
+				// Show loading
+				cell.html('<small>Removing...</small>');
 
+				await Methods.removeAllocation(instructor, dayIndex, slot, subject);
 
-    } catch (error) {
-        console.error('Removal error:', error);
-        frappe.show_alert(error.message || 'Error removing assignment', 5);
+				frappe.show_alert(`Removed assignment from ${instructor}`, 3);
 
-        // Restore original content if needed
-        const selector = `.assignable-slot[data-instructor="${instructor}"][data-day-index="${dayIndex}"][data-slot="${slot}"]`;
-        const $cell = $(selector);
-        $cell.html(`<div class="task-label">${subject}</div>`);
-    }
-});
+				// Visual revert without refresh
+				cell
+					.removeClass('assigned-task')
+					.addClass('assignable-slot')
+					.html(`<small>${slot}</small>`)
+					.removeAttr('data-task-name')
+					.removeAttr('data-subject')
+					.removeAttr('data-assigned')
+					.css({
+						backgroundColor: '',
+						cursor: 'pointer',
+						position: 'relative'
+					});
+			} catch (error) {
+				console.error('Removal error:', error);
+				frappe.show_alert(error.message || 'Error removing assignment', 5);
+
+				// restore subject text in case of failure
+				cell.html(`${subject}<span class="remove-assignment" style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>`);
+			}
+		});
+
 
 	$('#calendar-container').on('click', '.assigned-task', function (e) {
 		if (!$(e.target).hasClass('remove-assignment')) {
