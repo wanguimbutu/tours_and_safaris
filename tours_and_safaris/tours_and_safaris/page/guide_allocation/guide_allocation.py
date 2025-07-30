@@ -148,7 +148,7 @@ def get_tasks_for_week(week_start, week_end):
     # Pass the week_start and week_end parameters for both conditions
     tasks = frappe.db.sql(query, (week_start, week_end, week_end, week_start), as_dict=True)
     
-    # Process task dependencies in single query
+    
     task_names = [t.name for t in tasks]
     if task_names:
         dependencies = frappe.db.sql("""
@@ -185,11 +185,12 @@ def get_tasks_for_week(week_start, week_end):
     
     return tasks
 def get_active_instructors():
-    """Get all active instructors with their qualifications in one query"""
+    """Get all active instructors with their qualifications and position"""
     return frappe.db.sql("""
         SELECT 
             i.name,
-            i.name1 AS instructor_name,  
+            i.name1 AS instructor_name,
+            i.position, 
             GROUP_CONCAT(
                 CONCAT(ial.activity_name, ':', COALESCE(ial.qualification, ''))
                 SEPARATOR '|'
@@ -197,8 +198,8 @@ def get_active_instructors():
         FROM `tabInstructor` i
         LEFT JOIN `tabInstructor Activity Level` ial ON ial.parent = i.name
         WHERE i.enabled = 1
-        GROUP BY i.name, i.name1
-        ORDER BY i.name1
+        GROUP BY i.name, i.name1, i.position
+        ORDER BY i.position ASC, i.name1 ASC  -- Optional: already sorted from backend
     """, as_dict=True)
 
 

@@ -711,6 +711,13 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
     const weekDays = Methods.getWeekDays();
     const customerMap = {};
 
+	instructors.sort((a, b) => {
+		const posA = typeof a.position === 'number' ? a.position : 999;
+		const posB = typeof b.position === 'number' ? b.position : 999;
+		return posA - posB;
+	});
+
+
     $('#week-range-title').text(`${weekDays[0].format('MMM D')} - ${weekDays[6].format('MMM D, YYYY')}`);
 
     tasks.forEach(task => {
@@ -1025,10 +1032,12 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				
 				updateMultiSelectUI();
 			} else {
-				// Single select mode (existing behavior)
+				// Single select mode
 				$('.assignable-cell').removeClass('selected-task');
 				$(this).addClass('selected-task');
-				
+				$('.sticky-selected-task').removeClass('sticky-selected-task'); 
+				$(this).closest('tr').addClass('sticky-selected-task');
+
 				selectedTask = taskData;
 				//frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
 				console.log('Selected task:', selectedTask);
@@ -1863,89 +1872,90 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 	});
 
 	$('#print-calendar').on('click', function () {
-    const originalTitle = document.title;
-    document.title = "Guide Allocation - Calendar View";
+	const calendarClone = $('#calendar-container').clone();
 
-    const calendarClone = $('#calendar-container').clone();
+	// Remove interactive elements
+	calendarClone.find('.remove-assignment, .drag-handle, .btn, .split-groups-btn, .collapse, .text-right').remove();
 
-    
-    calendarClone.find('#calendar-scroll-wrapper')
-        .css({
-            'max-height': 'none',
-            'overflow': 'visible'
-        });
+	// Open print window
+	const printWindow = window.open('', '_blank');
+	printWindow.document.write(`
+		<html>
+		<head>
+			<title>Instructor Calendar</title>
+			<style>
+	body {
+		font-family: Arial, sans-serif;
+		margin: 20px;
+		color: #000;
+	}
 
-    const weekTitle = $('#week-range-title').text();
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		table-layout: fixed;
+		word-wrap: break-word;
+	}
 
-    const printWindow = window.open('', '', 'width=1200,height=900');
-    printWindow.document.write(`
-        <html>
-        <head>
-            <title>${originalTitle}</title>
-            <link rel="stylesheet" href="/assets/frappe/css/bootstrap.css">
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    margin: 20px;
-                    color: #000;
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    table-layout: fixed;
-                    word-wrap: break-word;
-                }
-                th, td {
-                    border: 1px solid #999;
-                    padding: 6px;
-                    vertical-align: top;
-                    font-size: 11px;
-                }
-                .draggable-task, .assignable-cell, .assigned-task {
-                    border-radius: 4px;
-                    padding: 2px 5px;
-                    font-size: 10px;
-                    display: inline-block;
-                    margin: 1px;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-                .remove-assignment, .drag-handle, .btn, .split-groups-btn, .collapse, .text-right, .selected-task {
-                    display: none !important;
-                }
-                @media print {
-                    * {
-                        -webkit-print-color-adjust: exact !important;
-                        print-color-adjust: exact !important;
-                    }
-                    #calendar-scroll-wrapper {
-                        overflow: visible !important;
-                        max-height: none !important;
-                    }
-                    thead th {
-                        position: static !important;
-                        background: #fff !important;
-                    }
-                }
-            </style>
-        </head>
-        <body>
-            <h2>Guide Allocation Calendar: ${weekTitle}</h2>
-            ${calendarClone.html()}
-        </body>
-        </html>
-    `);
+	th, td {
+		border: 1px solid #999;
+		padding: 6px;
+		vertical-align: top !important;
+		font-size: 11px;
+		word-break: break-word;
+		page-break-inside: avoid;
+	}
 
-    printWindow.document.close();
-    printWindow.focus();
+	.draggable-task, .assignable-cell, .assigned-task {
+		display: block !important;
+		border-radius: 4px;
+		padding: 3px 5px;
+		margin-bottom: 4px;
+		background-color: #f0f0f0;
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+		page-break-inside: avoid;
+	}
 
-    setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-        document.title = originalTitle;
-    }, 600);
+	thead th {
+		position: static !important;
+		background: #fff !important;
+	}
+
+	#calendar-scroll-wrapper {
+		max-height: none !important;
+		overflow: visible !important;
+	}
+
+	tr {
+		page-break-inside: avoid !important;
+		page-break-after: auto;
+	}
+
+	@media print {
+		* {
+			-webkit-print-color-adjust: exact !important;
+			print-color-adjust: exact !important;
+		}
+		.sticky-selected-task {
+			position: static !important;
+			box-shadow: none !important;
+		}
+	}
+</style>
+
+		</head>
+		<body>
+			<h3>Instructor Calendar (${moment().format('MMMM D, YYYY')})</h3>
+			${calendarClone.html()}
+		</body>
+		</html>
+	`);
+
+	printWindow.document.close();
+	printWindow.focus();
+	printWindow.print();
 });
-
 
 	
 	$('#prev-week').on('click', () => {
@@ -2057,6 +2067,14 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 				outline: 2px solid #28a745;
 				background-color: rgba(40, 167, 69, 0.1);
 			}
+			.sticky-selected-task {
+				position: sticky;
+				top: 38px; /* or adjust depending on header height */
+				z-index: 15;
+				background: #fff;
+				box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+			}
+
 
 
 		`).appendTo('head');
