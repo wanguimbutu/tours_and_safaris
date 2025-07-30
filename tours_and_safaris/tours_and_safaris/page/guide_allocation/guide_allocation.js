@@ -1872,90 +1872,90 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 	});
 
 	$('#print-calendar').on('click', function () {
-	const calendarClone = $('#calendar-container').clone();
+		const calendarClone = $('#calendar-container').clone();
 
-	// Remove interactive elements
-	calendarClone.find('.remove-assignment, .drag-handle, .btn, .split-groups-btn, .collapse, .text-right').remove();
+		// Remove interactive elements
+		calendarClone.find('.remove-assignment, .drag-handle, .btn, .split-groups-btn, .collapse, .text-right').remove();
 
-	// Open print window
-	const printWindow = window.open('', '_blank');
-	printWindow.document.write(`
-		<html>
-		<head>
-			<title>Instructor Calendar</title>
-			<style>
-	body {
-		font-family: Arial, sans-serif;
-		margin: 20px;
-		color: #000;
-	}
+		// Open print window
+		const printWindow = window.open('', '_blank');
+		printWindow.document.write(`
+			<html>
+			<head>
+				<title>Instructor Calendar</title>
+				<style>
+					body {
+						font-family: Arial, sans-serif;
+						margin: 20px;
+						color: #000;
+					}
 
-	table {
-		width: 100%;
-		border-collapse: collapse;
-		table-layout: fixed;
-		word-wrap: break-word;
-	}
+					table {
+						width: 100%;
+						border-collapse: collapse;
+						table-layout: fixed;
+						word-wrap: break-word;
+					}
 
-	th, td {
-		border: 1px solid #999;
-		padding: 6px;
-		vertical-align: top !important;
-		font-size: 11px;
-		word-break: break-word;
-		page-break-inside: avoid;
-	}
+					th, td {
+						border: 1px solid #999;
+						padding: 6px;
+						vertical-align: top !important;
+						font-size: 11px;
+						word-break: break-word;
+						page-break-inside: avoid;
+					}
 
-	.draggable-task, .assignable-cell, .assigned-task {
-		display: block !important;
-		border-radius: 4px;
-		padding: 3px 5px;
-		margin-bottom: 4px;
-		background-color: #f0f0f0;
-		-webkit-print-color-adjust: exact !important;
-		print-color-adjust: exact !important;
-		page-break-inside: avoid;
-	}
+					.draggable-task, .assignable-cell, .assigned-task {
+						display: block !important;
+						border-radius: 4px;
+						padding: 3px 5px;
+						margin-bottom: 4px;
+						background-color: #f0f0f0;
+						-webkit-print-color-adjust: exact !important;
+						print-color-adjust: exact !important;
+						page-break-inside: avoid;
+					}
 
-	thead th {
-		position: static !important;
-		background: #fff !important;
-	}
+					thead th {
+						position: static !important;
+						background: #fff !important;
+					}
 
-	#calendar-scroll-wrapper {
-		max-height: none !important;
-		overflow: visible !important;
-	}
+					#calendar-scroll-wrapper {
+						max-height: none !important;
+						overflow: visible !important;
+					}
 
-	tr {
-		page-break-inside: avoid !important;
-		page-break-after: auto;
-	}
+					tr {
+						page-break-inside: avoid !important;
+						page-break-after: auto;
+					}
 
-	@media print {
-		* {
-			-webkit-print-color-adjust: exact !important;
-			print-color-adjust: exact !important;
-		}
-		.sticky-selected-task {
-			position: static !important;
-			box-shadow: none !important;
-		}
-	}
-</style>
+					@media print {
+						* {
+							-webkit-print-color-adjust: exact !important;
+							print-color-adjust: exact !important;
+						}
+						.sticky-selected-task {
+							position: static !important;
+							box-shadow: none !important;
+						}
+					}
+				</style>
 
-		</head>
-		<body>
-			<h3>Instructor Calendar (${moment().format('MMMM D, YYYY')})</h3>
-			${calendarClone.html()}
-		</body>
-		</html>
-	`);
+			</head>
+			<body>
+				<h3>Instructor Calendar (${moment().format('MMMM D, YYYY')})</h3>
+				${calendarClone.html()}
+			</body>
+			</html>
+		`);
 
-	printWindow.document.close();
-	printWindow.focus();
-	printWindow.print();
-});
+		printWindow.document.close();
+		printWindow.focus();
+		printWindow.print();
+	});
 
 	
 	$('#prev-week').on('click', () => {
