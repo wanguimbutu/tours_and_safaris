@@ -978,7 +978,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
                         assignedColor = originalTask.color;
                     } else {
                         // Final fallback: use customer-based color
-                        assignedColor = Methods.getColorForCustomer(assigned.task.custom_customer_name || 'Unknown');
+                        assignedColor = Methods.getColorForTask(assigned.task.custom_customer_name || 'Unknown');
                     }
                 }
 
