@@ -696,3 +696,19 @@ def bulk_toggle_blackouts(instructor, slots, week_start_date):
         toggled.append(f"{date} {slot}")
 
     return {"message": f"Toggled {len(toggled)} blackout slots."}
+
+import frappe
+from frappe.utils.pdf import get_pdf  # works across newer versions
+
+@frappe.whitelist()
+def generate_calendar_pdf(html_content, filename=None):
+	try:
+		pdf = get_pdf(html_content)  # replaces get_pdf_from_html
+
+		frappe.local.response.filename = filename or "Instructor-Calendar.pdf"
+		frappe.local.response.filecontent = pdf
+		frappe.local.response.type = "download"
+	except Exception as e:
+		frappe.log_error(f"PDF generation failed: {e}")
+		frappe.local.response.http_status_code = 500
+		frappe.local.response.message = str(e)
