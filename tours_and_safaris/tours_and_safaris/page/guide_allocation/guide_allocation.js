@@ -1061,7 +1061,6 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				const existingIndex = selectedTasks.findIndex(t => t.name === taskData.name);
 				
 				if (existingIndex >= 0) {
-					// Deselect if already selected
 					selectedTasks.splice(existingIndex, 1);
 					$(this).removeClass('multi-selected-task');
 				} else {
