@@ -47,31 +47,31 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 
 
 	const Methods = {
-		async loadCustomerColors(customerNames) {
-			if (!customerNames || customerNames.length === 0) return;
+		async loadCustomerColors(customerIDs) {
+			if (!customerIDs || customerIDs.length === 0) return;
 
 			try {
-				console.log("Fetching colors for customer_name values:", customerNames);
+				console.log("Fetching custom_colour for customers:", customerIDs);
 
 				const response = await frappe.call({
 					method: "frappe.client.get_list",
 					args: {
 						doctype: "Customer",
-						filters: [["customer_name", "in", customerNames]],
-						fields: ["customer_name", "custom_color"],
+						filters: [["name", "in", customerIDs]],
+						fields: ["name", "custom_color"],
 						limit_page_length: 999
 					}
 				});
 
-				console.log("Customer color fetch response:", response.message);
+				console.log("Fetched customer colors:", response.message);
 
 				this._customerColors = {};
 				response.message.forEach(c => {
-					console.log(`Customer Name: ${c.customer_name}, Color: ${c.custom_color}`);
-					this._customerColors[c.customer_name] = c.custom_color || "#cccccc";
+					console.log(`Customer ID: ${c.name}, Color: ${c.custom_color}`);
+					this._customerColors[c.name] = c.custom_color || "#cccccc";
 				});
 			} catch (err) {
-				console.error("Failed to load customer colors", err);
+				console.error("Error loading customer colors", err);
 			}
 		},
 
@@ -240,11 +240,11 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			return "AM";
 		},
 
-		getColorForCustomer(customerName) {
-			if (!customerName) customerName = "Unknown";
+		getColorForCustomer(customerID) {
+			if (!customerID) return "#cccccc";
 
-			const color = this._customerColors?.[customerName] || "#cccccc";
-			console.log(`Color used for "${customerName}": ${color}`);
+			const color = this._customerColors?.[customerID] || "#cccccc";
+			console.log(`Color used for customer ID "${customerID}": ${color}`);
 			return color;
 		},
 
@@ -720,17 +720,15 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 		try {
 			const data = await Methods.loadWeekData(currentWeekStart, true);
 
-			if (data) {
-				// Collect all unique customer names
-				const customerNames = [...new Set(data.tasks.map(t => t.custom_customer_name).filter(Boolean))];
+				if (data) {
+					const customerIDs = [...new Set(data.tasks.map(t => t.custom_customer).filter(Boolean))];
+					console.log("Unique customer IDs:", customerIDs);
 
-				// Load their colors
-				await Methods.loadCustomerColors(customerNames);
+					await Methods.loadCustomerColors(customerIDs);
 
-				// Now render
-				renderCalendar(data);
-				await Methods.loadActivityTypes();
-			}
+					renderCalendar(data);
+					await Methods.loadActivityTypes();
+				}
 		} catch (error) {
 			console.error('Error loading calendar:', error);
 			frappe.show_alert("Error loading calendar data", 5);
