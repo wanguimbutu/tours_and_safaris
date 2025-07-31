@@ -26,8 +26,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
             <p>Loading week data...</p>
         </div>
         <div id="calendar-container" class="table-responsive"></div>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
+        
 
     `);
 	
@@ -47,35 +46,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 
 
 	const Methods = {
-		async loadCustomerColors(customerIDs) {
-			if (!customerIDs || customerIDs.length === 0) return;
-
-			try {
-				console.log("Fetching custom_colour for customers:", customerIDs);
-
-				const response = await frappe.call({
-					method: "frappe.client.get_list",
-					args: {
-						doctype: "Customer",
-						filters: [["name", "in", customerIDs]],
-						fields: ["name", "custom_color"],
-						limit_page_length: 999
-					}
-				});
-
-				console.log("Fetched customer colors:", response.message);
-
-				this._customerColors = {};
-				response.message.forEach(c => {
-					console.log(`Customer ID: ${c.name}, Color: ${c.custom_color}`);
-					this._customerColors[c.name] = c.custom_color || "#cccccc";
-				});
-			} catch (err) {
-				console.error("Error loading customer colors", err);
-			}
-		},
-
-		
 		async loadWeekData(weekStart, forceReload = false) {
 			const weekKey = weekStart.format('YYYY-MM-DD');
 			
@@ -128,8 +98,8 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		},
 
 		processWeekData(rawData) {
-			const { tasks, instructors, allocations } = rawData;
-			
+			const { tasks, instructors, allocations, customer_colors } = rawData;
+
 			const processedTasks = tasks.map(task => {
 				if (task.custom_assigned_date) {
 					const assignedMoment = moment(task.custom_assigned_date);
@@ -144,11 +114,11 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				}
 				return task;
 			});
-			
+
 			// Separate parent tasks and subtasks
 			const parentTasks = processedTasks.filter(task => !task.parent_task);
 			const subTasks = processedTasks.filter(task => task.parent_task);
-			
+
 			// Group subtasks by parent
 			const subTasksByParent = {};
 			subTasks.forEach(subTask => {
@@ -157,7 +127,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				}
 				subTasksByParent[subTask.parent_task].push(subTask);
 			});
-			
+
 			const processedInstructors = instructors.map(instructor => {
 				const qualificationMap = {};
 				if (instructor.qualifications) {
@@ -173,47 +143,51 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					qualificationMap
 				};
 			});
-			
+
+			// Build instructorAssignments
 			const instructorAssignments = {};
 			allocations.forEach(allocation => {
 				const instructor = allocation.instructor;
 				const activityDate = moment(allocation.activity_date);
 				const weekStart = moment(rawData.week_start);
 				const dayIndex = activityDate.diff(weekStart, 'days');
-				
+
 				if (dayIndex >= 0 && dayIndex < 7) {
 					const slot = this.getSlotFromSessionAndTime(allocation.session, allocation.start_time);
-					
+
 					if (!instructorAssignments[instructor]) {
 						instructorAssignments[instructor] = [];
 					}
-					
-					const originalTask = tasks.find(t => t.name === allocation.task_name || 
-														t.name.includes(allocation.task_name));
+
+					const originalTask = tasks.find(t =>
+						t.name === allocation.task_name || t.name.includes(allocation.task_name)
+					);
 
 					const taskObj = {
 						name: allocation.allocation_id,
 						subject: allocation.detail_activity_name || allocation.activity_name,
-						custom_customer_name: originalTask?.custom_customer_name || allocation.customer || 'Unknown'
+						custom_customer_name: originalTask?.custom_customer_name || allocation.customer || 'Unknown',
+						custom_customer: originalTask?.custom_customer || null
 					};
-					
+
 					instructorAssignments[instructor].push({
 						task: taskObj,
-						dayIndex: dayIndex,
-						slot: slot,
+						dayIndex,
+						slot,
 						allocationId: allocation.allocation_id
 					});
 				}
 			});
-			
+
 			return {
 				...rawData,
 				tasks: processedTasks,
-				parentTasks: parentTasks,
-				subTasks: subTasks,
-				subTasksByParent: subTasksByParent,
+				parentTasks,
+				subTasks,
+				subTasksByParent,
 				instructors: processedInstructors,
-				instructorAssignments
+				instructorAssignments,
+				customerColors: customer_colors || {}  // ✅ use consistent frontend key
 			};
 		},
 
@@ -240,12 +214,23 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			return "AM";
 		},
 
-		getColorForCustomer(customerID) {
-			if (!customerID) return "#cccccc";
+		getColorForCustomer(customerId) {
+			if (!customerId) return "#cccccc";
 
-			const color = this._customerColors?.[customerID] || "#cccccc";
-			console.log(`Color used for customer ID "${customerID}": ${color}`);
-			return color;
+			const weekKey = currentWeekStart.format('YYYY-MM-DD');
+			const customerColors = weekData[weekKey]?.customerColors || {};
+
+			const color = customerColors[customerId];
+			if (color) return color;
+
+			// fallback: deterministic color
+			const fallbackColors = ["#FFB6C1", "#FFD700", "#ADFF2F", "#40E0D0", "#FFA07A", "#87CEFA", "#9370DB", "#FF69B4", "#98FB98", "#F08080"];
+			let hash = 0;
+			for (let i = 0; i < customerId.length; i++) {
+				hash = customerId.charCodeAt(i) + ((hash << 5) - hash);
+			}
+			const index = Math.abs(hash) % fallbackColors.length;
+			return fallbackColors[index];
 		},
 
 
@@ -718,22 +703,17 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 	// Main Functions
 	async function loadAndRenderCalendar() {
 		try {
+			// Force reload to get fresh data
 			const data = await Methods.loadWeekData(currentWeekStart, true);
-
-				if (data) {
-					const customerIDs = [...new Set(data.tasks.map(t => t.custom_customer).filter(Boolean))];
-					console.log("Unique customer IDs:", customerIDs);
-
-					await Methods.loadCustomerColors(customerIDs);
-
-					renderCalendar(data);
-					await Methods.loadActivityTypes();
-				}
+			if (data) {
+				renderCalendar(data);
+				await Methods.loadActivityTypes();
+			}
 		} catch (error) {
 			console.error('Error loading calendar:', error);
 			frappe.show_alert("Error loading calendar data", 5);
 		}
-	}
+	}	// Drag and Drop
 
 	
 	function renderCalendar(data) {
@@ -1446,7 +1426,7 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 
 		// VISUAL UPDATE ONLY (no refresh)
 		const $cell = $(this);
-		const color = Methods.getColorForCustomer(selectedTask.custom_customer_name);
+		const color = Methods.getColorForCustomer(selectedTask.custom_customer);
 
 		$cell
 		.removeClass('assignable-slot')
@@ -1642,7 +1622,7 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 						const selector = `.assignable-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
 						const $cell = $(selector);
 
-						const color = Methods.getColorForCustomer(selectedTask.custom_customer_name);
+						const color = Methods.getColorForCustomer(selectedTask.custom_customer);
 
 						$cell
 						.removeClass('assignable-slot multi-cell-selected')
@@ -1902,147 +1882,89 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 	});
 
 	$('#print-calendar').on('click', function () {
-	let calendarHTML = '';
-	const $originalTable = $('#calendar-container table');
+	const calendarClone = $('#calendar-container').clone();
 
-	calendarHTML += '<table>';
+	// Remove interactive elements
+	calendarClone.find('.remove-assignment, .drag-handle, .btn, .split-groups-btn, .collapse, .text-right').remove();
 
-	const $header = $originalTable.find('thead');
-	if ($header.length) {
-		calendarHTML += '<thead>' + $header.html() + '</thead>';
+	// Open print window
+	const printWindow = window.open('', '_blank');
+	printWindow.document.write(`
+		<html>
+		<head>
+			<title>Instructor Calendar</title>
+			<style>
+	body {
+		font-family: Arial, sans-serif;
+		margin: 20px;
+		color: #000;
 	}
 
-	calendarHTML += '<tbody>';
-	$originalTable.find('tbody tr').each(function () {
-		const $row = $(this);
-		calendarHTML += '<tr>';
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		table-layout: fixed;
+		word-wrap: break-word;
+	}
 
-		$row.find('td, th').each(function () {
-			const $cell = $(this);
-			const tagName = this.tagName.toLowerCase();
+	th, td {
+		border: 1px solid #999;
+		padding: 6px;
+		vertical-align: top !important;
+		font-size: 11px;
+		word-break: break-word;
+		page-break-inside: avoid;
+	}
 
-			let attributes = '';
-			if ($cell.attr('class')) attributes += ` class="${$cell.attr('class')}"`;
-			if ($cell.attr('rowspan')) attributes += ` rowspan="${$cell.attr('rowspan')}"`;
-			if ($cell.attr('colspan')) attributes += ` colspan="${$cell.attr('colspan')}"`;
+	.draggable-task, .assignable-cell, .assigned-task {
+		display: block !important;
+		border-radius: 4px;
+		padding: 3px 5px;
+		margin-bottom: 4px;
+		background-color: #f0f0f0;
+		-webkit-print-color-adjust: exact !important;
+		print-color-adjust: exact !important;
+		page-break-inside: avoid;
+	}
 
-			calendarHTML += `<${tagName}${attributes}>`;
+	thead th {
+		position: static !important;
+		background: #fff !important;
+	}
 
-			const $tasks = $cell.find('.draggable-task, .assignable-cell, .assigned-task');
-			if ($tasks.length > 0) {
-				$tasks.each(function () {
-					const $task = $(this).clone();
-					$task.find('.remove-assignment, .drag-handle, .btn').remove();
+	#calendar-scroll-wrapper {
+		max-height: none !important;
+		overflow: visible !important;
+	}
 
-					let taskStyle = 'display: block; margin-bottom: 4px; width: 100%; box-sizing: border-box;';
-					let taskClasses = 'task-item';
-					let hasColorClass = false;
-					let backgroundColor = '';
+	tr {
+		page-break-inside: avoid !important;
+		page-break-after: auto;
+	}
 
-					const allClasses = ($task.attr('class') || '').split(' ');
-					const colorClasses = allClasses.filter(cls =>
-						cls.includes('bg-') || cls.includes('color-') ||
-						cls.includes('primary') || cls.includes('success') ||
-						cls.includes('warning') || cls.includes('danger') || cls.includes('info')
-					);
+	@media print {
+		* {
+			-webkit-print-color-adjust: exact !important;
+			print-color-adjust: exact !important;
+		}
+		.sticky-selected-task {
+			position: static !important;
+			box-shadow: none !important;
+		}
+	}
+</style>
 
-					if (colorClasses.length) {
-						hasColorClass = true;
-						taskClasses += ' ' + colorClasses.join(' ');
-					}
+		</head>
+		<body>
+			<h3>Instructor Calendar (${moment().format('MMMM D, YYYY')})</h3>
+			${calendarClone.html()}
+		</body>
+		</html>
+	`);
 
-					const computedStyle = window.getComputedStyle(this);
-					const inlineStyle = $task.attr('style') || '';
-
-					if (inlineStyle.includes('background')) {
-						backgroundColor = inlineStyle;
-					} else if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-						backgroundColor = `background-color: ${computedStyle.backgroundColor};`;
-					}
-
-					if (backgroundColor) {
-						taskStyle = backgroundColor + ' ' + taskStyle;
-					}
-
-					if (!backgroundColor && !hasColorClass) {
-						calendarHTML += `<div class="task-item original-styling">${$task.prop('outerHTML')}</div>`;
-					} else {
-						calendarHTML += `<div class="${taskClasses}" style="${taskStyle}">${$task.html()}</div>`;
-					}
-				});
-			} else {
-				let clean = $cell.clone();
-				clean.find('.draggable-task, .assignable-cell, .assigned-task, .remove-assignment, .drag-handle, .btn, .split-groups-btn, .collapse, .text-right').remove();
-				calendarHTML += clean.html();
-			}
-
-			calendarHTML += `</${tagName}>`;
-		});
-
-		calendarHTML += '</tr>';
-	});
-	calendarHTML += '</tbody></table>';
-
-	// Build container for rendering
-	const calendarWrapper = document.createElement('div');
-	calendarWrapper.innerHTML = `
-		<style>
-			table {
-				width: 100%;
-				border-collapse: separate;
-				table-layout: fixed;
-			}
-			th, td {
-				border: 1px solid #999;
-				padding: 6px;
-				font-size: 10px;
-				vertical-align: top;
-				word-break: break-word;
-				page-break-inside: avoid;
-				width: 12.5%;
-				min-height: 60px;
-			}
-			.task-item {
-				display: block !important;
-				border-radius: 4px;
-				padding: 3px 5px;
-				margin-bottom: 4px;
-				background-color: #f0f0f0;
-				-webkit-print-color-adjust: exact !important;
-				print-color-adjust: exact !important;
-				page-break-inside: avoid;
-				clear: both;
-				width: 100%;
-				box-sizing: border-box;
-			}
-			.task-item.original-styling {
-				background: none !important;
-				padding: 0 !important;
-			}
-			.task-item + .task-item {
-				margin-top: 2px;
-			}
-			.bg-primary { background-color: #007bff !important; color: white; }
-			.bg-success { background-color: #28a745 !important; color: white; }
-			.bg-warning { background-color: #ffc107 !important; }
-			.bg-danger  { background-color: #dc3545 !important; color: white; }
-			.bg-info    { background-color: #17a2b8 !important; color: white; }
-			.color-red    { background-color: #ff6b6b !important; }
-			.color-green  { background-color: #69db7c !important; }
-			.color-blue   { background-color: #74c0fc !important; }
-			.color-orange { background-color: #ffa94d !important; }
-		</style>
-		<h3>Instructor Calendar (${moment().format('MMMM D, YYYY')})</h3>
-		${calendarHTML}
-	`;
-
-	html2pdf().set({
-		margin: 0.5,
-		filename: `instructor_calendar_${moment().format("YYYY_MM_DD")}.pdf`,
-		image: { type: 'jpeg', quality: 0.98 },
-		html2canvas: { scale: 2 },
-		jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
-	}).from(calendarWrapper).save();
+	printWindow.document.close();
+	printWindow.focus();
+	printWindow.print();
 });
 
 	

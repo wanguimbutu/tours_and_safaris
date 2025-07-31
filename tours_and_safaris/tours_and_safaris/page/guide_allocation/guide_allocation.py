@@ -50,38 +50,60 @@ def submit_activity_allocation(name):
 @frappe.whitelist()
 def get_week_data(week_start_date):
     """
-    Single API call to get all data needed for a week
-    Returns: tasks, instructors, existing_allocations, instructor_qualifications, blackouts
+    Single API call to get all data needed for a week.
+    Returns: tasks, instructors, allocations, blackout map, customer_colors
     """
     try:
         week_start = frappe.utils.getdate(week_start_date)
         week_end = frappe.utils.add_days(week_start, 6)
-        
+
         tasks = get_tasks_for_week(week_start, week_end)
         instructors = get_active_instructors()
         allocations = get_existing_allocations_optimized(week_start, week_end)
 
-        # ✅ Fetch instructor blackouts for the week
+        # ✅ Extract linked customer IDs (not names)
+        customer_ids = list({
+            task.get("custom_customer")
+            for task in tasks
+            if task.get("custom_customer")
+        })
+
+        #  Fetch custom colors for customers
+        customer_colors = {}
+        if customer_ids:
+            customers = frappe.get_all(
+                "Customer",
+                filters={"name": ["in", customer_ids]},
+                fields=["name", "custom_color"]
+            )
+            customer_colors = {
+                c.name: c.custom_color or None
+                for c in customers
+            }
+
+        #  Fetch instructor blackouts for the week
         blackouts = frappe.get_all(
             "Instructor Blackout",
             filters={"date": ["between", [week_start, week_end]]},
             fields=["instructor", "date", "slot"]
         )
 
-        # ✅ Build blackout map as { instructor: { "dayIndex_slot": True } }
+        # Build blackout map { instructor: { "dayIndex_slot": True } }
         blackout_map = {}
         for b in blackouts:
             day_index = (b.date - week_start).days
             key = f"{day_index}_{b.slot}"
             blackout_map.setdefault(b.instructor, {})[key] = True
 
+        # ✅ Return all combined data
         return {
             "tasks": tasks,
             "instructors": instructors,
             "allocations": allocations,
-            "blackouts": blackout_map,  # ✅ Added blackout support here
+            "blackouts": blackout_map,
             "week_start": str(week_start),
-            "week_end": str(week_end)
+            "week_end": str(week_end),
+            "customer_colors": customer_colors  # for consistent frontend coloring
         }
 
     except Exception as e:
