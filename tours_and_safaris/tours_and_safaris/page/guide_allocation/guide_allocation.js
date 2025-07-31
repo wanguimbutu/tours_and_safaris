@@ -51,25 +51,31 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			if (!customerNames || customerNames.length === 0) return;
 
 			try {
+				console.log("Fetching colors for customer_name values:", customerNames);
+
 				const response = await frappe.call({
 					method: "frappe.client.get_list",
 					args: {
 						doctype: "Customer",
-						filters: [["name", "in", customerNames]],
-						fields: ["name", "custom_color"],
+						filters: [["customer_name", "in", customerNames]],
+						fields: ["customer_name", "custom_color"],
 						limit_page_length: 999
 					}
 				});
 
+				console.log("Customer color fetch response:", response.message);
+
 				this._customerColors = {};
 				response.message.forEach(c => {
-					this._customerColors[c.name] = c.custom_color || "#cccccc";
+					console.log(`Customer Name: ${c.customer_name}, Color: ${c.custom_color}`);
+					this._customerColors[c.customer_name] = c.custom_color || "#cccccc";
 				});
 			} catch (err) {
 				console.error("Failed to load customer colors", err);
 			}
-		}
-		,
+		},
+
+		
 		async loadWeekData(weekStart, forceReload = false) {
 			const weekKey = weekStart.format('YYYY-MM-DD');
 			
@@ -237,14 +243,11 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		getColorForCustomer(customerName) {
 			if (!customerName) customerName = "Unknown";
 
-			// Check if color is already cached
-			if (this._customerColors && this._customerColors[customerName]) {
-				return this._customerColors[customerName];
-			}
-
-			// Default fallback
-			return "#cccccc";
+			const color = this._customerColors?.[customerName] || "#cccccc";
+			console.log(`Color used for "${customerName}": ${color}`);
+			return color;
 		},
+
 
 
 		getWeekDays() {
