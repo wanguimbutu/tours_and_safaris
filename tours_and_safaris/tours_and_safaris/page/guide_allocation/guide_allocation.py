@@ -50,60 +50,38 @@ def submit_activity_allocation(name):
 @frappe.whitelist()
 def get_week_data(week_start_date):
     """
-    Single API call to get all data needed for a week.
-    Returns: tasks, instructors, allocations, blackout map, customer_colors
+    Single API call to get all data needed for a week
+    Returns: tasks, instructors, existing_allocations, instructor_qualifications, blackouts
     """
     try:
         week_start = frappe.utils.getdate(week_start_date)
         week_end = frappe.utils.add_days(week_start, 6)
-
+        
         tasks = get_tasks_for_week(week_start, week_end)
         instructors = get_active_instructors()
         allocations = get_existing_allocations_optimized(week_start, week_end)
 
-        # ✅ Extract linked customer IDs (not names)
-        customer_ids = list({
-            task.get("custom_customer")
-            for task in tasks
-            if task.get("custom_customer")
-        })
-
-        #  Fetch custom colors for customers
-        customer_colors = {}
-        if customer_ids:
-            customers = frappe.get_all(
-                "Customer",
-                filters={"name": ["in", customer_ids]},
-                fields=["name", "custom_color"]
-            )
-            customer_colors = {
-                c.name: c.custom_color or None
-                for c in customers
-            }
-
-        #  Fetch instructor blackouts for the week
+        # ✅ Fetch instructor blackouts for the week
         blackouts = frappe.get_all(
             "Instructor Blackout",
             filters={"date": ["between", [week_start, week_end]]},
             fields=["instructor", "date", "slot"]
         )
 
-        # Build blackout map { instructor: { "dayIndex_slot": True } }
+        # ✅ Build blackout map as { instructor: { "dayIndex_slot": True } }
         blackout_map = {}
         for b in blackouts:
             day_index = (b.date - week_start).days
             key = f"{day_index}_{b.slot}"
             blackout_map.setdefault(b.instructor, {})[key] = True
 
-        # ✅ Return all combined data
         return {
             "tasks": tasks,
             "instructors": instructors,
             "allocations": allocations,
-            "blackouts": blackout_map,
+            "blackouts": blackout_map,  
             "week_start": str(week_start),
-            "week_end": str(week_end),
-            "customer_colors": customer_colors  # for consistent frontend coloring
+            "week_end": str(week_end)
         }
 
     except Exception as e:
@@ -129,7 +107,6 @@ def get_tasks_for_week(week_start, week_end):
     
     # Single query to get all tasks with subtasks
     # Updated to consider custom_assigned_date when it has a value
-    # Added color field to the SELECT statement
     query = f"""
         SELECT 
             t.name,
@@ -143,12 +120,9 @@ def get_tasks_for_week(week_start, week_end):
             t.custom_assigned_date,
             t.custom_no_of_people,
             t.status,
-            t.color,
-            t.project,
             -- Get parent task info if this is a subtask
             pt.subject as parent_subject,
-            pt.custom_customer_name as parent_customer_name,
-            pt.color as parent_color
+            pt.custom_customer_name as parent_customer_name
         FROM `tabTask` t
         LEFT JOIN `tabTask` pt ON t.parent_task = pt.name
         WHERE 
@@ -186,12 +160,10 @@ def get_tasks_for_week(week_start, week_end):
         # Add dependent tasks
         dependent_task_names = list(set([d.task for d in dependencies]))
         if dependent_task_names:
-            # Updated dependent tasks query to include color field
             dependent_tasks = frappe.db.sql(f"""
                 SELECT name, subject, custom_customer_name, custom_customer,
                        exp_start_date, exp_end_date, custom_assigned_date, 
-                       custom_no_of_people, custom_customer_groups, status,
-                       color, project
+                       custom_no_of_people,custom_customer_groups, status
                 FROM `tabTask`
                 WHERE name IN ({','.join(['%s'] * len(dependent_task_names))})
             """, dependent_task_names, as_dict=True)
@@ -208,21 +180,10 @@ def get_tasks_for_week(week_start, week_end):
                         dt.exp_end_date = dt.exp_end_date or parent_task.exp_end_date
                         # Also inherit custom_assigned_date if not set
                         dt.custom_assigned_date = dt.custom_assigned_date or parent_task.custom_assigned_date
-                        # Inherit color from parent if subtask doesn't have one
-                        dt.color = dt.color or parent_task.color
             
             tasks.extend(dependent_tasks)
     
-    # Optional: Add color inheritance logic for tasks without colors
-    for task in tasks:
-        # If task doesn't have a color but has a parent, try to inherit parent's color
-        if not task.get('color') and task.get('parent_task'):
-            parent_task = next((t for t in tasks if t.name == task.parent_task), None)
-            if parent_task and parent_task.get('color'):
-                task['color'] = parent_task['color']
-    
     return tasks
-
 def get_active_instructors():
     """Get all active instructors with their qualifications and position"""
     return frappe.db.sql("""
@@ -735,19 +696,3 @@ def bulk_toggle_blackouts(instructor, slots, week_start_date):
         toggled.append(f"{date} {slot}")
 
     return {"message": f"Toggled {len(toggled)} blackout slots."}
-
-import frappe
-from frappe.utils.pdf import get_pdf  # works across newer versions
-
-@frappe.whitelist()
-def generate_calendar_pdf(html_content, filename=None):
-	try:
-		pdf = get_pdf(html_content)  # replaces get_pdf_from_html
-
-		frappe.local.response.filename = filename or "Instructor-Calendar.pdf"
-		frappe.local.response.filecontent = pdf
-		frappe.local.response.type = "download"
-	except Exception as e:
-		frappe.log_error(f"PDF generation failed: {e}")
-		frappe.local.response.http_status_code = 500
-		frappe.local.response.message = str(e)

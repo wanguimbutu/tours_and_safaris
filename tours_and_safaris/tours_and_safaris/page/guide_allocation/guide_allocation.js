@@ -164,10 +164,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					const taskObj = {
 						name: allocation.allocation_id,
 						subject: allocation.detail_activity_name || allocation.activity_name,
-						custom_customer_name: originalTask?.custom_customer_name || allocation.customer || 'Unknown',
-						// IMPORTANT: Preserve the original task's color
-						color: originalTask?.color || null,
-						original_task_name: allocation.task_name // Keep reference to original task
+						custom_customer_name: originalTask?.custom_customer_name || allocation.customer || 'Unknown'
 					};
 					
 					instructorAssignments[instructor].push({
@@ -213,14 +210,9 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			return "AM";
 		},
 
-		getColorForTask(task) {
-			// Use task's color field if available, otherwise fall back to customer-based color
-			if (task.color && task.color.trim()) {
-				return task.color;
-			}
+		getColorForCustomer(customerName) {
+			if (!customerName) customerName = "Unknown";
 			
-			// Fallback to customer-based color generation
-			const customerName = task.custom_customer_name || "Unknown";
 			const colors = [
 				"#FFB6C1", "#FFD700", "#ADFF2F", "#40E0D0", "#FFA07A",
 				"#87CEFA", "#9370DB", "#FF69B4", "#98FB98", "#F08080"
@@ -232,7 +224,6 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			const index = Math.abs(hash) % colors.length;
 			return colors[index];
 		},
-
 
 		getWeekDays() {
 			const weekDays = [];
@@ -658,61 +649,44 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 
 
 	async function assignTaskAcrossWeek(task, instructorName) {
-    const weekKey = currentWeekStart.format('YYYY-MM-DD');
-    const data = weekData[weekKey];
-    const assignments = data.instructorAssignments[instructorName] || [];
+	const weekKey = currentWeekStart.format('YYYY-MM-DD');
+	const data = weekData[weekKey];
+	const assignments = data.instructorAssignments[instructorName] || [];
 
-    const taskStart = moment(task.exp_start_date).startOf('day');
-    const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
-    const taskColor = Methods.getColorForTask(task);
+	const taskStart = moment(task.exp_start_date).startOf('day');
+	const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
 
-    let successCount = 0;
+	let successCount = 0;
 
-    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-        const slotDate = moment(currentWeekStart).add(dayIndex, 'days');
+	for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+		const slotDate = moment(currentWeekStart).add(dayIndex, 'days');
 
-        // Only assign if slotDate is within task range
-        if (!slotDate.isBetween(taskStart, taskEnd, null, '[]')) continue;
+		// ✅ Only assign if slotDate is within task range
+		if (!slotDate.isBetween(taskStart, taskEnd, null, '[]')) continue;
 
-        for (let slot of ['AM', 'PM']) {
-            const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
-            if (isOccupied) continue;
+		for (let slot of ['AM', 'PM']) {
+			const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
+			if (isOccupied) continue;
 
-            try {
-                await Methods.createAllocation(task.name, dayIndex, slot, instructorName);
-                successCount++;
+			try {
+				await Methods.createAllocation(task.name, dayIndex, slot, instructorName);
+				successCount++;
+				break; // one assignment per day
+			} catch (err) {
+				console.error(`Failed to assign on ${slotDate.format('ddd')} ${slot}`, err);
+			}
+			const selector = `.assignable-slot[data-instructor="${dayCell.instructor}"][data-day-index="${dayCell.dayIndex}"][data-slot="${dayCell.slot}"]`;
+				$(selector).removeClass('assigned-cell').removeAttr('data-assigned');
 
-                // Update the visual representation with the task's color
-                const selector = `.assignable-slot[data-instructor="${instructorName}"][data-day-index="${dayIndex}"][data-slot="${slot}"]`;
-                const $cell = $(selector);
-                
-                $cell
-                .removeClass('assignable-slot')
-                .addClass('assigned-task')
-                .attr('data-task-color', taskColor)
-                .html(`
-                    ${task.subject}
-                    <span class="remove-assignment" 
-                    style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
-                `)
-                .css({
-                    backgroundColor: taskColor,
-                    cursor: 'pointer',
-                    position: 'relative'
-                });
+		}
+	}
 
-                break; // one assignment per day
-            } catch (err) {
-                console.error(`Failed to assign on ${slotDate.format('ddd')} ${slot}`, err);
-            }
-        }
-    }
-
-    if (successCount === 0) {
-        frappe.show_alert(`No available slots for ${instructorName} in task date range`, 5);
-    } else {
-        frappe.show_alert(`Assigned "${task.subject}" to ${instructorName} on ${successCount} day(s)`, 4);
-    }
+	if (successCount === 0) {
+		frappe.show_alert(`No available slots for ${instructorName} in task date range`, 5);
+	} else {
+		frappe.show_alert(`Assigned "${task.subject}" to ${instructorName} on ${successCount} day(s)`, 4);
+		//await loadAndRenderCalendar();
+	}
 }
 
 	
@@ -737,34 +711,28 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
     const weekDays = Methods.getWeekDays();
     const customerMap = {};
 
-	instructors.sort((a, b) => {
-		const posA = typeof a.position === 'number' ? a.position : 999;
-		const posB = typeof b.position === 'number' ? b.position : 999;
-		return posA - posB;
-	});
+	//instructors.sort((a, b) => {
+	//	const posA = typeof a.position === 'number' ? a.position : 999;
+	//	const posB = typeof b.position === 'number' ? b.position : 999;
+	//	return posA - posB;
+	//});
 
 
     $('#week-range-title').text(`${weekDays[0].format('MMM D')} - ${weekDays[6].format('MMM D, YYYY')}`);
 
     tasks.forEach(task => {
-        const customer = task.custom_customer_name || "Unknown";
-        if (!customerMap[customer]) {
-            customerMap[customer] = { 
-                main: [], 
-                sub: [],
-                hasGroups: false,
-                groupsData: [],
-                totalPeople: 0,
-                parentTasks: [],
-                subTasks: [],
-                taskColor: null // Add this to store task color
-            };
-        }
-        
-        // Store the first task's color for this customer (if available)
-        if (!customerMap[customer].taskColor && task.color) {
-            customerMap[customer].taskColor = task.color;
-        }
+		const customer = task.custom_customer_name || "Unknown";
+		if (!customerMap[customer]) {
+			customerMap[customer] = { 
+				main: [], 
+				sub: [],
+				hasGroups: false,
+				groupsData: [],
+				totalPeople: 0,
+				parentTasks: [],
+				subTasks: []
+			};
+		}
 		
 		// Separate parent and sub tasks
 		if (task.parent_task) {
@@ -821,193 +789,185 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
     html += '</tr></thead><tbody>';
 
     function renderTaskRow(label, tasksToRender, color, indent = false) {
-        html += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
-        
-        const taskPlacements = [];
+		html += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
+		
+		const taskPlacements = [];
 
-        tasksToRender.forEach(task => {
-            if (task.custom_assigned_date) {
-                const assignedMoment = moment(task.custom_assigned_date);
-                const dayIndex = assignedMoment.diff(moment(currentWeekStart), 'days');
-                const slot = assignedMoment.hour() < 13 ? 'AM' : 'PM';
-                
-                if (dayIndex >= 0 && dayIndex < 7) {
-                    taskPlacements.push({ task, dayIndex, slot });
-                }
-            } else {
-                const taskStart = moment(task.exp_start_date);
-                const dayIndex = taskStart.diff(moment(currentWeekStart), 'days');
-                const slot = task.assigned_slot || 'AM';
-                
-                if (dayIndex >= 0 && dayIndex < 7) {
-                    taskPlacements.push({ task, dayIndex, slot });
-                }
-            }
-        });
+		tasksToRender.forEach(task => {
+			if (task.custom_assigned_date) {
+				const assignedMoment = moment(task.custom_assigned_date);
+				const dayIndex = assignedMoment.diff(moment(currentWeekStart), 'days');
+				const slot = assignedMoment.hour() < 13 ? 'AM' : 'PM';
+				
+				if (dayIndex >= 0 && dayIndex < 7) {
+					taskPlacements.push({ task, dayIndex, slot });
+				}
+			} else {
+				const taskStart = moment(task.exp_start_date);
+				const dayIndex = taskStart.diff(moment(currentWeekStart), 'days');
+				const slot = task.assigned_slot || 'AM';
+				
+				if (dayIndex >= 0 && dayIndex < 7) {
+					taskPlacements.push({ task, dayIndex, slot });
+				}
+			}
+		});
 
-        const renderedTaskNames = new Set();
+		const renderedTaskNames = new Set();
 
-        weekDays.forEach((day, dayIndex) => {
-            ['AM', 'PM'].forEach(slot => {
-                const slotTasks = Methods.getTasksForSlot(tasksToRender, day, slot).filter(task => {
-                    return !renderedTaskNames.has(task.name);
-                });
+		weekDays.forEach((day, dayIndex) => {
+			['AM', 'PM'].forEach(slot => {
+				const slotTasks = Methods.getTasksForSlot(tasksToRender, day, slot).filter(task => {
+					return !renderedTaskNames.has(task.name);
+				});
 
-                let backgroundStyle = '';
-                
-                const currentDay = day.clone().startOf('day');
-                
-                const coveringTasks = tasksToRender.filter(task => {
-                    const taskStart = moment(task.original_exp_start_date || task.exp_start_date).startOf('day');
-                    const taskEnd = moment(task.original_exp_end_date || task.exp_end_date || task.exp_start_date).startOf('day');
-                    
-                    return currentDay.isBetween(taskStart, taskEnd, null, '[]');
-                });
+				let backgroundStyle = '';
+				
+				// Enhanced background highlighting for date ranges
+				const currentDay = day.clone().startOf('day');
+				
+				// Check if any task's date range covers this day
+				const coveringTasks = tasksToRender.filter(task => {
+					const taskStart = moment(task.original_exp_start_date || task.exp_start_date).startOf('day');
+					const taskEnd = moment(task.original_exp_end_date || task.exp_end_date || task.exp_start_date).startOf('day');
+					
+					return currentDay.isBetween(taskStart, taskEnd, null, '[]');
+				});
 
-                if (coveringTasks.length > 0) {
-                    // Use the first covering task's color for the background
-                    const taskColor = Methods.getColorForTask(coveringTasks[0]);
-                    const lightColor = taskColor + '33'; 
-                    backgroundStyle = `background-color: ${lightColor}; border: 1px solid ${taskColor}55;`;
-                }
+				if (coveringTasks.length > 0) {
+					const lightColor = color + '33'; 
+					backgroundStyle = `background-color: ${lightColor}; border: 1px solid ${color}55;`;
+				}
 
-                html += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px; ${backgroundStyle}">`;
+				html += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px; ${backgroundStyle}">`;
 
-                if (slotTasks.length > 0) {
-                    slotTasks.forEach(task => {
-                        const taskColor = Methods.getColorForTask(task);
-                        html += Methods.makeTaskCellClickable(task, dayIndex, slot, taskColor, true);
-                        renderedTaskNames.add(task.name);
-                    });
-                }
+				if (slotTasks.length > 0) {
+					slotTasks.forEach(task => {
+						html += Methods.makeTaskCellClickable(task, dayIndex, slot, color, true);
+						renderedTaskNames.add(task.name);
+					});
+				}
 
-                html += `</td>`;
-            });
-        });
+				html += `</td>`;
+			});
+		});
 
-        html += '</tr>';
-    }
+		html += '</tr>';
+	}
 
-    // Update the customer rendering loop to use task colors
+
     for (const [customer, grouped] of Object.entries(customerMap)) {
-        // Use task color if available, otherwise fall back to customer-based color
-        const color = grouped.taskColor || Methods.getColorForTask(customer);
-        
-        if (grouped.main.length > 0 || grouped.subTasks.length > 0) {
-            const peopleCount = grouped.totalPeople;
-            
-            if (grouped.hasGroups && grouped.groupsData.length > 0) {
-                const customerLabel = peopleCount > 0 ? 
-                    `<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>` : 
-                    `<strong>${customer}</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>`;
-                
-                renderTaskRow(customerLabel, grouped.parentTasks, color);
-                
-                grouped.groupsData.forEach((group, index) => {
-                    const groupSubTasks = grouped.subTasks.filter(subTask => {
-                        return subTask.custom_group_name === group.group_name || 
-                            subTask.custom_group_index === index ||
-                            subTask.subject.includes(group.group_name) ||
-                            (subTask.custom_customer_groups && 
-                                subTask.custom_customer_groups.includes(group.group_name));
-                    });
-                    
-                    const groupLabel = `<span class="group-row">├─ ${group.group_name} (${group.people_count} people)</span>`;
-                    renderTaskRow(groupLabel, groupSubTasks, color, true);
-                });
-            } else {
-                const customerLabel = peopleCount > 0 ? 
-                    `<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-primary split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="split">Split Groups</button>` : 
-                    `<strong>${customer}</strong>`;
-                
-                renderTaskRow(customerLabel, grouped.parentTasks, color);
-                
-                if (grouped.subTasks.length > 0) {
-                    grouped.subTasks.forEach(subTask => {
-                        const subTaskLabel = `<span class="group-row">├─ ${subTask.subject} ${subTask.custom_group_name ? '(' + subTask.custom_group_name + ')' : ''}</span>`;
-                        const subTaskColor = Methods.getColorForTask(subTask);
-                        renderTaskRow(subTaskLabel, [subTask], subTaskColor, true);
-                    });
-                }
-            }
-        }
-    }
+		const color = Methods.getColorForCustomer(customer);
+		if (grouped.main.length > 0 || grouped.subTasks.length > 0) {
+			const peopleCount = grouped.totalPeople;
+			
+			if (grouped.hasGroups && grouped.groupsData.length > 0) {
+				// Render main customer row
+				const customerLabel = peopleCount > 0 ? 
+					`<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>` : 
+					`<strong>${customer}</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>`;
+				
+				renderTaskRow(customerLabel, grouped.parentTasks, color);
+				
+				// Render group subtasks
+				grouped.groupsData.forEach((group, index) => {
+					// Find subtasks for this group 
+					const groupSubTasks = grouped.subTasks.filter(subTask => {
+					
+						return subTask.custom_group_name === group.group_name || 
+							subTask.custom_group_index === index ||
+							subTask.subject.includes(group.group_name) ||
+							(subTask.custom_customer_groups && 
+								subTask.custom_customer_groups.includes(group.group_name));
+					});
+					
+					console.log(`Group ${group.group_name} subtasks:`, groupSubTasks.map(t => ({
+						name: t.name,
+						subject: t.subject,
+						custom_group_name: t.custom_group_name,
+						parent_task: t.parent_task
+					})));
+					
+					const groupLabel = `<span class="group-row">├─ ${group.group_name} (${group.people_count} people)</span>`;
+					renderTaskRow(groupLabel, groupSubTasks, color, true);
+				});
+			} else {
+				// Render main customer with option to split
+				const customerLabel = peopleCount > 0 ? 
+					`<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-primary split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="split">Split Groups</button>` : 
+					`<strong>${customer}</strong>`;
+				
+				// Show parent tasks
+				renderTaskRow(customerLabel, grouped.parentTasks, color);
+				
+				// Show any existing subtasks
+				if (grouped.subTasks.length > 0) {
+					grouped.subTasks.forEach(subTask => {
+						const subTaskLabel = `<span class="group-row">├─ ${subTask.subject} ${subTask.custom_group_name ? '(' + subTask.custom_group_name + ')' : ''}</span>`;
+						renderTaskRow(subTaskLabel, [subTask], color, true);
+					});
+				}
+			}
+		}
+	}
     // Render instructors 
     instructors.forEach(instr => {
-    html += `<tr><td>
-<span class="text-primary">— ${instr.instructor_name}</span>
-<button class="btn btn-xs btn-outline-dark ml-2 blackout-toggle" 
-        data-instructor="${instr.name}">
-    <i class="fa fa-eye-slash"></i> Blackout
-</button>
+        html += `<tr><td>
+    <span class="text-primary">— ${instr.instructor_name}</span>
+    <button class="btn btn-xs btn-outline-dark ml-2 blackout-toggle" 
+            data-instructor="${instr.name}">
+        <i class="fa fa-eye-slash"></i> Blackout
+    </button>
 </td>`;
 
-    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-        ['AM', 'PM'].forEach(slot => {
-            const isBlackout = data.blackouts?.[instr.name]?.[`${dayIndex}_${slot}`];
-            const assigned = (instructorAssignments[instr.name] || []).find(
-                a => a.dayIndex === dayIndex && a.slot === slot
-            );
+        for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+			['AM', 'PM'].forEach(slot => {
+				const isBlackout = data.blackouts?.[instr.name]?.[`${dayIndex}_${slot}`];
+				const assigned = (instructorAssignments[instr.name] || []).find(
+					a => a.dayIndex === dayIndex && a.slot === slot
+				);
 
-            if (isBlackout) {
-                html += `<td class="blackout-slot drop-zone" 
-                    data-instructor="${instr.name}" 
-                    data-day-index="${dayIndex}" 
-                    data-slot="${slot}" 
-                    style="background: repeating-linear-gradient(45deg,#ccc,#ccc 10px,#bbb 10px,#bbb 20px); 
-                        color: #555; 
-                        text-align: center; 
-                        min-height: 40px; 
-                        cursor: not-allowed;">
-                    <em>Blackout</em>
-                </td>`;
-            } else if (assigned) {
-                // Use the assigned task's original color if available
-                let assignedColor;
-                if (assigned.task.color) {
-                    // Use the task's own color
-                    assignedColor = assigned.task.color;
-                } else {
-                    // Fallback: find the original task in the tasks array and get its color
-                    const originalTask = tasks.find(t => 
-                        t.name === assigned.task.original_task_name || 
-                        t.name === assigned.task.name ||
-                        t.subject === assigned.task.subject
-                    );
-                    if (originalTask && originalTask.color) {
-                        assignedColor = originalTask.color;
-                    } else {
-                        // Final fallback: use customer-based color
-                        assignedColor = Methods.getColorForTask(assigned.task.custom_customer_name || 'Unknown');
-                    }
-                }
+				if (isBlackout) {
+					html += `<td class="blackout-slot drop-zone" 
+						data-instructor="${instr.name}" 
+						data-day-index="${dayIndex}" 
+						data-slot="${slot}" 
+						style="background: repeating-linear-gradient(45deg,#ccc,#ccc 10px,#bbb 10px,#bbb 20px); 
+							color: #555; 
+							text-align: center; 
+							min-height: 40px; 
+							cursor: not-allowed;">
+						<em>Blackout</em>
+					</td>`;
+				} else if (assigned) {
+					const customerForColor = assigned.task.custom_customer_name || 'Unknown';
+					const assignedColor = Methods.getColorForCustomer(customerForColor);
 
-                html += `<td class="assigned-task drop-zone" 
-                    data-instructor="${instr.name}" 
-                    data-day-index="${dayIndex}" 
-                    data-slot="${slot}" 
-                    data-task-name="${assigned.task.name}" 
-                    data-subject="${assigned.task.subject}"
-                    data-task-color="${assignedColor}"
-                    style="background:${assignedColor}; cursor:pointer; position: relative; min-height: 40px;">
-                    ${assigned.task.subject} 
-                    <span class="remove-assignment" 
-                        style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
-                </td>`;
-            } else {
-                html += `<td class="assignable-slot drop-zone" 
-                    data-instructor="${instr.name}" 
-                    data-day-index="${dayIndex}" 
-                    data-slot="${slot}" 
-                    style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
-                    <small>${slot}</small>
-                </td>`;
-            }
-        });
-    }
+					html += `<td class="assigned-task drop-zone" 
+						data-instructor="${instr.name}" 
+						data-day-index="${dayIndex}" 
+						data-slot="${slot}" 
+						data-task-name="${assigned.task.name}" 
+						data-subject="${assigned.task.subject}" 
+						style="background:${assignedColor}; cursor:pointer; position: relative; min-height: 40px;">
+						${assigned.task.subject} 
+						<span class="remove-assignment" 
+							style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+					</td>`;
+				} else {
+					html += `<td class="assignable-slot drop-zone" 
+						data-instructor="${instr.name}" 
+						data-day-index="${dayIndex}" 
+						data-slot="${slot}" 
+						style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
+						<small>${slot}</small>
+					</td>`;
+				}
+			});
+		}
 
-    html += '</tr>';
-});
+        html += '</tr>';
+    });
 
     html += '</tbody></table></div>';
 	html += `
@@ -1061,6 +1021,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				const existingIndex = selectedTasks.findIndex(t => t.name === taskData.name);
 				
 				if (existingIndex >= 0) {
+					// Deselect if already selected
 					selectedTasks.splice(existingIndex, 1);
 					$(this).removeClass('multi-selected-task');
 				} else {
@@ -1418,69 +1379,68 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
 
 
 $('#calendar-container').on('click', '.assignable-slot', async function (e) {
-    e.preventDefault();
-    e.stopPropagation();
+	e.preventDefault();
+	e.stopPropagation();
 
-    const instructor = $(this).data('instructor');
-    const dayIndex = parseInt($(this).data('day-index'));
-    const slot = $(this).data('slot');
+	const instructor = $(this).data('instructor');
+	const dayIndex = parseInt($(this).data('day-index'));
+	const slot = $(this).data('slot');
 
-    // Handle blackout mode
-    if (blackoutModeInstructor === instructor) {
-        const $cell = $(this);
-        const alreadySelected = blackoutSelections.find(b => b.dayIndex === dayIndex && b.slot === slot);
+	// Handle blackout mode
+	if (blackoutModeInstructor === instructor) {
+		const $cell = $(this);
+		const alreadySelected = blackoutSelections.find(b => b.dayIndex === dayIndex && b.slot === slot);
 
-        if (alreadySelected) {
-            blackoutSelections = blackoutSelections.filter(b => !(b.dayIndex === dayIndex && b.slot === slot));
-            $cell.removeClass('blackout-selected');
-        } else {
-            blackoutSelections.push({ instructor, dayIndex, slot });
-            $cell.addClass('blackout-selected');
-        }
-        return;
-    }
+		if (alreadySelected) {
+			blackoutSelections = blackoutSelections.filter(b => !(b.dayIndex === dayIndex && b.slot === slot));
+			$cell.removeClass('blackout-selected');
+		} else {
+			blackoutSelections.push({ instructor, dayIndex, slot });
+			$cell.addClass('blackout-selected');
+		}
+		return;
+	}
 
-    // Multi-select mode
-    if (multiSelectMode && selectedTasks.length > 0) {
-        await assignMultipleTasksFromStartCell(instructor, dayIndex, slot);
-        return;
-    }
+	// Multi-select mode (you can remove this if you're not using it anymore)
+	if (multiSelectMode && selectedTasks.length > 0) {
+		await assignMultipleTasksFromStartCell(instructor, dayIndex, slot);
+		return;
+	}
 
-    // Assign single selected task
-    if (selectedTask) {
-        try {
-            $(this).html('<small>Assigning...</small>');
+	//  Assign single selected task
+	if (selectedTask) {
+		try {
+			$(this).html('<small>Assigning...</small>');
 
-            await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
+			await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
 
-            // VISUAL UPDATE ONLY (no refresh) - use task's original color
-            const $cell = $(this);
-            const color = Methods.getColorForTask(selectedTask);
+		// VISUAL UPDATE ONLY (no refresh)
+		const $cell = $(this);
+		const color = Methods.getColorForCustomer(selectedTask.custom_customer_name);
 
-            $cell
-            .removeClass('assignable-slot')
-            .addClass('assigned-task')
-            .attr('data-task-color', color) // Store the color for future reference
-            .html(`
-                ${selectedTask.subject}
-                <span class="remove-assignment" 
-                style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
-            `)
-            .css({
-                backgroundColor: color,
-                cursor: 'pointer',
-                position: 'relative'
-            });
+		$cell
+		.removeClass('assignable-slot')
+		.addClass('assigned-task')
+		.html(`
+			${selectedTask.subject}
+			<span class="remove-assignment" 
+			style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+		`)
+		.css({
+			backgroundColor: color,
+			cursor: 'pointer',
+			position: 'relative'
+		});
 
-        } catch (error) {
-            console.error('Assignment error:', error);
-            frappe.show_alert(error.message || 'Error assigning task', 5);
-            $(this).html(`<small>${slot}</small>`);
-        }
-    } else {
-        frappe.show_alert('Please select a task first by clicking on it', 4);
-    }
-});
+				} catch (error) {
+					console.error('Assignment error:', error);
+					frappe.show_alert(error.message || 'Error assigning task', 5);
+					$(this).html(`<small>${slot}</small>`);
+				}
+			} else {
+				frappe.show_alert('Please select a task first by clicking on it', 4);
+			}
+		});
 
 	$('#calendar-container').on('click', '.remove-assignment', async function (e) {
 			e.preventDefault();
@@ -1622,58 +1582,60 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 		}
 		
 		$(document).on('keydown', async function (e) {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-        e.preventDefault();
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+				e.preventDefault();
 
-        if (!selectedTask) {
-            frappe.show_alert("Please select a task to paste.", 4);
-            return;
-        }
+				if (!selectedTask) {
+					frappe.show_alert("Please select a task to paste.", 4);
+					return;
+				}
 
-        if (!selectedRangeCells || selectedRangeCells.length === 0) {
-            frappe.show_alert("No cells selected. Highlight cells first.", 4);
-            return;
-        }
+				if (!selectedRangeCells || selectedRangeCells.length === 0) {
+					frappe.show_alert("No cells selected. Highlight cells first.", 4);
+					return;
+				}
 
-        let taskStart = moment(selectedTask.exp_start_date).startOf('day');
-        let taskEnd = moment(selectedTask.exp_end_date || selectedTask.exp_start_date).startOf('day');
-        const taskColor = Methods.getColorForTask(selectedTask);
+				let taskStart = moment(selectedTask.exp_start_date).startOf('day');
+				let taskEnd = moment(selectedTask.exp_end_date || selectedTask.exp_start_date).startOf('day');
 
-        let count = 0;
-        for (const cell of selectedRangeCells) {
-            const cellDate = moment(currentWeekStart).add(cell.dayIndex, 'days').startOf('day');
-            const inRange = cellDate.isBetween(taskStart, taskEnd, null, '[]');
+				let count = 0;
+					for (const cell of selectedRangeCells) {
+					const cellDate = moment(currentWeekStart).add(cell.dayIndex, 'days').startOf('day');
+					const inRange = cellDate.isBetween(taskStart, taskEnd, null, '[]');
 
-            if (!inRange) continue;
+					if (!inRange) continue;
 
-            try {
-                await Methods.createAllocation(selectedTask.name, cell.dayIndex, cell.slot, cell.instructor);
-                count++;
+					try {
+						await Methods.createAllocation(selectedTask.name, cell.dayIndex, cell.slot, cell.instructor);
+						count++;
 
-                const selector = `.assignable-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
-                const $cell = $(selector);
+						const selector = `.assignable-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
+						const $cell = $(selector);
 
-                $cell
-                .removeClass('assignable-slot multi-cell-selected')
-                .addClass('assigned-task')
-                .attr('data-task-color', taskColor) // Store the color
-                .html(`
-                    ${selectedTask.subject}
-                    <span class="remove-assignment" 
-                    style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
-                `)
-                .css({
-                    backgroundColor: taskColor,
-                    cursor: 'pointer',
-                    position: 'relative'
-                });
+						const color = Methods.getColorForCustomer(selectedTask.custom_customer_name);
 
-            } catch (err) {
-                console.error(`Failed to assign to ${cell.instructor} ${cell.dayIndex} ${cell.slot}`, err);
-            }
-        }
-    }
-});
+						$cell
+						.removeClass('assignable-slot multi-cell-selected')
+						.addClass('assigned-task')
+						.html(`
+							${selectedTask.subject}
+							<span class="remove-assignment" 
+							style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+						`)
+						.css({
+							backgroundColor: color,
+							cursor: 'pointer',
+							position: 'relative'
+						});
+
+					} catch (err) {
+						console.error(`Failed to assign to ${cell.instructor} ${cell.dayIndex} ${cell.slot}`, err);
+					}
+				
+				}
+			}
+		});
+
 
 		$(document).on('click', '#manual-refresh', async function () {
 			await loadAndRenderCalendar();
