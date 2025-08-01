@@ -179,7 +179,7 @@ def create_quotation(inquiry_name):
         "doctype": "Quotation",
         "quotation_to":"Customer",  
         "party_name": inquiry.customer,
-        "arrival_date": inquiry.from_date,
+        "custom_arrival_date": inquiry.from_date,
         "depature_date": inquiry.to_date,
         "custom_booking_inquiry": inquiry.name,
         "custom_no_of_people": inquiry.no_of_people,
