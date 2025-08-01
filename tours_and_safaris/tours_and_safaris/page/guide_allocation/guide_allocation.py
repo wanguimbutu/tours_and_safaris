@@ -202,6 +202,7 @@ def get_active_instructors():
         ORDER BY CAST(COALESCE(i.position, 999) AS UNSIGNED) ASC, i.name1 ASC
     """, as_dict=True)
 
+
 def get_existing_allocations_optimized(week_start, week_end):
     """Get all allocations for the week in single optimized query"""
     return frappe.db.sql("""
