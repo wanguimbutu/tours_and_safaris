@@ -11,6 +11,7 @@
   "supplier",
   "column_break_lqsf",
   "enabled",
+  "position",
   "section_break_efvn",
   "activity_levels"
  ],
@@ -47,11 +48,16 @@
    "fieldname": "enabled",
    "fieldtype": "Check",
    "label": "Enabled"
+  },
+  {
+   "fieldname": "position",
+   "fieldtype": "Data",
+   "label": "Position"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-22 14:49:47.853359",
+ "modified": "2025-07-30 10:11:31.716148",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Instructor",

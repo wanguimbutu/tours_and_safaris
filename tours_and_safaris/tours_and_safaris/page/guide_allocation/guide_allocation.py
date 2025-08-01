@@ -79,7 +79,7 @@ def get_week_data(week_start_date):
             "tasks": tasks,
             "instructors": instructors,
             "allocations": allocations,
-            "blackouts": blackout_map,  # ✅ Added blackout support here
+            "blackouts": blackout_map,  
             "week_start": str(week_start),
             "week_end": str(week_end)
         }
@@ -148,7 +148,7 @@ def get_tasks_for_week(week_start, week_end):
     # Pass the week_start and week_end parameters for both conditions
     tasks = frappe.db.sql(query, (week_start, week_end, week_end, week_start), as_dict=True)
     
-    # Process task dependencies in single query
+    
     task_names = [t.name for t in tasks]
     if task_names:
         dependencies = frappe.db.sql("""
