@@ -190,7 +190,7 @@ def get_active_instructors():
         SELECT 
             i.name,
             i.name1 AS instructor_name,
-            i.position, 
+            CAST(COALESCE(i.position, 999) AS UNSIGNED) as position,
             GROUP_CONCAT(
                 CONCAT(ial.activity_name, ':', COALESCE(ial.qualification, ''))
                 SEPARATOR '|'
@@ -199,9 +199,8 @@ def get_active_instructors():
         LEFT JOIN `tabInstructor Activity Level` ial ON ial.parent = i.name
         WHERE i.enabled = 1
         GROUP BY i.name, i.name1, i.position
-        ORDER BY i.position ASC, i.name1 ASC  -- Optional: already sorted from backend
+        ORDER BY CAST(COALESCE(i.position, 999) AS UNSIGNED) ASC, i.name1 ASC
     """, as_dict=True)
-
 
 def get_existing_allocations_optimized(week_start, week_end):
     """Get all allocations for the week in single optimized query"""
