@@ -19,6 +19,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		<div class="mb-3">
 			<button id="manual-refresh" class="btn btn-sm btn-outline-primary">🔄 Refresh Calendar</button>
 		</div>
+		
         <div id="loading-indicator" class="text-center" style="display: none;">
             <div class="spinner-border" role="status">
                 <span class="sr-only">Loading...</span>
@@ -1116,7 +1117,9 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 		});
 
 		// Handle drop
-		$('#calendar-container').on('drop', '.drop-zone', async function (e) {
+		// Handle drop
+// Handle drop
+$('#calendar-container').on('drop', '.drop-zone', async function (e) {
     e.preventDefault();
 
     const originalContent = $(this).html();
@@ -1127,47 +1130,94 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
         return;
     }
 
+    // Preserve draggedTask data before it gets cleared
+    const taskData = {
+        taskName: draggedTask.taskName,
+        taskSubject: draggedTask.taskSubject,
+        customer: draggedTask.customer,
+        expStart: draggedTask.expStart,
+        expEnd: draggedTask.expEnd,
+        originalDayIndex: draggedTask.originalDayIndex,
+        originalSlot: draggedTask.originalSlot
+    };
+
     try {
         const targetDayIndex = parseInt($(this).data('day-index'));
-        const targetSlot = $(this).data('slot') || draggedTask.originalSlot;
+        const targetSlot = $(this).data('slot') || taskData.originalSlot;
         const targetDay = moment(currentWeekStart).add(targetDayIndex, 'days');
 
         $('.drop-zone').removeClass('drag-over drag-valid drag-invalid');
 
         const canMove = Methods.canTaskBeMoved({
-            exp_start_date: draggedTask.expStart,
-            exp_end_date: draggedTask.expEnd
+            exp_start_date: taskData.expStart,
+            exp_end_date: taskData.expEnd
         }, targetDay);
 
         if (!canMove) {
             frappe.show_alert(`Task cannot be moved to ${targetDay.format('MMM D')}`, 5);
-            draggedTask = null;
             return;
         }
 
-        if (targetDayIndex === draggedTask.originalDayIndex && targetSlot === draggedTask.originalSlot) {
-            draggedTask = null;
+        // If dropping in the same location, do nothing
+        if (targetDayIndex === taskData.originalDayIndex && targetSlot === taskData.originalSlot) {
             return;
         }
 
+        // Show loading state
         $(this).html('<small>Moving...</small>');
 
         const newDate = targetDay.format('YYYY-MM-DD');
-        await Methods.updateTaskSchedule(draggedTask.taskName, newDate, targetSlot);
+        
+        // Update task schedule on backend
+        await Methods.updateTaskSchedule(taskData.taskName, newDate, targetSlot);
 
-        //frappe.show_alert(`Moved ${draggedTask.taskSubject} to ${targetDay.format('MMM D')} ${targetSlot}`, 3);
-        await loadAndRenderCalendar();  
+        // SUCCESS: Update the UI visually without refresh
+        
+        // 1. Find and clear the original cell
+        const originalSelector = `.draggable-task[data-task-name="${taskData.taskName}"]`;
+        const $originalCell = $(originalSelector).closest('td');
+        if ($originalCell.length) {
+            // If it was the only task in that cell, clear it
+            const $taskElements = $originalCell.find('.draggable-task');
+            if ($taskElements.length === 1) {
+                // This was the only task, clear the cell
+                $originalCell.html('');
+            } else {
+                // Remove just this task element
+                $(originalSelector).remove();
+            }
+        }
+
+        // 2. Clear the loading state and add the task to the new cell
+        const color = Methods.getColorForCustomer(taskData.customer);
+        const taskHtml = Methods.makeTaskCellClickable({
+            name: taskData.taskName,
+            subject: taskData.taskSubject,
+            custom_customer_name: taskData.customer,
+            custom_no_of_people: '', 
+            exp_start_date: newDate,
+            exp_end_date: newDate,
+            original_exp_start_date: taskData.expStart,
+            original_exp_end_date: taskData.expEnd
+        }, targetDayIndex, targetSlot, color, true);
+
+        // Replace the "Moving..." text with the task content
+        $(this).html(originalContent + taskHtml);
+
+        // Show success message
+        frappe.show_alert(`Moved ${taskData.taskSubject} to ${targetDay.format('MMM D')} ${targetSlot}`, 3);
 
     } catch (error) {
         console.error('Error moving task:', error);
         frappe.show_alert('Error moving task: ' + (error.message || 'Unknown error'), 5);
+        // Restore original content on error
         $(this).html(originalContent);
     } finally {
+        // Always clear draggedTask at the end
         draggedTask = null;
     }
 });
 	}
-
 	function updateMultiSelectUI() {
 	const count = selectedTasks.length;
 	$('#selected-count').text(`${count} task${count !== 1 ? 's' : ''} selected`);
