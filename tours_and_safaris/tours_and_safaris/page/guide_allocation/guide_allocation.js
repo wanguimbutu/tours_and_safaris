@@ -1023,16 +1023,19 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 
                 if (isBlackout) {
                     html += `<td class="blackout-slot drop-zone" 
-                        data-instructor="${instr.name}" 
-                        data-day-index="${dayIndex}" 
-                        data-slot="${slot}" 
-                        style="background: repeating-linear-gradient(45deg,#ccc,#ccc 10px,#bbb 10px,#bbb 20px); 
-                            color: #555; 
-                            text-align: center; 
-                            min-height: 40px; 
-                            cursor: not-allowed;">
-                        <em>Blackout</em>
-                    </td>`;
+						data-instructor="${instr.name}" 
+						data-day-index="${dayIndex}" 
+						data-slot="${slot}" 
+						style="background: repeating-linear-gradient(45deg,#ccc,#ccc 10px,#bbb 10px,#bbb 20px); 
+							color: #555; 
+							text-align: center; 
+							min-height: 40px; 
+							position: relative; 
+							cursor: not-allowed;">
+						<em>Blackout</em>
+						<span class="remove-blackout" 
+							style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+					</td>`;
                 } else if (assigned) {
                     const customerForColor = assigned.task.custom_customer_name || 'Unknown';
                     const assignedColor = Methods.getColorForCustomer(customerForColor);
@@ -1908,76 +1911,113 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 		}
 	});
 
-	$('#calendar-container').on('click', '.blackout-slot', async function(e) {
-			e.preventDefault();
-			e.stopPropagation();
-			
-			const instructor = $(this).data('instructor');
-			const dayIndex = parseInt($(this).data('day-index'));
-			const slot = $(this).data('slot');
-			
-			if (blackoutModeInstructor === instructor) {
-				const alreadySelected = blackoutSelections.find(b => 
-					b.dayIndex === dayIndex && b.slot === slot
-				);
-				
-				if (alreadySelected) {
-					blackoutSelections = blackoutSelections.filter(b => 
-						!(b.dayIndex === dayIndex && b.slot === slot)
-					);
-					$(this).removeClass('blackout-selected');
-				} else {
-					blackoutSelections.push({ instructor, dayIndex, slot });
-					$(this).addClass('blackout-selected');
+	$('#calendar-container').on('click', '.remove-blackout', async function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		const cell = $(this).closest('.blackout-slot');
+		const instructor = cell.data('instructor');
+		const dayIndex = parseInt(cell.data('day-index'));
+		const slot = cell.data('slot');
+
+		try {
+			cell.html('<small>Removing...</small>');
+
+			const response = await frappe.call({
+				method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.toggle_blackout',
+				args: {
+					instructor: instructor,
+					day_index: dayIndex,
+					slot: slot,
+					week_start_date: currentWeekStart.format('YYYY-MM-DD')
 				}
-				return;
+			});
+
+			if (response.message) {
+				frappe.show_alert(`${response.message.message}`, 3);
+				cell.replaceWith(`
+					<td class="assignable-slot drop-zone" 
+						data-instructor="${instructor}" 
+						data-day-index="${dayIndex}" 
+						data-slot="${slot}" 
+						style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
+						<small>${slot}</small>
+					</td>
+				`);
+			} else {
+				throw new Error('Failed to remove blackout');
 			}
-			
-			const dayName = moment(currentWeekStart).add(dayIndex, 'days').format('dddd, MMM D');
-			
-			frappe.confirm(
-				`Remove blackout for ${instructor} on ${dayName} ${slot}?`,
-				async () => {
-					try {
-					
-						const originalContent = $(this).html();
-						$(this).html('<small>Removing...</small>');
-						
-						const response = await frappe.call({
-							method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.toggle_blackout',
-							args: {
-								instructor: instructor,
-								day_index: dayIndex,
-								slot: slot,
-								week_start_date: currentWeekStart.format('YYYY-MM-DD')
-							}
-						});
-						
-						if (response.message) {
-							frappe.show_alert(`${response.message.message}`, 3);
-							
-							$(this).replaceWith(`
-								<td class="assignable-slot drop-zone" 
-									data-instructor="${instructor}" 
-									data-day-index="${dayIndex}" 
-									data-slot="${slot}" 
-									style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
-									<small>${slot}</small>
-								</td>
-							`);
-						} else {
-							throw new Error('Failed to remove blackout');
-						}
-						
-					} catch (error) {
-						console.error('Error removing blackout:', error);
-						frappe.show_alert('Error removing blackout: ' + (error.message || 'Unknown error'), 5);
-			
-						$(this).html(originalContent);
-					}
-				}
+		} catch (err) {
+			console.error('Error removing blackout:', err);
+			frappe.show_alert(err.message || 'Error removing blackout', 5);
+			cell.html(`<em>Blackout</em>
+				<span class="remove-blackout" 
+					style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>`);
+		}
+	});
+
+	$('#calendar-container').on('click', '.blackout-slot', async function(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		
+		const $cell = $(this);
+		const instructor = $cell.data('instructor');
+		const dayIndex = parseInt($cell.data('day-index'));
+		const slot = $cell.data('slot');
+
+		// If blackout mode is active for this instructor, treat it as selection toggle
+		if (blackoutModeInstructor === instructor) {
+			const alreadySelected = blackoutSelections.find(b =>
+				b.dayIndex === dayIndex && b.slot === slot
 			);
-		});
+
+			if (alreadySelected) {
+				blackoutSelections = blackoutSelections.filter(b =>
+					!(b.dayIndex === dayIndex && b.slot === slot)
+				);
+				$cell.removeClass('blackout-selected');
+			} else {
+				blackoutSelections.push({ instructor, dayIndex, slot });
+				$cell.addClass('blackout-selected');
+			}
+			return;
+		}
+
+		try {
+			const originalContent = $cell.html();
+			$cell.html('<small>Removing...</small>');
+
+			const response = await frappe.call({
+				method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.toggle_blackout',
+				args: {
+					instructor: instructor,
+					day_index: dayIndex,
+					slot: slot,
+					week_start_date: currentWeekStart.format('YYYY-MM-DD')
+				}
+			});
+
+			if (response.message) {
+				frappe.show_alert(`${response.message.message}`, 3);
+
+				$cell.replaceWith(`
+					<td class="assignable-slot drop-zone" 
+						data-instructor="${instructor}" 
+						data-day-index="${dayIndex}" 
+						data-slot="${slot}" 
+						style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
+						<small>${slot}</small>
+					</td>
+				`);
+			} else {
+				throw new Error('Failed to remove blackout');
+			}
+		} catch (error) {
+			console.error('Error removing blackout:', error);
+			frappe.show_alert('Error removing blackout: ' + (error.message || 'Unknown error'), 5);
+			$cell.html(originalContent);
+		}
+	});
 
 
 
@@ -2039,37 +2079,45 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 
 				frappe.show_alert(`Updated ${blackoutSelections.length} blackout slots`, 3);
 
-				// VISUAL update
+				// VISUAL update — now includes the × icon
 				for (const blk of blackoutSelections) {
 					const selector = `.assignable-slot[data-instructor="${blk.instructor}"][data-day-index="${blk.dayIndex}"][data-slot="${blk.slot}"]`;
 					const $cell = $(selector);
 
 					$cell
-						.removeClass('assignable-slot')
+						.removeClass('assignable-slot blackout-selected')
 						.addClass('blackout-slot')
-						.removeClass('blackout-selected')
-						.html('<em>Blackout</em>')
 						.css({
 							background: 'repeating-linear-gradient(45deg,#ccc,#ccc 10px,#bbb 10px,#bbb 20px)',
 							color: '#555',
 							textAlign: 'center',
 							minHeight: '40px',
-							cursor: 'not-allowed'
-						});
+							cursor: 'not-allowed',
+							position: 'relative'
+						})
+						.html(`
+							<em>Blackout</em>
+							<span class="remove-blackout" 
+								style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+						`);
 				}
 
-
+				// Clear blackout mode
 				blackoutSelections = [];
 				blackoutModeInstructor = null;
 				$('#submit-blackouts').remove();
 				$('.blackout-selected').removeClass('blackout-selected');
-				$('.blackout-toggle').removeClass('btn-danger').addClass('btn-outline-dark').html('<i class="fa fa-eye-slash"></i> Blackout');
+				$('.blackout-toggle')
+					.removeClass('btn-danger')
+					.addClass('btn-outline-dark')
+					.html('<i class="fa fa-eye-slash"></i> Blackout');
 
 			} catch (err) {
 				console.error('Bulk blackout failed:', err);
 				frappe.show_alert('Error submitting blackout slots', 5);
 			}
 		});
+
 
 
 
