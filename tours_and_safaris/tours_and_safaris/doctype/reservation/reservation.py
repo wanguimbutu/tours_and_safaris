@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import getdate, now_datetime,add_days,nowdate,now
+from frappe.utils import flt, getdate, now_datetime,add_days,nowdate,now
 from datetime import datetime
 from frappe.desk.calendar import get_events as original_get_events
 import json
@@ -246,21 +246,29 @@ def update_calendar_info(doc, method):
     if doc.customer and doc.no_of_people:
         doc.calendar_info = f"{doc.customer} ({doc.no_of_people}) adults:({doc.no_of_adults}) children:({doc.no_of_children})"
 
-from frappe.utils import getdate, now, nowdate
-import frappe
+
+from frappe.utils import getdate, nowdate, now
 
 @frappe.whitelist()
-def reschedule_reservation(reservation_name, new_start_date, new_end_date, reason=None):
+def reschedule_reservation(reservation_name, new_start_date, new_end_date, no_of_people=None, activities=None, meals=None, reason=None):
+    from frappe.utils import getdate, nowdate, now
+    import json
+
     # Parse dates
     new_start = getdate(new_start_date)
     new_end = getdate(new_end_date)
     today = getdate(nowdate())
 
-    # Validate dates
     if new_end <= new_start:
         frappe.throw("End Date must be after Start Date.")
     if new_start < today:
         frappe.throw("Start Date (also used as Delivery Date) cannot be in the past.")
+
+    # Parse tables from JSON
+    if activities and isinstance(activities, str):
+        activities = json.loads(activities)
+    if meals and isinstance(meals, str):
+        meals = json.loads(meals)
 
     # Fetch original reservation
     original = frappe.get_doc("Reservation", reservation_name)
@@ -274,12 +282,10 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, reaso
     original.reschedule_reason = reason
     original.save()
 
-    # Cancel the linked Sales Order if submitted
+    # Cancel old sales order
     sales_order = frappe.get_doc("Sales Order", {"custom_reservation": reservation_name})
     if sales_order.docstatus == 1:
         sales_order.cancel()
-
-        # Cancel linked project, if exists
         if sales_order.project:
             try:
                 project = frappe.get_doc("Project", sales_order.project)
@@ -288,35 +294,145 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, reaso
             except Exception as e:
                 frappe.log_error(f"Failed to cancel project {sales_order.project}: {str(e)}", "Project Status Update Error")
 
-    # Create new reservation based on original
+    # Create new reservation
     new_res = frappe.copy_doc(original)
     new_res.name = None
     new_res.status = "Confirmed Reservation"
     new_res.start_date = new_start
     new_res.end_date = new_end
-    new_res.arrival_date = new_start  # For calendar view
-    new_res.depature_date = new_end   # Spelled as in original model
+    new_res.arrival_date = new_start
+    new_res.depature_date = new_end
+    if no_of_people:
+        new_res.no_of_people = no_of_people
+
+    # Replace activities & meals if passed
+    if activities is not None:
+        new_res.activities = []
+        for act in activities:
+            qty = flt(act.get("qty") or 0)
+            rate = flt(act.get("rate") or 0)
+            amount = qty * rate
+            new_res.append("activities", {
+                "activity_group": act.get("activity_group"),
+                "activity_name": act.get("activity_name"),
+                "qty": qty,
+                "rate": rate,
+                "amount": amount
+            })
+    if meals is not None:
+        new_res.meals = []
+        for meal in meals:
+            qty = flt(meal.get("qty") or 0)
+            rate = flt(meal.get("rate") or 0)
+            amount = qty * rate
+            new_res.append("meals", {
+                "meal_type": meal.get("meal_type"),
+                "qty": qty,
+                "rate": rate,
+                "amount": amount
+            })
+
     new_res.original_reservation = reservation_name
     new_res.rescheduled_on = None
     new_res.reschedule_reason = None
     new_res.flags.ignore_permissions = True
+    new_res.run_method("calculate_taxes_and_totals")
+
     new_res.insert()
     new_res.submit()
 
-    # Create amended Sales Order
-    amended_so = frappe.copy_doc(sales_order)
-    amended_so.name = None
-    amended_so.amended_from = sales_order.name
-    amended_so.docstatus = 0
-    amended_so.custom_reservation = new_res.name
-    amended_so.arrival_date = new_start
-    amended_so.depature_date = new_end
-    amended_so.delivery_date = new_start  # Must not be in the past
-    amended_so.flags.ignore_permissions = True
-    amended_so.insert()
-    amended_so.submit()
+    so = frappe.get_doc({
+        "doctype": "Sales Order",
+        "customer": new_res.customer_name,
+        "arrival_date": new_res.arrival_date,
+        "depature_date": new_res.depature_date,
+        "delivery_date": new_res.depature_date,
+        "custom_reservation": new_res.name,
+        "custom_no_of_people": new_res.no_of_people,
+        "custom_no_of_adults": new_res.no_of_adults,
+        "custom_no_of_children": new_res.no_of_children,
+        "currency": new_res.billing_currency,
+        "custom_is_consolidated": new_res.is_consolidated,
+        "custom_grade": new_res.grade,
+        "custom_is_meals_at_camp": new_res.is_meals_at_camp,
+        "items": []
+    })
 
-    return amended_so.name
+    if new_res.get("is_consolidated"):
+        activity = new_res.activities[0] if new_res.activities else None
+        if activity:
+            so.append("items", {
+                "item_code": activity.item_code or "SC-014",
+                "item_name": activity.activity_name or "Multi Activity",
+                "qty": activity.qty or 1,
+                "rate": activity.rate or 0
+            })
+    else:
+        if new_res.activities:
+            for activity in new_res.activities:
+                so.append("items", {
+                    "item_code": activity.item_code,
+                    "item_name": activity.activity_name,
+                    "qty": activity.qty,
+                    "rate": activity.rate or 0,
+                    "prevdoc_docname": new_res.quotation
+                })
+
+        if new_res.room_type_booking:
+            for room in new_res.room_type_booking:
+                so.append("items", {
+                    "item_code": room.room_type,
+                    "item_name": room.room_type_name or "Room",
+                    "description": f"Room Booking: {room.room_type or 'N/A'}",
+                    "qty": room.qty or 1,
+                    "rate": room.rate or 0,
+                    "prevdoc_docname": new_res.quotation
+                })
+
+        if new_res.tent_selection:
+            for tent in new_res.tent_selection:
+                so.append("items", {
+                    "item_code": tent.tent_type,
+                    "item_name": tent.tent_type or "Tent",
+                    "description": f"Tent: {tent.tent_type or 'N/A'}",
+                    "qty": tent.qty or 1,
+                    "rate": tent.rate or 0,
+                    "prevdoc_docname": new_res.quotation
+                })
+
+        if new_res.transport_service:
+            for transport in new_res.transport_service:
+                so.append("items", {
+                    "item_code": transport.transport_name,
+                    "item_name": transport.item_name,
+                    "qty": transport.qty,
+                    "rate": transport.rate or 0,
+                    "prevdoc_docname": new_res.quotation
+                })
+
+        if new_res.hired_services:
+            for service in new_res.hired_services:
+                so.append("items", {
+                    "item_code": service.service_name,
+                    "item_name": service.name or "Service",
+                    "qty": service.qty,
+                    "rate": service.rate or 0,
+                    "prevdoc_docname": new_res.quotation
+                })
+
+        if new_res.meals:
+            for meal in new_res.meals:
+                so.append("items", {
+                    "item_code": meal.meal_type,
+                    "qty": meal.qty or 1,
+                    "rate": meal.rate or 0,
+                    "prevdoc_docname": new_res.quotation
+                })
+
+    so.insert(ignore_permissions=True)
+    so.submit()
+
+    return {"new_reservation": new_res.name, "new_sales_order": so.name}
 
 @frappe.whitelist()
 def get_events(start, end, filters=None):
