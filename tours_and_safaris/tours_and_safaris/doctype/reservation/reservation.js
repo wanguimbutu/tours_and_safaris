@@ -68,7 +68,7 @@ frappe.ui.form.on("Reservation", {
                         frappe.prompt([
                             { fieldname: 'new_start_date', label: 'New Start Date', fieldtype: 'Date', reqd: true, default: reservation.start_date },
                             { fieldname: 'new_end_date', label: 'New End Date', fieldtype: 'Date', reqd: true, default: reservation.end_date },
-                            { fieldname: 'no_of_people', label: 'No of People', fieldtype: 'Int', reqd: true, default: reservation.no_of_people },
+                            { fieldname: 'no_of_people', label: 'No of People', fieldtype: 'Int', reqd: false, default: reservation.no_of_people },
                             { fieldname: 'reason', label: 'Reason', fieldtype: 'Small Text' },
                             {
                                 fieldname: 'activities',
@@ -84,7 +84,7 @@ frappe.ui.form.on("Reservation", {
                                     amount: row.amount
                                 })),
                                 fields: [
-                                    { fieldtype: 'Link', fieldname: 'activity_group', options: 'Item', label: 'Activity Group', in_list_view: true, reqd: true },
+                                    { fieldtype: 'Link', fieldname: 'activity_group', options: 'Item Group', label: 'Activity Group', in_list_view: true, reqd: true },
                                     { fieldtype: 'Link', fieldname: 'activity_name', label: 'Activity Name', options: 'Activity Type', in_list_view: true, reqd: true },
                                     { fieldtype: 'Int', fieldname: 'qty', label: 'Qty', in_list_view: true, reqd: true },
                                     { fieldtype: 'Currency', fieldname: 'rate', label: 'Rate', in_list_view: true },
