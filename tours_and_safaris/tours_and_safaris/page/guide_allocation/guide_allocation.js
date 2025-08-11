@@ -110,10 +110,14 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			const { tasks, instructors, allocations } = rawData;
 			
 			const processedTasks = tasks.map(task => {
+			// Keep the color from backend task if available
+				const color = task.color || '#ccc'; // use '#ccc' if backend didn't send any
+
 				if (task.custom_assigned_date) {
 					const assignedMoment = moment(task.custom_assigned_date);
 					return {
 						...task,
+						color, // store backend color
 						original_exp_start_date: task.exp_start_date,
 						original_exp_end_date: task.exp_end_date,
 						exp_start_date: assignedMoment.format('YYYY-MM-DD'),
@@ -121,9 +125,13 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 						assigned_slot: assignedMoment.hour() < 13 ? 'AM' : 'PM'
 					};
 				}
-				return task;
+
+				return {
+					...task,
+					color // store backend color
+				};
 			});
-			
+
 			// Separate parent tasks and subtasks
 			const parentTasks = processedTasks.filter(task => !task.parent_task);
 			const subTasks = processedTasks.filter(task => task.parent_task);
@@ -173,7 +181,8 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					const taskObj = {
 						name: allocation.allocation_id,
 						subject: allocation.detail_activity_name || allocation.activity_name,
-						custom_customer_name: originalTask?.custom_customer_name || allocation.customer || 'Unknown'
+						custom_customer_name: originalTask?.custom_customer_name || allocation.customer || 'Unknown',
+						color: allocation.color || originalTask?.color || '#ccc'
 					};
 					
 					instructorAssignments[instructor].push({
@@ -221,17 +230,19 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 
 		getColorForCustomer(customerName) {
 			if (!customerName) customerName = "Unknown";
-			
-			const colors = [
-				"#FFB6C1", "#FFD700", "#ADFF2F", "#40E0D0", "#FFA07A",
-				"#87CEFA", "#9370DB", "#FF69B4", "#98FB98", "#F08080"
-			];
-			let hash = 0;
-			for (let i = 0; i < customerName.length; i++) {
-				hash = customerName.charCodeAt(i) + ((hash << 5) - hash);
+
+			const weekKey = currentWeekStart.format('YYYY-MM-DD');
+			const data = weekData[weekKey];
+			if (data && data.tasks) {
+				const match = data.tasks.find(
+					t => t.custom_customer_name === customerName && t.color
+				);
+				if (match) {
+					return match.color; // ✅ Use only the backend task color
+				}
 			}
-			const index = Math.abs(hash) % colors.length;
-			return colors[index];
+
+			return '#ccc'; // fallback neutral if no color found
 		},
 
 		getWeekDays() {
@@ -302,6 +313,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					data-exp-end="${task.original_exp_end_date || task.exp_end_date || task.exp_start_date}"
 					data-day-index="${dayIndex}" 
 					data-slot="${slot}" 
+					data-task-color="${task.color || ''}"
 					style="${style}; cursor: grab;">
 					${dragHandle}${content}
 				</div>`;
@@ -318,7 +330,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 				data-exp-start="${task.exp_start_date}"
 				data-exp-end="${task.exp_end_date || task.exp_start_date}"
 				data-day-index="${dayIndex}" 
-				data-slot="${slot}" 
+				data-slot="${slot}" #data-task-color="${task.color || ''}"
 				style="background-color: ${color}; cursor: grab; position: relative;">
 				${dragHandle}${content}
 			</td>`;
@@ -947,7 +959,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 
 
     for (const [customer, grouped] of Object.entries(customerMap)) {
-		const color = Methods.getColorForCustomer(customer);
+		const color = grouped.parentTasks[0]?.color || grouped.subTasks[0]?.color || '#ccc';
 		if (grouped.main.length > 0 || grouped.subTasks.length > 0) {
 			const peopleCount = grouped.totalPeople;
 			
@@ -1038,7 +1050,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 					</td>`;
                 } else if (assigned) {
                     const customerForColor = assigned.task.custom_customer_name || 'Unknown';
-                    const assignedColor = Methods.getColorForCustomer(customerForColor);
+                    const assignedColor = assigned.task.color || '#ccc';
 
                     html += `<td class="assigned-task drop-zone" 
                         data-instructor="${instr.name}" 
@@ -1106,6 +1118,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				name: $(this).data('task-name'),
 				subject: $(this).data('task-subject'),
 				custom_customer_name: $(this).data('task-customer'),
+				color: $(this).data('task-color') || Methods.getColorForCustomer($(this).data('task-customer')), // store color
 				exp_start_date: $(this).data('exp-start'),
 				exp_end_date: $(this).data('exp-end'),
 				custom_no_of_people: $(this).data('task-people'),
@@ -1163,7 +1176,9 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 			expStart: $(this).data('exp-start'),
 			expEnd: $(this).data('exp-end'),
 			originalDayIndex: $(this).data('day-index'),
-			originalSlot: $(this).data('slot')
+			originalSlot: $(this).data('slot'),
+			color: $(this).css('background-color'),
+			 color: $(this).data('task-color') || '',
 		};
 
 			
@@ -1285,7 +1300,7 @@ $('#calendar-container').on('drop', '.drop-zone', async function (e) {
         }
 
         // 2. Clear the loading state and add the task to the new cell
-        const color = Methods.getColorForCustomer(taskData.customer);
+        const color = taskData.color || '#ccc';
         const taskHtml = Methods.makeTaskCellClickable({
             name: taskData.taskName,
             subject: taskData.taskSubject,
@@ -1294,7 +1309,8 @@ $('#calendar-container').on('drop', '.drop-zone', async function (e) {
             exp_start_date: newDate,
             exp_end_date: newDate,
             original_exp_start_date: taskData.expStart,
-            original_exp_end_date: taskData.expEnd
+            original_exp_end_date: taskData.expEnd,
+			
         }, targetDayIndex, targetSlot, color, true);
 
         // Replace the "Moving..." text with the task content
@@ -1562,7 +1578,7 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 
 		// VISUAL UPDATE ONLY (no refresh)
 		const $cell = $(this);
-		const color = Methods.getColorForCustomer(selectedTask.custom_customer_name);
+		const color = selectedTask.color || '#ccc';
 
 		$cell
 		.removeClass('assignable-slot')
@@ -1758,7 +1774,8 @@ $('#calendar-container').on('click', '.assignable-slot', async function (e) {
 						const selector = `.assignable-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
 						const $cell = $(selector);
 
-						const color = Methods.getColorForCustomer(selectedTask.custom_customer_name);
+						const color = selectedTask.color || '#ccc';
+
 
 						$cell
 						.removeClass('assignable-slot multi-cell-selected')
