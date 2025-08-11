@@ -292,6 +292,7 @@
    "options": "Room Type Booking"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "proposed_total_cost",
    "fieldtype": "Currency",
    "label": "Proposed Total Cost",
@@ -395,7 +396,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-17 12:42:39.353270",
+ "modified": "2025-08-11 15:06:01.876288",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Reservation",
