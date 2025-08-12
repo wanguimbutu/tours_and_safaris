@@ -54,43 +54,88 @@ frappe.ui.form.on("Reservation", {
         }
         if (frm.doc.docstatus === 1 && frm.doc.status !== "Rescheduled") {
             frm.add_custom_button(__('Reschedule'), function () {
-                frappe.prompt([
-                    {
-                        fieldname: 'new_start_date',
-                        label: 'New Start Date',
-                        fieldtype: 'Date',
-                        reqd: true
+                frappe.call({
+                    method: 'frappe.client.get',
+                    args: {
+                        doctype: "Reservation",
+                        name: frm.doc.name
                     },
-                    {
-                        fieldname: 'new_end_date',
-                        label: 'New End Date',
-                        fieldtype: 'Date',
-                        reqd: true
-                    },
-                    {
-                        fieldname: 'reason',
-                        label: 'Reason',
-                        fieldtype: 'Small Text'
-                    }
-                ], function (values) {
-                    frappe.call({
-                        method: 'tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.reschedule_reservation',
-                        args: {
-                            reservation_name: frm.doc.name,
-                            new_start_date: values.new_start_date,
-                            new_end_date: values.new_end_date,
-                            reason: values.reason
-                        },
-                        callback: function (r) {
-                            if (!r.exc) {
-                                frappe.msgprint(__('Reservation rescheduled. New Reservation: ') + r.message);
-                                frm.reload_doc();
+                    callback: function (res) {
+                        if (!res.message) return;
+
+                        let reservation = res.message;
+
+                        frappe.prompt([
+                            { fieldname: 'new_start_date', label: 'New Start Date', fieldtype: 'Date', reqd: true, default: reservation.start_date },
+                            { fieldname: 'new_end_date', label: 'New End Date', fieldtype: 'Date', reqd: true, default: reservation.end_date },
+                            { fieldname: 'no_of_people', label: 'No of People', fieldtype: 'Int', reqd: false, default: reservation.no_of_people },
+                            { fieldname: 'reason', label: 'Reason', fieldtype: 'Small Text' },
+                            {
+                                fieldname: 'activities',
+                                fieldtype: 'Table',
+                                label: 'Activities',
+                                cannot_add_rows: false,
+                                in_place_edit: true,
+                                data: (reservation.activities || []).map(row => ({
+                                    activity_group: row.activity_group,
+                                    activity_name: row.activity_name,
+                                    qty: row.qty,
+                                    rate: row.rate,
+                                    amount: row.amount
+                                })),
+                                fields: [
+                                    { fieldtype: 'Link', fieldname: 'activity_group', options: 'Item Group', label: 'Activity Group', in_list_view: true, reqd: true },
+                                    { fieldtype: 'Link', fieldname: 'activity_name', label: 'Activity Name', options: 'Activity Type', in_list_view: true, reqd: true },
+                                    { fieldtype: 'Int', fieldname: 'qty', label: 'Qty', in_list_view: true, reqd: true },
+                                    { fieldtype: 'Currency', fieldname: 'rate', label: 'Rate', in_list_view: true },
+                                    { fieldtype: 'Currency', fieldname: 'amount', label: 'Amount', in_list_view: true }
+                                ]
+                            },
+                            {
+                                fieldname: 'meals',
+                                fieldtype: 'Table',
+                                label: 'Meals',
+                                cannot_add_rows: false,
+                                in_place_edit: true,
+                                data: (reservation.meals || []).map(row => ({
+                                    meal_type: row.meal_type,
+                                    qty: row.qty,
+                                    rate: row.rate,
+                                    amount: row.amount
+                                })),
+                                fields: [
+                                    { fieldtype: 'Link', fieldname: 'meal_type', label: 'Meal Type', options: 'Item', in_list_view: true, reqd: true },
+                                    { fieldtype: 'Int', fieldname: 'qty', label: 'Qty', in_list_view: true, reqd: true },
+                                    { fieldtype: 'Currency', fieldname: 'rate', label: 'Rate', in_list_view: true },
+                                    { fieldtype: 'Currency', fieldname: 'amount', label: 'Amount', in_list_view: true }
+                                ]
                             }
-                        }
-                    });
-                }, 'Reschedule Reservation', 'Submit');
+                        ], function (values) {
+                            frappe.call({
+                                method: 'tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.reschedule_reservation',
+                                args: {
+                                    reservation_name: frm.doc.name,
+                                    new_start_date: values.new_start_date,
+                                    new_end_date: values.new_end_date,
+                                    no_of_people: values.no_of_people,
+                                    activities: values.activities,
+                                    meals: values.meals,
+                                    reason: values.reason
+                                },
+                                callback: function (r) {
+                                    if (!r.exc) {
+                                        frappe.msgprint(__('Reservation rescheduled. New Sales Order: ') + r.message);
+                                        frm.reload_doc();
+                                    }
+                                }
+                            });
+                        }, 'Reschedule Reservation', 'Submit');
+                    }
+                });
             });
         }
+
+
     },
         
     room_booking_add: function(frm, cdt, cdn) {

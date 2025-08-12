@@ -117,6 +117,7 @@ def get_tasks_for_week(week_start, week_end):
             t.parent_task,
             t.exp_start_date,
             t.exp_end_date,
+            t.color,
             t.custom_assigned_date,
             t.custom_no_of_people,
             t.status,
@@ -163,7 +164,7 @@ def get_tasks_for_week(week_start, week_end):
             dependent_tasks = frappe.db.sql(f"""
                 SELECT name, subject, custom_customer_name, custom_customer,
                        exp_start_date, exp_end_date, custom_assigned_date, 
-                       custom_no_of_people,custom_customer_groups, status
+                       custom_no_of_people,custom_customer_groups, status,color
                 FROM `tabTask`
                 WHERE name IN ({','.join(['%s'] * len(dependent_task_names))})
             """, dependent_task_names, as_dict=True)
@@ -210,6 +211,8 @@ def get_existing_allocations_optimized(week_start, week_end):
             aa.name as allocation_id,
             aa.customer,
             aa.activity_name,
+            aa.task,
+            t.color, 
             aa.start_date,
             aa.end_date,
             aad.activity_name as detail_activity_name,
@@ -221,6 +224,7 @@ def get_existing_allocations_optimized(week_start, week_end):
             aad.instructor
         FROM `tabActivity Allocation` aa
         INNER JOIN `tabActivity Allocation Details` aad ON aad.parent = aa.name
+        LEFT JOIN `tabTask` t ON t.name = aa.task  
         WHERE 
             aa.start_date <= %s
             AND aa.end_date >= %s
@@ -253,6 +257,7 @@ def create_activity_allocation_optimized(task_name, activity_date, slot, instruc
         allocation_doc = frappe.get_doc({
             "doctype": "Activity Allocation",
             "customer": task.custom_customer,
+            "task":task.name,
             "activity_name": base_activity_name,
             "start_date": task.exp_start_date,
             "end_date": task.exp_end_date,

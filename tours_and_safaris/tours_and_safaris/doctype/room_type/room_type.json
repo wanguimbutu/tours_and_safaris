@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "room_type",
+  "section_break_qxpj",
   "item_code"
  ],
  "fields": [
@@ -19,15 +20,18 @@
   },
   {
    "fieldname": "item_code",
-   "fieldtype": "Link",
+   "fieldtype": "Table",
    "label": "Item Code",
-   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Accomodation\"]]",
-   "options": "Item"
+   "options": "Room Type Details"
+  },
+  {
+   "fieldname": "section_break_qxpj",
+   "fieldtype": "Section Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-05 08:35:22.351468",
+ "modified": "2025-08-11 10:26:59.101913",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Room Type",
