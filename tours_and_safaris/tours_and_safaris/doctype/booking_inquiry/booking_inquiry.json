@@ -301,13 +301,6 @@
    "options": "Meal Diet Preferences"
   },
   {
-   "fieldname": "workflow_state",
-   "fieldtype": "Link",
-   "hidden": 1,
-   "label": "Workflow State",
-   "options": "Workflow"
-  },
-  {
    "fieldname": "section_break_weje",
    "fieldtype": "Section Break"
   },
@@ -450,7 +443,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-17 14:23:09.222691",
+ "modified": "2025-08-12 11:56:43.665950",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
