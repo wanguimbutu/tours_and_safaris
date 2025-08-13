@@ -1145,8 +1145,8 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				// Single select mode
 				$('.assignable-cell').removeClass('selected-task');
 				$(this).addClass('selected-task');
-				$('.sticky-selected-task').removeClass('sticky-selected-task'); 
-				$(this).closest('tr').addClass('sticky-selected-task');
+				//$('.sticky-selected-task').removeClass('sticky-selected-task'); 
+				//$(this).closest('tr').addClass('sticky-selected-task');
 
 				selectedTask = taskData;
 				//frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
