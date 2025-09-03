@@ -1460,10 +1460,13 @@ function showInstructorSelectionDialog() {
 $('#calendar-container').on('click', '.add-activity-btn', async function () {
     const activityType = $(this).data('activity');
     
-    if (!selectedTask || selectedTask.subject !== "Multi Activity") {
-        frappe.show_alert("Please select a 'Multiactivity' task in the calendar first.", 5);
-        return;
-    }
+    if (
+		!selectedTask || 
+		(selectedTask.subject !== "Multi Activity" || selectedTask.subject !== "Adventure Safari -Multi Activity")
+	) {
+		frappe.show_alert("Please select either 'Multi Activity' or 'Adventure Safari - Multi Activity' in the calendar first.", 5);
+		return;
+	}
 
     try {
         const result = await frappe.call({
@@ -1488,10 +1491,13 @@ $('#calendar-container').on('click', '.add-activity-btn', async function () {
     }
 });
 $('#calendar-container').on('click', '#add-selected-activities', async function () {
-    if (!selectedTask || selectedTask.subject !== "Multi Activity") {
-        frappe.show_alert("Please select a 'Multiactivity' task first.", 5);
-        return;
-    }
+    if (
+		!selectedTask || 
+		!(selectedTask.subject === "Multi Activity" || selectedTask.subject === "Adventure Safari -Multi Activity")
+	) {
+		frappe.show_alert("Please select either 'Multi Activity' or 'Adventure Safari - Multi Activity' task first.", 5);
+		return;
+	}
 
     const selectedActivities = [];
     $('.activity-checkbox:checked').each(function () {
