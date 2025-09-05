@@ -16,7 +16,8 @@
   "amended_from",
   "customer",
   "customer_name",
-  "calendar_info"
+  "calendar_info",
+  "group_room"
  ],
  "fields": [
   {
@@ -88,12 +89,18 @@
    "fieldname": "calendar_info",
    "fieldtype": "Data",
    "label": "Calendar Info"
+  },
+  {
+   "fieldname": "group_room",
+   "fieldtype": "Data",
+   "label": "Group Room"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-19 09:26:31.076476",
+ "modified": "2025-09-04 15:27:45.657845",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Availability",
@@ -149,6 +156,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

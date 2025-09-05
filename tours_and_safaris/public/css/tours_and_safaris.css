@@ -1,0 +1,38 @@
+/* Add this CSS to your custom app's public/css/[app_name].css file */
+
+/* Confirmed reservations - Green */
+.calendar .fc-event.event-success {
+    background-color: #28a745 !important;
+    border-color: #1e7e34 !important;
+    color: white !important;
+}
+
+.calendar .fc-event.event-success:hover {
+    background-color: #218838 !important;
+    border-color: #1c7430 !important;
+}
+
+/* Draft reservations - Blue */
+.calendar .fc-event.event-info {
+    background-color: #007bff !important;
+    border-color: #0056b3 !important;
+    color: white !important;
+}
+
+.calendar .fc-event.event-info:hover {
+    background-color: #0069d9 !important;
+    border-color: #004085 !important;
+}
+
+/* Default styling for other statuses */
+.calendar .fc-event.event-default {
+    background-color: #6c757d !important;
+    border-color: #545b62 !important;
+    color: white !important;
+}
+
+/* Ensure text is readable */
+.calendar .fc-event-title {
+    font-weight: 500;
+    padding: 2px 4px;
+}
