@@ -441,12 +441,16 @@ def get_events(start, end, filters=None):
     start, end = getdate(start), getdate(end)
 
     # Exclude rescheduled and cancelled documents
-    conditions = "AND status != 'Rescheduled' AND docstatus != 2"  
+    conditions = ["status != 'Rescheduled'", "docstatus != 2"]
+    params = {"start": start, "end": end}
+
+    # Handle dynamic filters safely
     if filters:
         filters = frappe.parse_json(filters)
         if isinstance(filters, dict):
             for key, value in filters.items():
-                conditions += f" AND `{key}` = {frappe.db.escape(value)}"
+                conditions.append(f"`{key}` = %(f_{key})s")
+                params[f"f_{key}"] = value
 
     reservations = frappe.db.sql("""
         SELECT 
@@ -458,19 +462,25 @@ def get_events(start, end, filters=None):
         FROM 
             `tabReservation`
         WHERE 
-            (arrival_date BETWEEN %(start)s AND %(end)s OR depature_date BETWEEN %(start)s AND %(end)s)
-            {conditions}
-    """.format(conditions=conditions), {
-        "start": start,
-        "end": end
-    }, as_dict=True)
+            arrival_date <= %(end)s
+            AND depature_date >= %(start)s
+            AND {conditions}
+    """.format(conditions=" AND ".join(conditions)), params, as_dict=True)
 
     events = []
     for res in reservations:
         if not res.arrival_date or not res.depature_date:
             continue  
 
-        color = "#28a745" if res.status == "Confirmed Reservation" else "#6c757d"  
+        # Color mapping is done here
+        if res.status == "Confirmed Reservation":
+            color = "#28a745"  # green
+        elif res.status == "Pending":
+            color = "#f59e0b"  # orange
+        elif res.status == "Cancelled":
+            color = "#ef4444"  # red
+        else:
+            color = "#6c757d"  # default gray
 
         events.append({
             "id": res.name,
@@ -479,6 +489,7 @@ def get_events(start, end, filters=None):
             "end": str(res.depature_date),
             "allDay": True,
             "color": color,
+            "url": f"/app/reservation/{res.name}"
         })
 
     return events
