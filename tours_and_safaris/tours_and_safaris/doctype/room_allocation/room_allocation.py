@@ -31,9 +31,8 @@ class RoomAllocation(Document):
             availability.check_out_date = self.departure_date
             availability.customer = self.customer
             availability.calendar_info = self.calendar_info
-
             availability.group_room = f"{self.customer}-{booked_room.room_name}"
-            
+
             availability.insert(ignore_permissions=True) 
             availability.submit()
 
