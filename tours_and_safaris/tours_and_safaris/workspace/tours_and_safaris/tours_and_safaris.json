@@ -1,8 +1,13 @@
 {
  "charts": [],
- "content": "[{\"id\":\"rKEF-FXqGe\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Tours and Safaris</span>\",\"col\":12}},{\"id\":\"VzaAibqmv5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Booking Inquiry\",\"col\":3}},{\"id\":\"aDUeCFE7ax\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reservations\",\"col\":3}},{\"id\":\"yQm7jH3w4W\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Instructor\",\"col\":3}},{\"id\":\"QCnn1j-gyC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ltp419YhnO\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Pages</b></span>\",\"col\":12}},{\"id\":\"VvJhFqa1Kh\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Guide Allocation\",\"col\":3}},{\"id\":\"lvpw2IH-un\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mRS0JjgP_g\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Pending Tasks\",\"col\":11}},{\"id\":\"UJjZG9DsMZ\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports and Masters</b></span><span class=\\\"h4\\\"><b></b></span>\",\"col\":12}},{\"id\":\"tKHFsUzzMQ\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b></b></span>\",\"col\":12}}]",
- "creation": "2025-04-08 11:56:29.611728",
- "custom_blocks": [],
+ "content": "[{\"id\":\"rKEF-FXqGe\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Tours and Safaris</span>\",\"col\":12}},{\"id\":\"VzaAibqmv5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Booking Inquiry\",\"col\":3}},{\"id\":\"aDUeCFE7ax\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reservations\",\"col\":3}},{\"id\":\"yQm7jH3w4W\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Instructor\",\"col\":3}},{\"id\":\"m8AyYQB6qF\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Guest Register\",\"col\":3}},{\"id\":\"gjjFyIJiIc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Room Allocation\",\"col\":3}},{\"id\":\"QCnn1j-gyC\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"ltp419YhnO\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Pages</b></span>\",\"col\":12}},{\"id\":\"VvJhFqa1Kh\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Guide Allocation\",\"col\":3}},{\"id\":\"lvpw2IH-un\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"tKHFsUzzMQ\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b></b></span>\",\"col\":12}},{\"id\":\"Q6nSA6vGUo\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Reservation\",\"col\":12}}]",
+ "creation": "2025-08-12 13:00:06.173809",
+ "custom_blocks": [
+  {
+   "custom_block_name": "Reservation",
+   "label": "Reservation"
+  }
+ ],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
@@ -13,7 +18,7 @@
  "is_hidden": 0,
  "label": "Tours and Safaris",
  "links": [],
- "modified": "2025-07-04 08:45:16.832207",
+ "modified": "2025-09-05 12:13:26.571055",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Tours and Safaris",
@@ -21,13 +26,7 @@
  "owner": "Administrator",
  "parent_page": "",
  "public": 1,
- "quick_lists": [
-  {
-   "document_type": "ToDo",
-   "label": "Pending Tasks",
-   "quick_list_filter": "[[\"ToDo\",\"status\",\"=\",\"Open\",false]]"
-  }
- ],
+ "quick_lists": [],
  "roles": [
   {
    "role": "All"
@@ -36,11 +35,27 @@
  "sequence_id": 42.0,
  "shortcuts": [
   {
+   "color": "Pink",
+   "doc_view": "List",
+   "label": "Guest Register",
+   "link_to": "Guest Register",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
    "color": "Grey",
    "doc_view": "List",
    "label": "Guide Allocation",
    "link_to": "guide-allocation",
    "type": "Page"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "List",
+   "label": "Room Allocation",
+   "link_to": "Room Allocation",
+   "stats_filter": "[]",
+   "type": "DocType"
   },
   {
    "color": "Green",
