@@ -121,6 +121,7 @@ def get_tasks_for_week(week_start, week_end):
             t.custom_assigned_date,
             t.custom_no_of_people,
             t.status,
+            t.project,
             -- Get parent task info if this is a subtask
             pt.subject as parent_subject,
             pt.custom_customer_name as parent_customer_name
@@ -164,7 +165,7 @@ def get_tasks_for_week(week_start, week_end):
             dependent_tasks = frappe.db.sql(f"""
                 SELECT name, subject, custom_customer_name, custom_customer,
                        exp_start_date, exp_end_date, custom_assigned_date, 
-                       custom_no_of_people,custom_customer_groups, status,color
+                       custom_no_of_people,custom_customer_groups, status,color, project
                 FROM `tabTask`
                 WHERE name IN ({','.join(['%s'] * len(dependent_task_names))})
             """, dependent_task_names, as_dict=True)
@@ -181,7 +182,7 @@ def get_tasks_for_week(week_start, week_end):
                         dt.exp_end_date = dt.exp_end_date or parent_task.exp_end_date
                         # Also inherit custom_assigned_date if not set
                         dt.custom_assigned_date = dt.custom_assigned_date or parent_task.custom_assigned_date
-            
+                        dt.project = dt.project or parent_task.get("project")
             tasks.extend(dependent_tasks)
     
     return tasks
@@ -603,14 +604,16 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
 
 @frappe.whitelist()
 def create_multiactivity_task(customer, activity_type, start_date, end_date,
-                               custom_customer_name=None, custom_no_of_people=None, project=None):
+                               custom_customer_name=None, custom_no_of_people=None, 
+                               project=None, custom_color=None):
     frappe.logger().info({
         "msg": "create_multiactivity_task called",
         "customer": customer,
         "activity_type": activity_type,
         "custom_customer_name": custom_customer_name,
         "custom_no_of_people": custom_no_of_people,
-        "project": project
+        "project": project,
+        "custom_color": custom_color
     })
 
     task = frappe.new_doc("Task")
@@ -633,6 +636,14 @@ def create_multiactivity_task(customer, activity_type, start_date, end_date,
 
     if project:
         task.project = project
+
+    if custom_color:
+        task.color = custom_color
+    else:
+        # optional fallback: try customer default color
+        default_color = frappe.db.get_value("Customer", customer, "color")
+        if default_color:
+            task.color = default_color
 
     task.insert()
     return {"success": True, "task": task.name}
