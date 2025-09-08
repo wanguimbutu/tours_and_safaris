@@ -816,9 +816,13 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				: `${currentMonthStart.format('MMMM YYYY')}`
 		);
 		tasks.forEach(task => {
-			const customer = task.custom_customer_name || "Unknown";
-			if (!customerMap[customer]) {
-				customerMap[customer] = { 
+			// Use both customer name and project to separate groups
+			const groupKey = `${task.custom_customer_name || "Unknown"}__${task.project || "NoProject"}`;
+
+			if (!customerMap[groupKey]) {
+				customerMap[groupKey] = { 
+					customerName: task.custom_customer_name || "Unknown",
+					project: task.project || "",
 					main: [], 
 					sub: [],
 					hasGroups: false,
@@ -828,18 +832,18 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 					subTasks: []
 				};
 			}
-			
+
 			// Separate parent and sub tasks
 			if (task.parent_task) {
-				customerMap[customer].subTasks.push(task);
+				customerMap[groupKey].subTasks.push(task);
 			} else {
-				customerMap[customer].parentTasks.push(task);
-				customerMap[customer].main.push(task);
+				customerMap[groupKey].parentTasks.push(task);
+				customerMap[groupKey].main.push(task);
 			}
 			
 			if (task.custom_no_of_people) {
-				customerMap[customer].totalPeople = Math.max(
-					customerMap[customer].totalPeople, 
+				customerMap[groupKey].totalPeople = Math.max(
+					customerMap[groupKey].totalPeople,
 					parseInt(task.custom_no_of_people) || 0
 				);
 			}
@@ -958,16 +962,30 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 	}
 
 
-    for (const [customer, grouped] of Object.entries(customerMap)) {
-		const color = grouped.parentTasks[0]?.color || grouped.subTasks[0]?.color || '#ccc';
-		if (grouped.main.length > 0 || grouped.subTasks.length > 0) {
-			const peopleCount = grouped.totalPeople;
-			
-			if (grouped.hasGroups && grouped.groupsData.length > 0) {
-				// Render main customer row
-				const customerLabel = peopleCount > 0 ? 
-					`<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>` : 
-					`<strong>${customer}</strong> <button class="btn btn-xs btn-info split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="manage">Manage Groups (${grouped.groupsData.length})</button>`;
+    for (const [groupKey, grouped] of Object.entries(customerMap)) {
+    	const color = grouped.parentTasks[0]?.color || grouped.subTasks[0]?.color || '#ccc';
+			if (grouped.main.length > 0 || grouped.subTasks.length > 0) {
+				const peopleCount = grouped.totalPeople;
+
+				if (grouped.hasGroups && grouped.groupsData.length > 0) {
+					const customerLabel = peopleCount > 0 ? 
+						`<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong> 
+						<button class="btn btn-xs btn-info split-groups-btn" 
+								data-customer="${grouped.customerName}" 
+								data-project="${grouped.project || ""}"
+								data-people="${peopleCount}" 
+								data-action="manage">
+							Manage Groups (${grouped.groupsData.length})
+						</button>` 
+					: 
+						`<strong>${grouped.customerName} (${grouped.project || "No Project"})</strong> 
+						<button class="btn btn-xs btn-info split-groups-btn" 
+								data-customer="${grouped.customerName}" 
+								data-project="${grouped.project || ""}"
+								data-people="${peopleCount}" 
+								data-action="manage">
+							Manage Groups (${grouped.groupsData.length})
+						</button>`;
 
 				renderTaskRow(customerLabel, grouped.parentTasks, color, daysToProcess);
 
@@ -996,8 +1014,15 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 			} else {
 				// Render main customer with option to split
 				const customerLabel = peopleCount > 0 ? 
-					`<strong>${customer} (${peopleCount} people)</strong> <button class="btn btn-xs btn-primary split-groups-btn" data-customer="${customer}" data-people="${peopleCount}" data-action="split">Split Groups</button>` : 
-					`<strong>${customer}</strong>`;
+					`<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong> 
+					<button class="btn btn-xs btn-primary split-groups-btn" 
+							data-customer="${grouped.customerName}" 
+							data-project="${grouped.project || ""}"
+							data-people="${peopleCount}" 
+							data-action="split">Split Groups</button>` 
+				: 
+					`<strong>${grouped.customerName} (${grouped.project || "No Project"})</strong>`;
+
 				
 				// Show parent tasks
 				renderTaskRow(customerLabel, grouped.parentTasks, color, daysToProcess);
@@ -1478,7 +1503,8 @@ $('#calendar-container').on('click', '.add-activity-btn', async function () {
                 activity_type: activityType,
                 start_date: selectedTask.exp_start_date,
                 end_date: selectedTask.exp_end_date,
-				project:selectedTask.project
+				project:selectedTask.project,
+				custom_color: selectedTask.color || '#ccc'
             }
         });
 
@@ -1516,7 +1542,8 @@ $('#calendar-container').on('click', '#add-selected-activities', async function 
     end_date: selectedTask.exp_end_date,
     number_of_people: selectedTask.custom_no_of_people,
     custom_no_of_people: selectedTask.custom_no_of_people,   
-    project: selectedTask.project                            
+    project: selectedTask.project,
+	custom_color: selectedTask.color || '#ccc'                           
 };
 
 
