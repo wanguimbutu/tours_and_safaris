@@ -765,18 +765,42 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 	function renderCalendar(weeks) {
     let html = `<div id="calendar-scroll-wrapper">`;
 
+    // Render each week
     weeks.forEach((weekData, index) => {
         html += `<div class="week-block mb-4">`;
         html += `<h6 class="text-center">Week ${index + 1}: 
             ${moment(weekData.week_start).format('MMM D')} - 
             ${moment(weekData.week_start).add(6, 'days').format('MMM D, YYYY')}
         </h6>`;
-
         html += renderWeekTable(weekData); 
         html += `</div>`;
     });
 
     html += `</div>`;
+
+    // --- Activity Selector ---
+    html += `
+    <div class="mt-4">
+        <h5 id="activity-toggle" style="cursor: pointer;" data-toggle="collapse" data-target="#activity-selector" aria-expanded="false" aria-controls="activity-selector">
+            <span class="toggle-arrow">▶</span> Select Additional Activities for Multiactivity Task
+        </h5>
+        <div id="activity-selector" class="collapse table table-sm table-bordered">
+            <table class="table">
+                <thead>
+                    <tr><th>Activity</th><th>Action</th></tr>
+                </thead>
+                <tbody id="activity-list-body">
+                    <tr><td colspan="2">Loading activities...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-2 text-right">
+            <button class="btn btn-sm btn-success" id="add-selected-activities">Add Selected Activities</button>
+        </div>
+    </div>
+    `;
+
+    // Inject once
     $('#calendar-container').html(html);
 
     // Update title once
@@ -786,7 +810,22 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
             : `${currentMonthStart.format('MMMM YYYY')}`
     );
 
+    // Multi-select button
+    const $buttonContainer = $('.mb-3.d-flex.gap-2');
+    if ($buttonContainer.length && $('#toggle-multi-select').length === 0) {
+        const multiSelectButton = `<button class="btn btn-sm btn-info" id="toggle-multi-select">Multi-Select Mode</button>`;
+        $buttonContainer.append(multiSelectButton);
+    }
+
+    // Drag & drop setup
     initializeDragAndDrop();
+
+    // Rotate arrow on expand/collapse
+    $('#activity-toggle').on('click', function () {
+        const $arrow = $(this).find('.toggle-arrow');
+        const expanded = $('#activity-selector').hasClass('show');
+        $arrow.text(expanded ? '▶' : '▼');
+    });
 
     // -------------------------
     // Nested helper: Week Table
@@ -794,15 +833,15 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
     function renderWeekTable(data) {
         const { tasks, instructors, instructorAssignments } = data;
         const customerMap = {};
+        const weekStart = moment(data.week_start);
         const daysToRender = [];
-		for (let i = 0; i < 7; i++) {
-			daysToRender.push(moment(data.week_start).clone().add(i, 'days'));
-		}
 
+        for (let i = 0; i < 7; i++) {
+            daysToRender.push(weekStart.clone().add(i, 'days'));
+        }
         const daysToProcess = daysToRender;
-		const weekStart = moment(data.week_start);
 
-        // build customerMap
+        // --- build customerMap ---
         tasks.forEach(task => {
             const groupKey = `${task.custom_customer_name || "Unknown"}__${task.project || "NoProject"}`;
             if (!customerMap[groupKey]) {
@@ -856,7 +895,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
             }
         });
 
-        // start table
+        // --- start table ---
         let weekHtml = `<table class="table table-bordered table-sm"><thead><tr>
             <th style="min-width: 120px;">Instructor / Customer</th>`;
 
@@ -866,411 +905,187 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
         });
         weekHtml += '</tr></thead><tbody>';
 
-    // --- render customers & tasks ---
-    function renderTaskRow(label, tasksToRender, color, daysToProcess, indent = false) {
-        weekHtml += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
+        // --- render customers & tasks ---
+        function renderTaskRow(label, tasksToRender, color, daysToProcess, indent = false) {
+            weekHtml += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
 
-        const renderedTaskNames = new Set();
+            const renderedTaskNames = new Set();
 
-        daysToProcess.forEach((day, dayIndex) => {
-            ['AM', 'PM'].forEach(slot => {
-                const slotTasks = Methods.getTasksForSlot(tasksToRender, day, slot).filter(task => {
-                    return !renderedTaskNames.has(task.name);
-                });
-
-                let backgroundStyle = '';
-                const currentDay = day.clone().startOf('day');
-
-                const coveringTasks = tasksToRender.filter(task => {
-                    const taskStart = moment(task.original_exp_start_date || task.exp_start_date).startOf('day');
-                    const taskEnd = moment(task.original_exp_end_date || task.exp_end_date || task.exp_start_date).startOf('day');
-                    return currentDay.isBetween(taskStart, taskEnd, null, '[]');
-                });
-
-                if (coveringTasks.length > 0) {
-                    const lightColor = color + '33'; 
-                    backgroundStyle = `background-color: ${lightColor}; border: 1px solid ${color}55;`;
-                }
-
-                weekHtml += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" 
-                                style="vertical-align: top; min-height: 40px; ${backgroundStyle}">`;
-
-                if (slotTasks.length > 0) {
-                    slotTasks.forEach(task => {
-                        weekHtml += Methods.makeTaskCellClickable(task, dayIndex, slot, color, true);
-                        renderedTaskNames.add(task.name);
+            daysToProcess.forEach((day, dayIndex) => {
+                ['AM', 'PM'].forEach(slot => {
+                    const slotTasks = Methods.getTasksForSlot(tasksToRender, day, slot).filter(task => {
+                        return !renderedTaskNames.has(task.name);
                     });
-                }
 
-                weekHtml += `</td>`;
+                    let backgroundStyle = '';
+                    const currentDay = day.clone().startOf('day');
+
+                    const coveringTasks = tasksToRender.filter(task => {
+                        const taskStart = moment(task.original_exp_start_date || task.exp_start_date).startOf('day');
+                        const taskEnd = moment(task.original_exp_end_date || task.exp_end_date || task.exp_start_date).startOf('day');
+                        return currentDay.isBetween(taskStart, taskEnd, null, '[]');
+                    });
+
+                    if (coveringTasks.length > 0) {
+                        const lightColor = color + '33'; 
+                        backgroundStyle = `background-color: ${lightColor}; border: 1px solid ${color}55;`;
+                    }
+
+                    weekHtml += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" 
+                                    style="vertical-align: top; min-height: 40px; ${backgroundStyle}">`;
+
+                    if (slotTasks.length > 0) {
+                        slotTasks.forEach(task => {
+                            weekHtml += Methods.makeTaskCellClickable(task, dayIndex, slot, color, true);
+                            renderedTaskNames.add(task.name);
+                        });
+                    }
+
+                    weekHtml += `</td>`;
+                });
             });
-        });
 
-        weekHtml += '</tr>';
-    }
+            weekHtml += '</tr>';
+        }
 
-    for (const [groupKey, grouped] of Object.entries(customerMap)) {
-        const color = grouped.parentTasks[0]?.color || grouped.subTasks[0]?.color || '#ccc';
-        if (grouped.main.length > 0 || grouped.subTasks.length > 0) {
-            const peopleCount = grouped.totalPeople;
+        for (const [groupKey, grouped] of Object.entries(customerMap)) {
+            const color = grouped.parentTasks[0]?.color || grouped.subTasks[0]?.color || '#ccc';
+            if (grouped.main.length > 0 || grouped.subTasks.length > 0) {
+                const peopleCount = grouped.totalPeople;
 
-            if (grouped.hasGroups && grouped.groupsData.length > 0) {
-                const customerLabel = `<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong>`;
-                renderTaskRow(customerLabel, grouped.parentTasks, color, daysToProcess);
+                if (grouped.hasGroups && grouped.groupsData.length > 0) {
+                    const customerLabel = `<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong>`;
+                    renderTaskRow(customerLabel, grouped.parentTasks, color, daysToProcess);
 
-                grouped.groupsData.forEach((group, index) => {
-                    const groupSubTasks = grouped.subTasks.filter(subTask =>
-                        subTask.custom_group_name === group.group_name || 
-                        subTask.custom_group_index === index ||
-                        subTask.subject.includes(group.group_name)
-                    );
+                    grouped.groupsData.forEach((group, index) => {
+                        const groupSubTasks = grouped.subTasks.filter(subTask =>
+                            subTask.custom_group_name === group.group_name || 
+                            subTask.custom_group_index === index ||
+                            subTask.subject.includes(group.group_name)
+                        );
 
-                    const groupLabel = `<span class="group-row">├─ ${group.group_name} (${group.people_count} people)</span>`;
-                    renderTaskRow(groupLabel, groupSubTasks, color, daysToProcess, true);
-                });
-            } else {
-                const customerLabel = `<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong>`;
-                renderTaskRow(customerLabel, grouped.parentTasks, color, daysToProcess);
-
-                if (grouped.subTasks.length > 0) {
-                    grouped.subTasks.forEach(subTask => {
-                        const subTaskLabel = `<span class="group-row">├─ ${subTask.subject}</span>`;
-                        renderTaskRow(subTaskLabel, [subTask], color, daysToProcess, true);
+                        const groupLabel = `<span class="group-row">├─ ${group.group_name} (${group.people_count} people)</span>`;
+                        renderTaskRow(groupLabel, groupSubTasks, color, daysToProcess, true);
                     });
+                } else {
+                    const customerLabel = `<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong>`;
+                    renderTaskRow(customerLabel, grouped.parentTasks, color, daysToProcess);
+
+                    if (grouped.subTasks.length > 0) {
+                        grouped.subTasks.forEach(subTask => {
+                            const subTaskLabel = `<span class="group-row">├─ ${subTask.subject}</span>`;
+                            renderTaskRow(subTaskLabel, [subTask], color, daysToProcess, true);
+                        });
+                    }
                 }
             }
         }
+
+        instructors.forEach(instr => {
+            weekHtml += `<tr><td>
+                <span class="text-primary">— ${instr.instructor_name}</span>
+                <button class="btn btn-xs btn-outline-dark ml-2 blackout-toggle" 
+                        data-instructor="${instr.name}">
+                    <i class="fa fa-eye-slash"></i> Blackout
+                </button>
+            </td>`;
+
+            daysToRender.forEach((day, i) => {
+                ['AM', 'PM'].forEach(slot => {
+                    const dayIndex = day.diff(weekStart, 'days');
+                    const isBlackout = data.blackouts?.[instr.name]?.[`${dayIndex}_${slot}`];
+                    const assigned = (instructorAssignments[instr.name] || []).find(
+                        a => weekStart.clone().add(a.dayIndex, 'days').isSame(day, 'day') && a.slot === slot
+                    );
+
+                    if (isBlackout) {
+                        weekHtml += `<td class="blackout-slot drop-zone" 
+                            data-instructor="${instr.name}" 
+                            data-day-index="${dayIndex}" 
+                            data-slot="${slot}" 
+                            style="background: repeating-linear-gradient(45deg,#ccc,#ccc 10px,#bbb 10px,#bbb 20px); 
+                                color: #555; 
+                                text-align: center; 
+                                min-height: 40px; 
+                                position: relative; 
+                                cursor: not-allowed;">
+                            <em>Blackout</em>
+                            <span class="remove-blackout" 
+                                style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+                        </td>`;
+                    } else if (assigned) {
+                        const assignedColor = assigned.task.color || '#ccc';
+                        weekHtml += `<td class="assigned-task drop-zone" 
+                            data-instructor="${instr.name}" 
+                            data-day-index="${dayIndex}" 
+                            data-slot="${slot}" 
+                            data-task-name="${assigned.task.name}" 
+                            data-subject="${assigned.task.subject}" 
+                            style="background:${assignedColor}; cursor:pointer; position: relative; min-height: 40px;">
+                            ${assigned.task.subject} 
+                            <span class="remove-assignment" 
+                                style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+                        </td>`;
+                    } else {
+                        weekHtml += `<td class="assignable-slot drop-zone" 
+                            data-instructor="${instr.name}" 
+                            data-day-index="${dayIndex}" 
+                            data-slot="${slot}" 
+                            style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
+                            <small>${slot}</small>
+                        </td>`;
+                    }
+                });
+            });
+
+            weekHtml += '</tr>';
+        });
+
+        weekHtml += '</tbody></table>';
+
+        return weekHtml;
     }
 
-    // --- render instructors ---
-    instructors.forEach(instr => {
-        weekHtml += `<tr><td><span class="text-primary">— ${instr.instructor_name}</span></td>`;
-
-        daysToRender.forEach((day, i) => {
-            ['AM', 'PM'].forEach(slot => {
-                const dayIndex = day.diff(moment(data.week_start), 'days');
-                const assigned = (instructorAssignments[instr.name] || []).find(
-                    a => moment(data.week_start).add(a.dayIndex, 'days').isSame(day, 'day') && a.slot === slot
-                );
-
-                if (assigned) {
-                    const assignedColor = assigned.task.color || '#ccc';
-                    weekHtml += `<td class="assigned-task drop-zone" 
-                                    data-instructor="${instr.name}" 
-                                    data-day-index="${dayIndex}" 
-                                    data-slot="${slot}" 
-                                    style="background:${assignedColor}; cursor:pointer; min-height: 40px;">
-                                    ${assigned.task.subject}
-                                </td>`;
-                } else {
-                    weekHtml += `<td class="assignable-slot drop-zone" 
-                                    data-instructor="${instr.name}" 
-                                    data-day-index="${dayIndex}" 
-                                    data-slot="${slot}" 
-                                    style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
-                                    <small>${slot}</small>
-                                </td>`;
-                }
-            });
-        });
-
-        weekHtml += '</tr>';
+    // --- Multi-select task click handler ---
+    $('#calendar-container').on('click', '.assignable-cell', function (e) {
+        if (e.target.classList.contains('drag-handle')) {
+            return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const taskData = {
+            name: $(this).data('task-name'),
+            subject: $(this).data('task-subject'),
+            custom_customer_name: $(this).data('task-customer'),
+            color: $(this).data('task-color') || Methods.getColorForCustomer($(this).data('task-customer')),
+            exp_start_date: $(this).data('exp-start'),
+            exp_end_date: $(this).data('exp-end'),
+            custom_no_of_people: $(this).data('task-people'),
+            project: $(this).data('task-project'),
+            element: this
+        };
+        
+        if (multiSelectMode) {
+            const existingIndex = selectedTasks.findIndex(t => t.name === taskData.name);
+            if (existingIndex >= 0) {
+                selectedTasks.splice(existingIndex, 1);
+                $(this).removeClass('multi-selected-task');
+            } else {
+                selectedTasks.push(taskData);
+                $(this).addClass('multi-selected-task');
+            }
+            updateMultiSelectUI();
+        } else {
+            $('.assignable-cell').removeClass('selected-task');
+            $(this).addClass('selected-task');
+            selectedTask = taskData;
+            console.log('Selected task:', selectedTask);
+        }
     });
 
-    weekHtml += '</tbody></table>';
-    return weekHtml;
-}
 
-    function renderTaskRow(label, tasksToRender, color, daysToProcess, indent = false) {
-		weekHtml += `<tr><td style="background-color: ${color}; padding-left: ${indent ? '20px' : '0'};">${label}</td>`;
-		
-		const taskPlacements = [];
-
-		tasksToRender.forEach(task => {
-			if (task.custom_assigned_date) {
-				const assignedMoment = moment(task.custom_assigned_date);
-				const dayIndex = assignedMoment.diff(weekStart, 'days');
-				const slot = assignedMoment.hour() < 13 ? 'AM' : 'PM';
-				
-				if (dayIndex >= 0 && dayIndex < daysToProcess.length) {
-					taskPlacements.push({ task, dayIndex, slot });
-				}
-			} else {
-				const taskStart = moment(task.exp_start_date);
-				const dayIndex = taskStart.diff(weekStart, 'days');
-				const slot = task.assigned_slot || 'AM';
-				
-				if (dayIndex >= 0 && dayIndex < daysToProcess.length) {
-					taskPlacements.push({ task, dayIndex, slot });
-				}
-			}
-		});
-
-		const renderedTaskNames = new Set();
-
-		daysToProcess.forEach((day, dayIndex) => {
-			['AM', 'PM'].forEach(slot => {
-				const slotTasks = Methods.getTasksForSlot(tasksToRender, day, slot).filter(task => {
-					return !renderedTaskNames.has(task.name);
-				});
-
-				let backgroundStyle = '';
-				
-				// Enhanced background highlighting for date ranges
-				const currentDay = day.clone().startOf('day');
-				
-				// Check if any task's date range covers this day
-				const coveringTasks = tasksToRender.filter(task => {
-					const taskStart = moment(task.original_exp_start_date || task.exp_start_date).startOf('day');
-					const taskEnd = moment(task.original_exp_end_date || task.exp_end_date || task.exp_start_date).startOf('day');
-					
-					return currentDay.isBetween(taskStart, taskEnd, null, '[]');
-				});
-
-				if (coveringTasks.length > 0) {
-					const lightColor = color + '33'; 
-					backgroundStyle = `background-color: ${lightColor}; border: 1px solid ${color}55;`;
-				}
-
-				weekHtml += `<td class="drop-zone" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 40px; ${backgroundStyle}">`;
-
-				if (slotTasks.length > 0) {
-					slotTasks.forEach(task => {
-						weekHtml += Methods.makeTaskCellClickable(task, dayIndex, slot, color, true);
-						renderedTaskNames.add(task.name);
-					});
-				}
-
-				weekHtml += `</td>`;
-			});
-		});
-
-		weekHtml += '</tr>';
-	}
-
-
-    for (const [groupKey, grouped] of Object.entries(customerMap)) {
-    	const color = grouped.parentTasks[0]?.color || grouped.subTasks[0]?.color || '#ccc';
-			if (grouped.main.length > 0 || grouped.subTasks.length > 0) {
-				const peopleCount = grouped.totalPeople;
-
-				if (grouped.hasGroups && grouped.groupsData.length > 0) {
-					const customerLabel = peopleCount > 0 ? 
-						`<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong> 
-						<button class="btn btn-xs btn-info split-groups-btn" 
-								data-customer="${grouped.customerName}" 
-								data-project="${grouped.project || ""}"
-								data-people="${peopleCount}" 
-								data-action="manage">
-							Manage Groups (${grouped.groupsData.length})
-						</button>` 
-					: 
-						`<strong>${grouped.customerName} (${grouped.project || "No Project"})</strong> 
-						<button class="btn btn-xs btn-info split-groups-btn" 
-								data-customer="${grouped.customerName}" 
-								data-project="${grouped.project || ""}"
-								data-people="${peopleCount}" 
-								data-action="manage">
-							Manage Groups (${grouped.groupsData.length})
-						</button>`;
-
-				renderTaskRow(customerLabel, grouped.parentTasks, color, daysToProcess);
-
-				// Render group subtasks
-				grouped.groupsData.forEach((group, index) => {
-					// Find subtasks for this group 
-					const groupSubTasks = grouped.subTasks.filter(subTask => {
-					
-						return subTask.custom_group_name === group.group_name || 
-							subTask.custom_group_index === index ||
-							subTask.subject.includes(group.group_name) ||
-							(subTask.custom_customer_groups && 
-								subTask.custom_customer_groups.includes(group.group_name));
-					});
-					
-					console.log(`Group ${group.group_name} subtasks:`, groupSubTasks.map(t => ({
-						name: t.name,
-						subject: t.subject,
-						custom_group_name: t.custom_group_name,
-						parent_task: t.parent_task
-					})));
-					
-					const groupLabel = `<span class="group-row">├─ ${group.group_name} (${group.people_count} people)</span>`;
-					renderTaskRow(groupLabel, groupSubTasks, color, daysToProcess,true);
-				});
-			} else {
-				// Render main customer with option to split
-				const customerLabel = peopleCount > 0 ? 
-					`<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong> 
-					<button class="btn btn-xs btn-primary split-groups-btn" 
-							data-customer="${grouped.customerName}" 
-							data-project="${grouped.project || ""}"
-							data-people="${peopleCount}" 
-							data-action="split">Split Groups</button>` 
-				: 
-					`<strong>${grouped.customerName} (${grouped.project || "No Project"})</strong>`;
-
-				
-				// Show parent tasks
-				renderTaskRow(customerLabel, grouped.parentTasks, color, daysToProcess);
-				
-				// Show any existing subtasks
-				if (grouped.subTasks.length > 0) {
-					grouped.subTasks.forEach(subTask => {
-						const subTaskLabel = `<span class="group-row">├─ ${subTask.subject} ${subTask.custom_group_name ? '(' + subTask.custom_group_name + ')' : ''}</span>`;
-						renderTaskRow(subTaskLabel, [subTask], color, daysToProcess, true);
-					});
-				}
-			}
-		}
-	}
-    // Render instructors 
-    instructors.forEach(instr => {
-        weekHtml += `<tr><td>
-            <span class="text-primary">— ${instr.instructor_name}</span>
-            <button class="btn btn-xs btn-outline-dark ml-2 blackout-toggle" 
-                    data-instructor="${instr.name}">
-                <i class="fa fa-eye-slash"></i> Blackout
-            </button>
-        </td>`;
-
-        daysToRender.forEach((day) => {
-            ['AM', 'PM'].forEach(slot => {
-                const dayIndex = day.diff(weekStart, 'days');
-                const isBlackout = data.blackouts?.[instr.name]?.[`${dayIndex}_${slot}`];
-                const assigned = (instructorAssignments[instr.name] || []).find(
-                    a => weekStart.clone().add(a.dayIndex, 'days').isSame(day, 'day') && a.slot === slot 
-                );
-
-                if (isBlackout) {
-                    weekHtml += `<td class="blackout-slot drop-zone" 
-						data-instructor="${instr.name}" 
-						data-day-index="${dayIndex}" 
-						data-slot="${slot}" 
-						style="background: repeating-linear-gradient(45deg,#ccc,#ccc 10px,#bbb 10px,#bbb 20px); 
-							color: #555; 
-							text-align: center; 
-							min-height: 40px; 
-							position: relative; 
-							cursor: not-allowed;">
-						<em>Blackout</em>
-						<span class="remove-blackout" 
-							style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
-					</td>`;
-                } else if (assigned) {
-                    const customerForColor = assigned.task.custom_customer_name || 'Unknown';
-                    const assignedColor = assigned.task.color || '#ccc';
-
-                    weekHtml += `<td class="assigned-task drop-zone" 
-                        data-instructor="${instr.name}" 
-                        data-day-index="${dayIndex}" 
-                        data-slot="${slot}" 
-                        data-task-name="${assigned.task.name}" 
-                        data-subject="${assigned.task.subject}" 
-                        style="background:${assignedColor}; cursor:pointer; position: relative; min-height: 40px;">
-                        ${assigned.task.subject} 
-                        <span class="remove-assignment" 
-                            style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
-                    </td>`;
-                } else {
-                    weekHtml += `<td class="assignable-slot drop-zone" 
-                        data-instructor="${instr.name}" 
-                        data-day-index="${dayIndex}" 
-                        data-slot="${slot}" 
-                        style="cursor:pointer; border:2px dashed #ccc; text-align:center; min-height: 40px;">
-                        <small>${slot}</small>
-                    </td>`;
-                }
-            });
-        });
-
-        weekHtml += '</tr>';
-    });
-
-    weekHtml += '</tbody></table></div>';
-	weekHtml += `
-	<div class="mt-4">
-		<h5 style="cursor: pointer;" data-toggle="collapse" data-target="#activity-selector" aria-expanded="false" aria-controls="activity-selector">
-			<span>▶</span> Select Additional Activities for Multiactivity Task
-		</h5>
-		<div id="activity-selector" class="collapse table table-sm table-bordered">
-		<table class="table">
-			<thead>
-			<tr><th>Activity</th><th>Action</th></tr>
-			</thead>
-			<tbody id="activity-list-body">
-			<tr><td colspan="2">Loading activities...</td></tr>
-			</tbody>
-		</table>
-		</div>
-		<div class="mt-2 text-right">
-			<button class="btn btn-sm btn-success" id="add-selected-activities">Add Selected Activities</button>
-		</div>
-	</div>
-	`;
-	const $buttonContainer = $('.mb-3.d-flex.gap-2');
-		if ($buttonContainer.length && $('#toggle-multi-select').length === 0) {
-			const multiSelectButton = `<button class="btn btn-sm btn-info" id="toggle-multi-select">Multi-Select Mode</button>`;
-			$buttonContainer.append(multiSelectButton);
-		}
-
-		$('#calendar-container').on('click', '.assignable-cell', function (e) {
-			// Don't trigger selection when dragging
-			if (e.target.classList.contains('drag-handle')) {
-				return;
-			}
-			
-			e.preventDefault();
-			e.stopPropagation();
-			
-			const taskData = {
-				name: $(this).data('task-name'),
-				subject: $(this).data('task-subject'),
-				custom_customer_name: $(this).data('task-customer'),
-				color: $(this).data('task-color') || Methods.getColorForCustomer($(this).data('task-customer')), // store color
-				exp_start_date: $(this).data('exp-start'),
-				exp_end_date: $(this).data('exp-end'),
-				custom_no_of_people: $(this).data('task-people'),
-				project: $(this).data('task-project'),
-				element: this
-			};
-			
-			if (multiSelectMode) {
-				// Multi-select mode
-				const existingIndex = selectedTasks.findIndex(t => t.name === taskData.name);
-				
-				if (existingIndex >= 0) {
-					// Deselect if already selected
-					selectedTasks.splice(existingIndex, 1);
-					$(this).removeClass('multi-selected-task');
-				} else {
-					// Add to selection
-					selectedTasks.push(taskData);
-					$(this).addClass('multi-selected-task');
-				}
-				
-				updateMultiSelectUI();
-			} else {
-				// Single select mode
-				$('.assignable-cell').removeClass('selected-task');
-				$(this).addClass('selected-task');
-				//$('.sticky-selected-task').removeClass('sticky-selected-task'); 
-				//$(this).closest('tr').addClass('sticky-selected-task');
-
-				selectedTask = taskData;
-				//frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
-				console.log('Selected task:', selectedTask);
-			}
-		});
-
-    $('#calendar-container').html(html);
-	
-
-    
-    // Initialize drag and drop after rendering
-    initializeDragAndDrop();
-
-	
 	}
 
 	// Drag and Drop function
