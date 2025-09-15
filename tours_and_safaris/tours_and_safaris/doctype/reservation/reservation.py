@@ -441,7 +441,7 @@ def get_events(start, end, filters=None):
     start, end = getdate(start), getdate(end)
 
     # Exclude rescheduled and cancelled documents
-    conditions = ["status != 'Rescheduled'", "docstatus != 2"]
+    conditions = ["r.status != 'Rescheduled'", "r.docstatus != 2"]
     params = {"start": start, "end": end}
 
     # Handle dynamic filters safely
@@ -449,21 +449,25 @@ def get_events(start, end, filters=None):
         filters = frappe.parse_json(filters)
         if isinstance(filters, dict):
             for key, value in filters.items():
-                conditions.append(f"`{key}` = %(f_{key})s")
+                conditions.append(f"r.`{key}` = %(f_{key})s")
                 params[f"f_{key}"] = value
 
     reservations = frappe.db.sql("""
         SELECT 
-            name,
-            calendar_info,
-            arrival_date,
-            depature_date,
-            status
+            r.name,
+            r.calendar_info,
+            r.arrival_date,
+            r.depature_date,
+            r.status,
+            r.customer,
+            c.custom_color
         FROM 
-            `tabReservation`
+            `tabReservation` r
+        LEFT JOIN 
+            `tabCustomer` c ON r.customer = c.name
         WHERE 
-            arrival_date <= %(end)s
-            AND depature_date >= %(start)s
+            r.arrival_date <= %(end)s
+            AND r.depature_date >= %(start)s
             AND {conditions}
     """.format(conditions=" AND ".join(conditions)), params, as_dict=True)
 
@@ -472,9 +476,9 @@ def get_events(start, end, filters=None):
         if not res.arrival_date or not res.depature_date:
             continue  
 
-        # Color mapping is done here
+        # Color mapping
         if res.status == "Confirmed Reservation":
-            color = "#28a745"  # green
+            color = res.custom_color if res.custom_color else "#28a745"  # fallback green
         elif res.status == "Pending":
             color = "#f59e0b"  # orange
         elif res.status == "Cancelled":
