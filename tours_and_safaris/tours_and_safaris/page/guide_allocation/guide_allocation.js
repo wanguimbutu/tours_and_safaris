@@ -25,7 +25,10 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 		<div class="mb-3">
 			<button id="manual-refresh" class="btn btn-sm btn-outline-primary">🔄 Refresh Calendar</button>
 		</div>
-		
+		<div class="mb-3" id="bulk-actions" style="display: none;">
+			<button id="bulk-blackout-btn" class="btn btn-sm btn-warning">Apply Blackouts to Selected</button>
+			<button id="bulk-remove-blackout-btn" class="btn btn-sm btn-danger">Remove Blackouts from Selected</button>
+		</div>
         <div id="loading-indicator" class="text-center" style="display: none;">
             <div class="spinner-border" role="status">
                 <span class="sr-only">Loading...</span>
@@ -54,7 +57,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 	let viewMode = 'week';  // Can be 'week' or 'month'
 	let currentMonthStart = moment().startOf('month');
 	let zoomMode = 'normal'; 
-	let zoomWeeksToShow = 6; // Number of weeks to show when zoomed out
+	let zoomWeeksToShow = 15; // Number of weeks to show when zoomed out
 
 
 	const Methods = {
@@ -803,12 +806,15 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 		return combined;
 	};
 
-	Methods.loadMultipleWeeks = async function(startWeek, numberOfWeeks) {
+	Methods.loadMultipleWeeks = async function(centerWeek, numberOfWeeks) {
 		const weeks = [];
-		let cursor = startWeek.clone();
-		
+		const half = Math.floor(numberOfWeeks / 2);
+
+		// Start from N/2 weeks before the center week
+		let cursor = centerWeek.clone().subtract(half, 'weeks');
+
 		for (let i = 0; i < numberOfWeeks; i++) {
-			const data = await this.loadWeekData(cursor.clone(), false);
+			const data = await this.loadWeekData(cursor.clone(), true); // force reload to stay fresh
 			if (data) {
 				weeks.push({
 					weekStart: cursor.clone(),
@@ -818,9 +824,10 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 			}
 			cursor.add(7, 'days');
 		}
-		
+
 		return weeks;
 	};
+
 
 	
 	function renderCalendar(data) {
@@ -1200,8 +1207,8 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				// Single select mode
 				$('.assignable-cell').removeClass('selected-task');
 				$(this).addClass('selected-task');
-				//$('.sticky-selected-task').removeClass('sticky-selected-task'); 
-				//$(this).closest('tr').addClass('sticky-selected-task');
+				$('.sticky-selected-task').removeClass('sticky-selected-task'); 
+				$(this).closest('tr').addClass('sticky-selected-task');
 
 				selectedTask = taskData;
 				//frappe.show_alert(`Selected: ${selectedTask.subject}`, 2);
@@ -1220,17 +1227,17 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 	}
 	function renderZoomedOutCalendar(weeksData) {
     let html = `<div id="calendar-scroll-wrapper" style="max-height: 80vh; overflow: auto;">`;
-    
+
     weeksData.forEach((weekInfo, weekIndex) => {
         const { data, weekLabel, weekStart } = weekInfo;
         const { tasks, instructors, instructorAssignments } = data;
         const weekDays = [];
-        
+
         // Generate days for this week
         for (let i = 0; i < 7; i++) {
             weekDays.push(moment(weekStart).add(i, 'days'));
         }
-        
+
         // Week header
         html += `
             <div class="week-section mb-4" style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
@@ -1242,34 +1249,30 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
                         <tr>
                             <th style="min-width: 120px;">Instructor / Customer</th>
         `;
-        
+
         // Days header
         weekDays.forEach((day, dayIndex) => {
             html += `<th class="drop-zone" data-week-index="${weekIndex}" data-day-index="${dayIndex}">${day.format('ddd D')}<br>AM</th>`;
             html += `<th class="drop-zone" data-week-index="${weekIndex}" data-day-index="${dayIndex}">${day.format('ddd D')}<br>PM</th>`;
         });
-        
+
         html += '</tr></thead><tbody>';
-        
-        // Render customers and tasks for this week (similar to existing logic)
+
+        // Customer map
         const customerMap = {};
         tasks.forEach(task => {
             const groupKey = `${task.custom_customer_name || "Unknown"}__${task.project || "NoProject"}`;
             if (!customerMap[groupKey]) {
-                customerMap[groupKey] = { 
+                customerMap[groupKey] = {
                     customerName: task.custom_customer_name || "Unknown",
                     project: task.project || "",
-                    main: [], 
-                    totalPeople: 0,
-                    parentTasks: []
+                    parentTasks: [],
+                    totalPeople: 0
                 };
             }
-            
             if (!task.parent_task) {
                 customerMap[groupKey].parentTasks.push(task);
-                customerMap[groupKey].main.push(task);
             }
-            
             if (task.custom_no_of_people) {
                 customerMap[groupKey].totalPeople = Math.max(
                     customerMap[groupKey].totalPeople,
@@ -1277,76 +1280,210 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
                 );
             }
         });
-        
-        // Render customer rows
+
+        // Render customers
         for (const [groupKey, grouped] of Object.entries(customerMap)) {
             const color = grouped.parentTasks[0]?.color || '#ccc';
             const customerLabel = `<strong>${grouped.customerName} (${grouped.project || "No Project"})${grouped.totalPeople > 0 ? ` (${grouped.totalPeople} people)` : ''}</strong>`;
-            
+
             html += `<tr><td style="background-color: ${color};">${customerLabel}</td>`;
-            
+
             weekDays.forEach((day, dayIndex) => {
                 ['AM', 'PM'].forEach(slot => {
                     const slotTasks = Methods.getTasksForSlot(grouped.parentTasks, day, slot);
                     const currentDay = day.clone().startOf('day');
-                    
-                    // Background highlighting for task ranges
+
+                    // Background highlight
                     let backgroundStyle = '';
                     const coveringTasks = grouped.parentTasks.filter(task => {
                         const taskStart = moment(task.original_exp_start_date || task.exp_start_date).startOf('day');
                         const taskEnd = moment(task.original_exp_end_date || task.exp_end_date || task.exp_start_date).startOf('day');
                         return currentDay.isBetween(taskStart, taskEnd, null, '[]');
                     });
-                    
                     if (coveringTasks.length > 0) {
                         backgroundStyle = `background-color: ${color}33; border: 1px solid ${color}55;`;
                     }
-                    
-                    html += `<td data-week-index="${weekIndex}" data-day-index="${dayIndex}" data-slot="${slot}" style="vertical-align: top; min-height: 30px; ${backgroundStyle}">`;
-                    
+
+                    // Interactive cell
+                    html += `<td class="assignable-slot drop-zone"
+                        data-week-index="${weekIndex}"
+                        data-day-index="${dayIndex}"
+                        data-slot="${slot}"
+                        style="vertical-align: top; min-height: 30px; ${backgroundStyle}">`;
+
                     if (slotTasks.length > 0) {
                         slotTasks.forEach(task => {
-                            const peopleInfo = task.custom_no_of_people ? ` (${task.custom_no_of_people} people)` : '';
-                            html += `<div style="display: inline-block; background-color: ${color}; padding: 2px 6px; margin: 1px 0; border-radius: 3px; font-size: 85%;">${task.subject}${peopleInfo}</div>`;
+                            html += Methods.makeTaskCellClickable(task, dayIndex, slot, color, true);
                         });
                     }
-                    
+
                     html += `</td>`;
                 });
             });
-            
+
             html += '</tr>';
         }
-        
-        // Render instructors for this week
+
+        // Render instructors
         instructors.forEach(instr => {
             html += `<tr><td><span class="text-primary">— ${instr.instructor_name}</span></td>`;
-            
+
             weekDays.forEach((day, dayIndex) => {
                 ['AM', 'PM'].forEach(slot => {
                     const assigned = (instructorAssignments[instr.name] || []).find(a => {
                         const assignedDate = moment(weekStart).add(a.dayIndex, 'days');
                         return assignedDate.isSame(day, 'day') && a.slot === slot;
                     });
-                    
+
                     if (assigned) {
                         const assignedColor = assigned.task.color || '#ccc';
-                        html += `<td style="background:${assignedColor}; min-height: 30px; font-size: 85%;">${assigned.task.subject}</td>`;
+                        html += `<td class="assigned-task drop-zone"
+                            data-instructor="${instr.name}"
+                            data-week-index="${weekIndex}"
+                            data-day-index="${dayIndex}"
+                            data-slot="${slot}"
+                            data-task-name="${assigned.task.name}"
+                            data-subject="${assigned.task.subject}"
+                            style="background:${assignedColor}; cursor:pointer; position: relative; min-height: 30px; font-size: 85%;">
+                            ${assigned.task.subject}
+                            <span class="remove-assignment"
+                                style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+                        </td>`;
                     } else {
-                        html += `<td style="border:1px dashed #ccc; text-align:center; min-height: 30px; font-size: 85%;"><small>${slot}</small></td>`;
+                        html += `<td class="assignable-slot drop-zone"
+                            data-instructor="${instr.name}"
+                            data-week-index="${weekIndex}"
+                            data-day-index="${dayIndex}"
+                            data-slot="${slot}"
+                            style="cursor:pointer; border:1px dashed #ccc; text-align:center; min-height: 30px; font-size: 85%;">
+                            <small>${slot}</small>
+                        </td>`;
                     }
                 });
             });
-            
+
             html += '</tr>';
         });
-        
+
         html += '</tbody></table></div>';
     });
-    
+
     html += '</div>';
     $('#calendar-container').html(html);
-	}
+
+    // ✅ Activate interactivity
+    initializeDragAndDrop();
+
+    // ✅ Reuse task selection logic
+    $('#calendar-container').off('click.zoomed-task').on('click.zoomed-task', '.assignable-cell', function (e) {
+        if (e.target.classList.contains('drag-handle')) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const taskData = {
+            name: $(this).data('task-name'),
+            subject: $(this).data('task-subject'),
+            custom_customer_name: $(this).data('task-customer'),
+            color: $(this).data('task-color') || Methods.getColorForCustomer($(this).data('task-customer')),
+            exp_start_date: $(this).data('exp-start'),
+            exp_end_date: $(this).data('exp-end'),
+            custom_no_of_people: $(this).data('task-people'),
+            project: $(this).data('task-project'),
+            element: this
+        };
+
+        if (multiSelectMode) {
+            const existingIndex = selectedTasks.findIndex(t => t.name === taskData.name);
+            if (existingIndex >= 0) {
+                selectedTasks.splice(existingIndex, 1);
+                $(this).removeClass('multi-selected-task');
+            } else {
+                selectedTasks.push(taskData);
+                $(this).addClass('multi-selected-task');
+            }
+            updateMultiSelectUI();
+        } else {
+            $('.assignable-cell').removeClass('selected-task');
+            $(this).addClass('selected-task');
+            selectedTask = taskData;
+            console.log('Selected task (zoomed out):', selectedTask);
+        }
+    });
+	
+	$('#calendar-container').off('click.zoomed-slot').on('click.zoomed-slot', '.assignable-slot', async function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const instructor = $(this).data('instructor');
+        const weekIndex = $(this).data('week-index');
+        const dayIndex = parseInt($(this).data('day-index'));
+        const slot = $(this).data('slot');
+
+        if (!selectedTask) {
+            frappe.show_alert('Please select a task first by clicking on it', 4);
+            return;
+        }
+
+        try {
+            $(this).html('<small>Assigning...</small>');
+
+            // ✅ Persist to backend
+            await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
+
+            // ✅ Reload fresh data for that week
+            const weekStart = weeksData[weekIndex].weekStart;
+            await Methods.loadWeekData(weekStart.clone(), true);
+
+            // ✅ Refresh zoomed-out view
+            const refreshedWeeks = await Methods.loadMultipleWeeks(currentWeekStart, zoomWeeksToShow);
+            renderZoomedOutCalendar(refreshedWeeks);
+
+        } catch (error) {
+            console.error('Assignment error (zoomed):', error);
+            frappe.show_alert(error.message || 'Error assigning task', 5);
+            $(this).html(`<small>${slot}</small>`);
+        }
+    });
+
+	// Paste handler in zoomed-out mode
+$('#calendar-container').off('paste.zoomed').on('paste.zoomed', '.assignable-slot', async function (e) {
+    e.preventDefault();
+
+    const pasteData = e.originalEvent.clipboardData.getData('text/plain');
+    if (!pasteData) return;
+
+    const instructor = $(this).data('instructor');
+    const weekIndex = $(this).data('week-index');
+    const dayIndex = parseInt($(this).data('day-index'));
+    const slot = $(this).data('slot');
+
+    // Assume pasteData contains task name(s), split by newline
+    const taskNames = pasteData.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+    try {
+        for (const taskName of taskNames) {
+            await Methods.createAllocation(taskName, dayIndex, slot, instructor);
+        }
+
+        // ✅ Reload backend data for that week
+        const weekStart = weeksData[weekIndex].weekStart;
+        await Methods.loadWeekData(weekStart.clone(), true);
+
+        // ✅ Refresh zoomed-out calendar
+        const refreshedWeeks = await Methods.loadMultipleWeeks(currentWeekStart, zoomWeeksToShow);
+        renderZoomedOutCalendar(refreshedWeeks);
+
+        frappe.show_alert(`Assigned ${taskNames.length} task(s)`, 3);
+
+    } catch (err) {
+        console.error("Paste assign error:", err);
+        frappe.show_alert("Error assigning pasted tasks", 5);
+    }
+});
+
+}
+
 
 	// Drag and Drop function
 	function initializeDragAndDrop() {
@@ -1798,6 +1935,86 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				}
 			});
 
+	// Paste blackouts when blackout mode is active
+		$('#calendar-container').on('paste', '.assignable-slot', async function(e) {
+			if (!blackoutModeInstructor) return; // only if blackout mode is active
+			e.preventDefault();
+
+			const pasteData = e.originalEvent.clipboardData.getData('text/plain');
+			if (!pasteData) return;
+
+			const dayIndex = parseInt($(this).data('day-index'));
+			const slot = $(this).data('slot');
+			const instructor = blackoutModeInstructor;
+
+			// Each line in clipboard = blackout slot
+			const blackoutSlots = pasteData.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+			for (const _ of blackoutSlots) {
+				blackoutSelections.push({ instructor, dayIndex, slot });
+				$(this).addClass('blackout-selected');
+			}
+
+			frappe.show_alert(`Added ${blackoutSlots.length} blackout(s) for ${instructor}`, 3);
+		});
+
+		async function bulkRemoveBlackouts(cells) {
+    if (cells.length === 0) {
+        frappe.show_alert("No blackout slots selected", 3);
+        return;
+    }
+
+    // Filter to only blackout slots
+    const blackoutCells = cells.filter(cell => {
+        const selector = `.blackout-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
+        return $(selector).length > 0;
+    });
+
+    if (blackoutCells.length === 0) {
+        frappe.show_alert("No blackout slots in selection", 3);
+        return;
+    }
+
+    try {
+        frappe.show_alert(`Removing blackouts from ${blackoutCells.length} slots...`, 3);
+
+        // Group by instructor for bulk API
+        const byInstructor = {};
+        blackoutCells.forEach(cell => {
+            if (!byInstructor[cell.instructor]) {
+                byInstructor[cell.instructor] = [];
+            }
+            byInstructor[cell.instructor].push({
+                dayIndex: cell.dayIndex,
+                slot: cell.slot
+            });
+        });
+
+        for (const [instructor, slots] of Object.entries(byInstructor)) {
+            await frappe.call({
+                method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.bulk_toggle_blackouts",
+                args: {
+                    instructor: instructor,
+                    slots: JSON.stringify(slots),
+                    week_start_date: currentWeekStart.format("YYYY-MM-DD")
+                }
+            });
+        }
+
+        frappe.show_alert(`Removed blackouts from ${blackoutCells.length} slots`, 5);
+        
+        // Clear selection
+        selectedRangeCells = [];
+        $('.assignable-slot, .blackout-slot').removeClass('multi-cell-selected');
+        updateBulkActionsVisibility();
+        
+        await loadAndRenderCalendar();
+
+    } catch (err) {
+        console.error("Bulk remove blackout error:", err);
+        frappe.show_alert("Error removing blackouts", 5);
+    }
+}
 	$('#calendar-container').on('click', '.remove-assignment', async function (e) {
 			e.preventDefault();
 			e.stopPropagation();
@@ -1885,18 +2102,19 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				instructor: $(cell).data('instructor'),
 				dayIndex: parseInt($(cell).data('day-index')),
 				slot: $(cell).data('slot'),
-				element: cell
+				element: cell,
+				isBlackout: $(cell).hasClass('blackout-slot')
 			};
 		}
 
 		function selectRange(start, end) {
 			selectedRangeCells = [];
 
-			const instructors = $('#calendar-container .assignable-slot')
-				.map(function () {
-					return $(this).data('instructor');
-				}).get()
-				.filter((v, i, a) => a.indexOf(v) === i); // unique instructors
+			// Get all instructors from both assignable and blackout slots
+			const instructors = $('#calendar-container .assignable-slot, #calendar-container .blackout-slot')
+				.map(function () { return $(this).data('instructor'); })
+				.get()
+				.filter((v, i, a) => a.indexOf(v) === i);
 
 			const instructorStart = instructors.indexOf(start.instructor);
 			const instructorEnd = instructors.indexOf(end.instructor);
@@ -1907,36 +2125,240 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 			const dayStart = Math.min(start.dayIndex, end.dayIndex);
 			const dayEnd = Math.max(start.dayIndex, end.dayIndex);
 
-			const slotOrder = ['AM', 'PM'];
-			const slotStart = slotOrder.indexOf(start.slot);
-			const slotEnd = slotOrder.indexOf(end.slot);
-			const minSlot = Math.min(slotStart, slotEnd);
-			const maxSlot = Math.max(slotStart, slotEnd);
-
-			$('.assignable-slot').each(function () {
-				const instr = $(this).data('instructor');
-				const day = $(this).data('day-index');
-				const slot = $(this).data('slot');
-
-				const iIndex = instructors.indexOf(instr);
-				const sIndex = slotOrder.indexOf(slot);
+			// Process both assignable slots and blackout slots
+			$('.assignable-slot, .blackout-slot').each(function () {
+				const meta = getCellMeta(this);
+				const instructorIndex = instructors.indexOf(meta.instructor);
 
 				if (
-					iIndex >= minInstructor && iIndex <= maxInstructor &&
-					day >= dayStart && day <= dayEnd &&
-					sIndex >= minSlot && sIndex <= maxSlot
+					instructorIndex >= minInstructor &&
+					instructorIndex <= maxInstructor &&
+					meta.dayIndex >= dayStart &&
+					meta.dayIndex <= dayEnd
 				) {
 					$(this).addClass('multi-cell-selected');
-					selectedRangeCells.push({
-						instructor: instr,
-						dayIndex: day,
-						slot: slot
-					});
+					selectedRangeCells.push(meta);
+				} else {
+					$(this).removeClass('multi-cell-selected');
 				}
 			});
 
+			updateBulkActionsVisibility();
+		}
+
+		function updateBulkActionsVisibility() {
+			if (selectedRangeCells.length > 0) {
+				$('#bulk-actions').show();
+			} else {
+				$('#bulk-actions').hide();
+			}
+		}
+
+
+		$('#calendar-container').on('mousedown', '.assignable-slot, .blackout-slot', function (e) {
+			isDragging = true;
+			selectedRangeCells = [];
+			$('.assignable-slot, .blackout-slot').removeClass('multi-cell-selected');
+
+			dragStartCell = getCellMeta(this);
+			dragCurrentCell = dragStartCell;
+
+			selectRange(dragStartCell, dragCurrentCell);
+			e.preventDefault();
+		});
+
+	$('#calendar-container').on('mouseenter', '.assignable-slot, .blackout-slot', function (e) {
+		if (isDragging) {
+			dragCurrentCell = getCellMeta(this);
+			selectRange(dragStartCell, dragCurrentCell);
+		}
+	});
+
+	$(document).on('mouseup', function (e) {
+		// Only clear selection if we're not clicking on bulk action buttons
+		if (isDragging) {
+			isDragging = false;
+			return; // Don't clear selection immediately after dragging
 		}
 		
+		// Only clear if clicking outside calendar and not on bulk buttons
+		if (!$(e.target).closest('#calendar-container, #bulk-actions').length) {
+			selectedRangeCells = [];
+			$('.assignable-slot, .blackout-slot').removeClass('multi-cell-selected');
+			updateBulkActionsVisibility();
+		}
+	});
+	
+// --------------------
+// Bulk Toggle Function
+// --------------------
+	async function bulkToggleBlackouts(cells) {
+		if (cells.length === 0) {
+			frappe.show_alert("No slots selected", 3);
+			return;
+		}
+
+		try {
+			frappe.show_alert(`Applying blackouts to ${cells.length} slots...`, 3);
+
+			// Process each cell individually
+			for (const cell of cells) {
+				console.log('Processing cell:', cell);
+				await frappe.call({
+					method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.toggle_blackout",
+					args: {
+						instructor: cell.instructor,
+						day_index: cell.dayIndex,
+						slot: cell.slot,
+						week_start_date: currentWeekStart.format("YYYY-MM-DD")
+					}
+				});
+			}
+
+			frappe.show_alert(`Applied blackouts to ${cells.length} slots`, 5);
+			
+			await loadAndRenderCalendar();
+
+		} catch (err) {
+			console.error("Bulk blackout error:", err);
+			frappe.show_alert("Error applying blackouts", 5);
+		}
+		
+		// Clear selection only after successful completion
+		selectedRangeCells = [];
+		$('.assignable-slot, .blackout-slot').removeClass('multi-cell-selected');
+		updateBulkActionsVisibility();
+	}
+	async function bulkRemoveBlackouts(cells) {
+    if (cells.length === 0) {
+        frappe.show_alert("No slots selected", 3);
+        return;
+    }
+
+    // Filter to only include cells that are actually blackout slots
+    const blackoutCells = [];
+    cells.forEach(cell => {
+        const selector = `.blackout-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
+        if ($(selector).length > 0) {
+            blackoutCells.push(cell);
+        }
+    });
+
+    if (blackoutCells.length === 0) {
+        frappe.show_alert("No blackout slots in selection", 3);
+        return;
+    }
+
+    try {
+        frappe.show_alert(`Removing blackouts from ${blackoutCells.length} slots...`, 3);
+
+        // Process each blackout cell individually
+        for (const cell of blackoutCells) {
+            console.log('Removing blackout from cell:', cell);
+            await frappe.call({
+                method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.toggle_blackout",
+                args: {
+                    instructor: cell.instructor,
+                    day_index: cell.dayIndex,
+                    slot: cell.slot,
+                    week_start_date: currentWeekStart.format("YYYY-MM-DD")
+                }
+            });
+        }
+
+        frappe.show_alert(`Removed blackouts from ${blackoutCells.length} slots`, 5);
+        
+        await loadAndRenderCalendar();
+
+    } catch (err) {
+        console.error("Bulk remove blackout error:", err);
+        frappe.show_alert("Error removing blackouts", 5);
+    }
+    
+    // Clear selection after completion
+    selectedRangeCells = [];
+    $('.assignable-slot, .blackout-slot').removeClass('multi-cell-selected');
+    updateBulkActionsVisibility();
+}
+async function bulkRemoveActivities(cells) {
+    if (cells.length === 0) return;
+
+    try {
+        frappe.show_alert(`Removing activities from ${cells.length} slots...`, 3);
+
+        // Group by instructor
+        const byInstructor = {};
+        cells.forEach(cell => {
+            if (!byInstructor[cell.instructor]) {
+                byInstructor[cell.instructor] = [];
+            }
+            byInstructor[cell.instructor].push({
+                dayIndex: cell.dayIndex,
+                slot: cell.slot
+            });
+        });
+
+        for (const [instructor, slots] of Object.entries(byInstructor)) {
+            await frappe.call({
+                method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.bulk_remove_activities",
+                args: {
+                    assignments: JSON.stringify(slots.map(s => ({
+                        dayIndex: s.dayIndex,
+                        slot: s.slot,
+                        instructor: instructor
+                    }))),
+                    week_start_date: currentWeekStart.format("YYYY-MM-DD")
+                }
+            });
+        }
+
+        frappe.show_alert(`Removed activities from ${cells.length} slots`, 5);
+        await loadAndRenderCalendar();
+
+    } catch (err) {
+        console.error("Bulk remove error:", err);
+        frappe.show_alert("Error removing activities", 5);
+    }
+}
+
+		// Remove the existing handler and replace with this
+		$(document).off('click', '#bulk-blackout-btn').on('click', '#bulk-blackout-btn', async function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			
+			console.log('Bulk blackout clicked, selected cells:', selectedRangeCells.length);
+			
+			if (selectedRangeCells.length === 0) {
+				frappe.show_alert("No slots selected. Please drag to select cells first.", 4);
+				return;
+			}
+			
+			// Make a copy of the selection before processing
+			const cellsToProcess = [...selectedRangeCells];
+			console.log('Processing cells:', cellsToProcess);
+			
+			await bulkToggleBlackouts(cellsToProcess);
+		});		
+
+		// Handler for bulk remove blackout button
+		$(document).off('click', '#bulk-remove-blackout-btn').on('click', '#bulk-remove-blackout-btn', async function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			
+			console.log('Bulk remove blackout clicked, selected cells:', selectedRangeCells.length);
+			
+			if (selectedRangeCells.length === 0) {
+				frappe.show_alert("No slots selected. Please drag to select cells first.", 4);
+				return;
+			}
+			
+			// Make a copy of the selection before processing
+			const cellsToProcess = [...selectedRangeCells];
+			console.log('Processing cells for blackout removal:', cellsToProcess);
+			
+			await bulkRemoveBlackouts(cellsToProcess);
+		});
+
 		$(document).on('keydown', async function (e) {
 			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
 				e.preventDefault();
@@ -2244,6 +2666,9 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 		}
 	});
 
+	$('#remove-activities-btn').off('click').on('click', async function () {
+    await bulkRemoveActivities(selectedRangeCells);
+});
 
 
 	$('#calendar-container').on('click', 'td span.text-primary', async function (e) {
@@ -2551,6 +2976,21 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				padding: 4px 6px;
 				line-height: 1.2;
 			}
+			.bulk-actions {
+				background: #f8f9fa;
+				padding: 10px;
+				border-radius: 4px;
+				border: 1px solid #dee2e6;
+			}
+			.blackout-slot.multi-cell-selected {
+				outline: 2px solid #dc3545 !important;
+				background-color: rgba(220, 53, 69, 0.1) !important;
+			}
+
+			.assignable-slot.multi-cell-selected {
+				outline: 2px solid #28a745 !important;
+				background-color: rgba(40, 167, 69, 0.1) !important;
+			}	
 
 
 		`).appendTo('head');

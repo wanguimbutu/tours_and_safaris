@@ -711,3 +711,35 @@ def bulk_toggle_blackouts(instructor, slots, week_start_date):
         toggled.append(f"{date} {slot}")
 
     return {"message": f"Toggled {len(toggled)} blackout slots."}
+
+@frappe.whitelist()
+def bulk_remove_activities(assignments, week_start_date):
+    import json
+    from frappe.utils import getdate, add_days
+
+    week_start = getdate(week_start_date)
+    assignments = json.loads(assignments) if isinstance(assignments, str) else assignments
+    removed = []
+
+    for a in assignments:
+        day_index = int(a["dayIndex"])
+        slot = a["slot"]
+        instructor = a.get("instructor")
+
+        date = add_days(week_start, day_index)
+
+        existing = frappe.get_all(
+            "Instructor Allocation",
+            filters={
+                "instructor": instructor,
+                "activity_date": date,
+                "slot": slot
+            },
+            fields=["name"]
+        )
+
+        for alloc in existing:
+            frappe.delete_doc("Instructor Allocation", alloc.name)
+            removed.append(f"{date} {slot} {instructor}")
+
+    return {"message": f"Removed {len(removed)} allocations."}
