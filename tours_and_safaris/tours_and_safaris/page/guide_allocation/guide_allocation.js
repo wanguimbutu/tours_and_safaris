@@ -295,6 +295,41 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			const content = `${task.subject}${peopleInfo}`;
 			
 			const dragHandle = '<span class="drag-handle" style="cursor: grab; margin-right: 5px;">⋮⋮</span>';
+
+			// Check if this task is a child activity by seeing if it's NOT a main multiactivity task
+			// AND it belongs to a customer that has multiactivity tasks
+			const isMainMultiActivity = task.subject === 'Multi Activity' || 
+									task.subject === 'Adventure Safari-Multi Activity' ||
+									task.subject === 'Adventure Safari -Multi Activity';
+
+			// Get current week data to check for multiactivity tasks for this customer
+			const weekKey = currentWeekStart.format('YYYY-MM-DD');
+			const currentData = weekData[weekKey];
+			let hasMultiActivityParent = false;
+
+			if (currentData && currentData.tasks && !isMainMultiActivity) {
+				// Check if this customer has any multiactivity tasks
+				hasMultiActivityParent = currentData.tasks.some(t => 
+					t.custom_customer_name === task.custom_customer_name &&
+					(t.subject === 'Multi Activity' || 
+					t.subject === 'Adventure Safari-Multi Activity' ||
+					t.subject === 'Adventure Safari -Multi Activity')
+				);
+			}
+
+			const isChildActivity = !isMainMultiActivity && hasMultiActivityParent;
+
+			console.log('Task check:', {
+				subject: task.subject,
+				customer: task.custom_customer_name,
+				isMainMultiActivity: isMainMultiActivity,
+				hasMultiActivityParent: hasMultiActivityParent,
+				isChildActivity: isChildActivity
+			});
+
+			const removeButton = isChildActivity ? 
+				'<span class="remove-multiactivity" style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>' : 
+				'';
 		
 			const style = `
 				display: inline-block;
@@ -321,7 +356,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 					data-slot="${slot}" 
 					data-task-color="${task.color || ''}"
 					style="${style}; cursor: grab;">
-					${dragHandle}${content}
+					${dragHandle}${content}${removeButton}
 				</div>`;
 
 			}
@@ -418,303 +453,302 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
 			}
 		},
 
-async updateTaskSchedule(taskName, newDate, slot) {
-    console.log('updateTaskSchedule called with:', { taskName, newDate, slot });
-    
-    try {
-        const requestData = {
-            task_name: taskName,
-            new_date: newDate,
-            slot: slot
-        };
-        
-        console.log('Making frappe.call with:', requestData);
-        
-        const response = await frappe.call({
-            method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.update_task_schedule",
-            args: requestData
-        });
-        
-        console.log('Raw response from server:', response);
-        
-        if (response && response.message) {
-            console.log('Response message:', response.message);
-            
-            if (response.message.success) {
-                console.log('Update successful:', response.message);
-                return response.message;
-            } else {
-                console.error('Update failed:', response.message);
-                throw new Error(response.message.message || "Failed to update task schedule");
-            }
-        } else {
-            console.error('Invalid response structure:', response);
-            throw new Error("Invalid response from server");
-        }
-    } catch (error) {
-        console.error('Error in updateTaskSchedule:', error);
-        
-        if (error.name === 'NetworkError' || error.message.includes('fetch')) {
-            throw new Error('Network error - please check your connection');
-        }
-        
-        if (error.message && error.message.includes('permission')) {
-            throw new Error('Permission denied - please check your user permissions');
-        }
-        
-        if (error.message && error.message.includes('method not found')) {
-            throw new Error('Backend method not found - please ensure update_task_schedule method exists');
-        }
-        
-        throw error;
-    }
-}
-,
-async splitCustomerIntoGroups(customerName, totalPeople, numberOfGroups) {
-    try {
-        const response = await frappe.call({
-            method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.split_customer_groups",
-            args: {
-                customer_name: customerName,
-                total_people: totalPeople,
-                number_of_groups: numberOfGroups,
-                week_start_date: currentWeekStart.format('YYYY-MM-DD'),
-                split_tasks: true 
-            }
-        });
-        
-        if (response.message && response.message.success) {
-            return response.message;
-        } else {
-            throw new Error(response.message?.message || "Failed to split customer into groups");
-        }
-    } catch (error) {
-        console.error('Error splitting customer into groups:', error);
-        throw error;
-    }
-},
-
-
-async loadActivityTypes() {
-    try {
-        const response = await frappe.call({
-            method: "frappe.client.get_list",
-            args: {
-                doctype: "Activity Type",
-                fields: ["name"],
-                limit_page_length: 100
-            }
-        });
-
-        const activities = response.message || [];
-        const $body = $('#activity-list-body');
-        $body.empty();
-
-        activities.forEach(activity => {
-			const row = `
-				<tr>
-					<td>
-						<input type="checkbox" class="activity-checkbox" value="${activity.name}" />
-						${activity.name}
-					</td>
-					<td>${activity.description || ''}</td>
-				</tr>
-			`;
-			$body.append(row);
-		});
-
-    } catch (err) {
-        console.error("Failed to load activity types", err);
-        $('#activity-list-body').html(`<tr><td colspan="2">Error loading activities</td></tr>`);
-    }
-}
-,
-
-async testBackendConnection() {
-    try {
-        console.log('Testing backend connection...');
-        
-        const response = await frappe.call({
-            method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.get_week_data",
-            args: {
-                week_start_date: moment().startOf('week').format('YYYY-MM-DD')
-            }
-        });
-        
-        console.log('Backend connection test result:', response);
-        return response;
-    } catch (error) {
-        console.error('Backend connection test failed:', error);
-        throw error;
-    }
-}
-	};
-
-	async function assignMultipleTasksFromStartCell(instructorName, strategy) {
-	const weekKey = currentWeekStart.format('YYYY-MM-DD');
-	const data = weekData[weekKey];
-	const assignments = data.instructorAssignments[instructorName] || [];
-	
-	// Find available slots for the instructor
-	const availableSlots = [];
-	for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-	const slotDate = moment(currentWeekStart).add(dayIndex, 'days');
-	
-	['AM', 'PM'].forEach(slot => {
-		if (strategy === 'AM slots only' && slot === 'PM') return;
-		if (strategy === 'PM slots only' && slot === 'AM') return;
-
-		// Check if slot is already taken
-		const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
-		if (isOccupied) return;
-
-		// Validate that each selected task can be assigned to this date
-		const validForAll = selectedTasks.every(task => {
-			const taskStart = moment(task.exp_start_date).startOf('day');
-			const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
-			return slotDate.isBetween(taskStart, taskEnd, null, '[]');
-		});
-
-		if (validForAll) {
-			availableSlots.push({ dayIndex, slot });
-		}
-	});
-}
-
-	
-	if (availableSlots.length < selectedTasks.length) {
-		frappe.show_alert(`Only ${availableSlots.length} slots available, but ${selectedTasks.length} tasks selected`, 5);
-		return;
-	}
-	
-	// Assign tasks to available slots
-	let successCount = 0;
-	for (let i = 0; i < selectedTasks.length && i < availableSlots.length; i++) {
-		const task = selectedTasks[i];
-		const slot = availableSlots[i];
-		
-		try {
-			await Methods.createAllocation(task.name, slot.dayIndex, slot.slot, instructorName);
-			successCount++;
-		} catch (error) {
-			console.error(`Failed to assign ${task.subject}:`, error);
-		}
-	}
-	
-	//frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructorName}`, 4);
-	
-	// Clean up and refresh
-	exitMultiSelectMode();
-	//await loadAndRenderCalendar();
-}
-
-async function assignMultipleTasksFromStartCell(instructor, startDayIndex, startSlot) {
-	if (selectedTasks.length === 0) {
-		frappe.show_alert('No tasks selected', 3);
-		return;
-	}
-
-	const weekKey = currentWeekStart.format('YYYY-MM-DD');
-	const data = weekData[weekKey];
-	const assignments = data.instructorAssignments[instructor] || [];
-
-	const sequence = [];
-	let dayIndex = startDayIndex;
-	let slot = startSlot;
-
-	// Build the sequence of available cells
-	for (let i = 0; i < 7 * 2; i++) { // Max 14 slots (7 days * 2 slots)
-		if (dayIndex >= 7) break;
-
-		const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
-		if (!isOccupied) {
-			sequence.push({ dayIndex, slot });
-		}
-
-		// Move to next slot
-		if (slot === 'AM') {
-			slot = 'PM';
-		} else {
-			slot = 'AM';
-			dayIndex++;
-		}
-
-		if (sequence.length >= selectedTasks.length) break;
-	}
-
-	if (sequence.length < selectedTasks.length) {
-		frappe.show_alert(`Only ${sequence.length} available slots for ${selectedTasks.length} tasks`, 5);
-		return;
-	}
-
-	// Assign tasks
-	let successCount = 0;
-	for (let i = 0; i < selectedTasks.length; i++) {
-		const task = selectedTasks[i];
-		const target = sequence[i];
-		const taskStart = moment(task.exp_start_date);
-		const taskEnd = moment(task.exp_end_date || task.exp_start_date);
-		const targetDate = moment(currentWeekStart).add(target.dayIndex, 'days');
-
-		if (!targetDate.isBetween(taskStart, taskEnd, null, '[]')) {
-			console.warn(`Skipping ${task.subject} — out of date range`);
-			continue;
-		}
-
-		try {
-			await Methods.createAllocation(task.name, target.dayIndex, target.slot, instructor);
-			successCount++;
-		} catch (error) {
-			console.error(`Failed to assign ${task.subject}`, error);
-		}
-	}
-
-	//frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructor}`, 4);
-	exitMultiSelectMode();
-	//await loadAndRenderCalendar();
-}
-
-
-	async function assignTaskAcrossWeek(task, instructorName) {
-	const weekKey = currentWeekStart.format('YYYY-MM-DD');
-	const data = weekData[weekKey];
-	const assignments = data.instructorAssignments[instructorName] || [];
-
-	const taskStart = moment(task.exp_start_date).startOf('day');
-	const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
-
-	let successCount = 0;
-
-	for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
-		const slotDate = moment(currentWeekStart).add(dayIndex, 'days');
-
-		// Only assign if slotDate is within task range
-		if (!slotDate.isBetween(taskStart, taskEnd, null, '[]')) continue;
-
-		for (let slot of ['AM', 'PM']) {
-			const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
-			if (isOccupied) continue;
-
+		async updateTaskSchedule(taskName, newDate, slot) {
+			console.log('updateTaskSchedule called with:', { taskName, newDate, slot });
+			
 			try {
-				await Methods.createAllocation(task.name, dayIndex, slot, instructorName);
-				successCount++;
-				break; 
-			} catch (err) {
-				console.error(`Failed to assign on ${slotDate.format('ddd')} ${slot}`, err);
+				const requestData = {
+					task_name: taskName,
+					new_date: newDate,
+					slot: slot
+				};
+				
+				console.log('Making frappe.call with:', requestData);
+				
+				const response = await frappe.call({
+					method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.update_task_schedule",
+					args: requestData
+				});
+				
+				console.log('Raw response from server:', response);
+				
+				if (response && response.message) {
+					console.log('Response message:', response.message);
+					
+					if (response.message.success) {
+						console.log('Update successful:', response.message);
+						return response.message;
+					} else {
+						console.error('Update failed:', response.message);
+						throw new Error(response.message.message || "Failed to update task schedule");
+					}
+				} else {
+					console.error('Invalid response structure:', response);
+					throw new Error("Invalid response from server");
+				}
+			} catch (error) {
+				console.error('Error in updateTaskSchedule:', error);
+				
+				if (error.name === 'NetworkError' || error.message.includes('fetch')) {
+					throw new Error('Network error - please check your connection');
+				}
+				
+				if (error.message && error.message.includes('permission')) {
+					throw new Error('Permission denied - please check your user permissions');
+				}
+				
+				if (error.message && error.message.includes('method not found')) {
+					throw new Error('Backend method not found - please ensure update_task_schedule method exists');
+				}
+				
+				throw error;
 			}
-			const selector = `.assignable-slot[data-instructor="${dayCell.instructor}"][data-day-index="${dayCell.dayIndex}"][data-slot="${dayCell.slot}"]`;
-				$(selector).removeClass('assigned-cell').removeAttr('data-assigned');
+		},
 
+		async splitCustomerIntoGroups(customerName, totalPeople, numberOfGroups) {
+			try {
+				const response = await frappe.call({
+					method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.split_customer_groups",
+					args: {
+						customer_name: customerName,
+						total_people: totalPeople,
+						number_of_groups: numberOfGroups,
+						week_start_date: currentWeekStart.format('YYYY-MM-DD'),
+						split_tasks: true 
+					}
+				});
+				
+				if (response.message && response.message.success) {
+					return response.message;
+				} else {
+					throw new Error(response.message?.message || "Failed to split customer into groups");
+				}
+			} catch (error) {
+				console.error('Error splitting customer into groups:', error);
+				throw error;
+			}
+		},
+
+
+		async loadActivityTypes() {
+			try {
+				const response = await frappe.call({
+					method: "frappe.client.get_list",
+					args: {
+						doctype: "Activity Type",
+						fields: ["name"],
+						limit_page_length: 100
+					}
+				});
+
+				const activities = response.message || [];
+				const $body = $('#activity-list-body');
+				$body.empty();
+
+				activities.forEach(activity => {
+					const row = `
+						<tr>
+							<td>
+								<input type="checkbox" class="activity-checkbox" value="${activity.name}" />
+								${activity.name}
+							</td>
+							<td>${activity.description || ''}</td>
+						</tr>
+					`;
+					$body.append(row);
+				});
+
+			} catch (err) {
+				console.error("Failed to load activity types", err);
+				$('#activity-list-body').html(`<tr><td colspan="2">Error loading activities</td></tr>`);
+			}
 		}
-	}
+		,
 
-	if (successCount === 0) {
-		frappe.show_alert(`No available slots for ${instructorName} in task date range`, 5);
-	} else {
-		frappe.show_alert(`Assigned "${task.subject}" to ${instructorName} on ${successCount} day(s)`, 4);
-		//await loadAndRenderCalendar();
-	}
-}
+		async testBackendConnection() {
+			try {
+				console.log('Testing backend connection...');
+				
+				const response = await frappe.call({
+					method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.get_week_data",
+					args: {
+						week_start_date: moment().startOf('week').format('YYYY-MM-DD')
+					}
+				});
+				
+				console.log('Backend connection test result:', response);
+				return response;
+			} catch (error) {
+				console.error('Backend connection test failed:', error);
+				throw error;
+			}
+		}
+			};
+
+			async function assignMultipleTasksFromStartCell(instructorName, strategy) {
+			const weekKey = currentWeekStart.format('YYYY-MM-DD');
+			const data = weekData[weekKey];
+			const assignments = data.instructorAssignments[instructorName] || [];
+			
+			// Find available slots for the instructor
+			const availableSlots = [];
+			for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+			const slotDate = moment(currentWeekStart).add(dayIndex, 'days');
+			
+			['AM', 'PM'].forEach(slot => {
+				if (strategy === 'AM slots only' && slot === 'PM') return;
+				if (strategy === 'PM slots only' && slot === 'AM') return;
+
+				// Check if slot is already taken
+				const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
+				if (isOccupied) return;
+
+				// Validate that each selected task can be assigned to this date
+				const validForAll = selectedTasks.every(task => {
+					const taskStart = moment(task.exp_start_date).startOf('day');
+					const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
+					return slotDate.isBetween(taskStart, taskEnd, null, '[]');
+				});
+
+				if (validForAll) {
+					availableSlots.push({ dayIndex, slot });
+				}
+			});
+		}
+
+			
+			if (availableSlots.length < selectedTasks.length) {
+				frappe.show_alert(`Only ${availableSlots.length} slots available, but ${selectedTasks.length} tasks selected`, 5);
+				return;
+			}
+			
+			// Assign tasks to available slots
+			let successCount = 0;
+			for (let i = 0; i < selectedTasks.length && i < availableSlots.length; i++) {
+				const task = selectedTasks[i];
+				const slot = availableSlots[i];
+				
+				try {
+					await Methods.createAllocation(task.name, slot.dayIndex, slot.slot, instructorName);
+					successCount++;
+				} catch (error) {
+					console.error(`Failed to assign ${task.subject}:`, error);
+				}
+			}
+			
+			//frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructorName}`, 4);
+			
+			// Clean up and refresh
+			exitMultiSelectMode();
+			//await loadAndRenderCalendar();
+		}
+
+		async function assignMultipleTasksFromStartCell(instructor, startDayIndex, startSlot) {
+			if (selectedTasks.length === 0) {
+				frappe.show_alert('No tasks selected', 3);
+				return;
+			}
+
+			const weekKey = currentWeekStart.format('YYYY-MM-DD');
+			const data = weekData[weekKey];
+			const assignments = data.instructorAssignments[instructor] || [];
+
+			const sequence = [];
+			let dayIndex = startDayIndex;
+			let slot = startSlot;
+
+			// Build the sequence of available cells
+			for (let i = 0; i < 7 * 2; i++) { // Max 14 slots (7 days * 2 slots)
+				if (dayIndex >= 7) break;
+
+				const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
+				if (!isOccupied) {
+					sequence.push({ dayIndex, slot });
+				}
+
+				// Move to next slot
+				if (slot === 'AM') {
+					slot = 'PM';
+				} else {
+					slot = 'AM';
+					dayIndex++;
+				}
+
+				if (sequence.length >= selectedTasks.length) break;
+			}
+
+			if (sequence.length < selectedTasks.length) {
+				frappe.show_alert(`Only ${sequence.length} available slots for ${selectedTasks.length} tasks`, 5);
+				return;
+			}
+
+			// Assign tasks
+			let successCount = 0;
+			for (let i = 0; i < selectedTasks.length; i++) {
+				const task = selectedTasks[i];
+				const target = sequence[i];
+				const taskStart = moment(task.exp_start_date);
+				const taskEnd = moment(task.exp_end_date || task.exp_start_date);
+				const targetDate = moment(currentWeekStart).add(target.dayIndex, 'days');
+
+				if (!targetDate.isBetween(taskStart, taskEnd, null, '[]')) {
+					console.warn(`Skipping ${task.subject} — out of date range`);
+					continue;
+				}
+
+				try {
+					await Methods.createAllocation(task.name, target.dayIndex, target.slot, instructor);
+					successCount++;
+				} catch (error) {
+					console.error(`Failed to assign ${task.subject}`, error);
+				}
+			}
+
+			//frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructor}`, 4);
+			exitMultiSelectMode();
+			//await loadAndRenderCalendar();
+		}
+
+			async function assignTaskAcrossWeek(task, instructorName) {
+				const weekKey = currentWeekStart.format('YYYY-MM-DD');
+				const data = weekData[weekKey];
+				const assignments = data.instructorAssignments[instructorName] || [];
+
+				const taskStart = moment(task.exp_start_date).startOf('day');
+				const taskEnd = moment(task.exp_end_date || task.exp_start_date).startOf('day');
+
+				let successCount = 0;
+
+				for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+					const slotDate = moment(currentWeekStart).add(dayIndex, 'days');
+
+					// Only assign if slotDate is within task range
+					if (!slotDate.isBetween(taskStart, taskEnd, null, '[]')) continue;
+
+					for (let slot of ['AM', 'PM']) {
+						const isOccupied = assignments.some(a => a.dayIndex === dayIndex && a.slot === slot);
+						if (isOccupied) continue;
+
+						try {
+							await Methods.createAllocation(task.name, dayIndex, slot, instructorName);
+							successCount++;
+							break; 
+						} catch (err) {
+							console.error(`Failed to assign on ${slotDate.format('ddd')} ${slot}`, err);
+						}
+						const selector = `.assignable-slot[data-instructor="${dayCell.instructor}"][data-day-index="${dayCell.dayIndex}"][data-slot="${dayCell.slot}"]`;
+							$(selector).removeClass('assigned-cell').removeAttr('data-assigned');
+
+					}
+				}
+
+				if (successCount === 0) {
+					frappe.show_alert(`No available slots for ${instructorName} in task date range`, 5);
+				} else {
+					frappe.show_alert(`Assigned "${task.subject}" to ${instructorName} on ${successCount} day(s)`, 4);
+					//await loadAndRenderCalendar();
+				}
+			}
 
 	
 	// Main Functions
@@ -1428,14 +1462,11 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
         try {
             $(this).html('<small>Assigning...</small>');
 
-            // ✅ Persist to backend
             await Methods.createAllocation(selectedTask.name, dayIndex, slot, instructor);
 
-            // ✅ Reload fresh data for that week
             const weekStart = weeksData[weekIndex].weekStart;
             await Methods.loadWeekData(weekStart.clone(), true);
 
-            // ✅ Refresh zoomed-out view
             const refreshedWeeks = await Methods.loadMultipleWeeks(currentWeekStart, zoomWeeksToShow);
             renderZoomedOutCalendar(refreshedWeeks);
 
@@ -1466,11 +1497,11 @@ $('#calendar-container').off('paste.zoomed').on('paste.zoomed', '.assignable-slo
             await Methods.createAllocation(taskName, dayIndex, slot, instructor);
         }
 
-        // ✅ Reload backend data for that week
+        // Reload backend data for that week
         const weekStart = weeksData[weekIndex].weekStart;
         await Methods.loadWeekData(weekStart.clone(), true);
 
-        // ✅ Refresh zoomed-out calendar
+        // Refresh zoomed-out calendar
         const refreshedWeeks = await Methods.loadMultipleWeeks(currentWeekStart, zoomWeeksToShow);
         renderZoomedOutCalendar(refreshedWeeks);
 
@@ -1602,9 +1633,7 @@ $('#calendar-container').off('paste.zoomed').on('paste.zoomed', '.assignable-slo
 			// Update task schedule on backend
 			await Methods.updateTaskSchedule(taskData.taskName, newDate, targetSlot);
 
-			// SUCCESS: Update the UI visually without refresh
-			
-			// 1. Find and clear the original cell
+			// Find and clear the original cell
 			const originalSelector = `.draggable-task[data-task-name="${taskData.taskName}"]`;
 			const $originalCell = $(originalSelector).closest('td');
 			if ($originalCell.length) {
@@ -1619,7 +1648,7 @@ $('#calendar-container').off('paste.zoomed').on('paste.zoomed', '.assignable-slo
 				}
 			}
 
-			// 2. Clear the loading state and add the task to the new cell
+			// Clear the loading state and add the task to the new cell
 			const color = taskData.color || '#ccc';
 			const taskHtml = Methods.makeTaskCellClickable({
 				name: taskData.taskName,
@@ -1955,66 +1984,67 @@ $('#calendar-container').off('paste.zoomed').on('paste.zoomed', '.assignable-slo
 				$(this).addClass('blackout-selected');
 			}
 
-			frappe.show_alert(`Added ${blackoutSlots.length} blackout(s) for ${instructor}`, 3);
+			//frappe.show_alert(`Added ${blackoutSlots.length} blackout(s) for ${instructor}`, 3);
 		});
 
 		async function bulkRemoveBlackouts(cells) {
-    if (cells.length === 0) {
-        frappe.show_alert("No blackout slots selected", 3);
-        return;
-    }
+			if (cells.length === 0) {
+				frappe.show_alert("No blackout slots selected", 3);
+				return;
+			}
 
-    // Filter to only blackout slots
-    const blackoutCells = cells.filter(cell => {
-        const selector = `.blackout-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
-        return $(selector).length > 0;
-    });
+			// Filter to only blackout slots
+			const blackoutCells = cells.filter(cell => {
+				const selector = `.blackout-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
+				return $(selector).length > 0;
+			});
 
-    if (blackoutCells.length === 0) {
-        frappe.show_alert("No blackout slots in selection", 3);
-        return;
-    }
+			if (blackoutCells.length === 0) {
+				frappe.show_alert("No blackout slots in selection", 3);
+				return;
+			}
 
-    try {
-        frappe.show_alert(`Removing blackouts from ${blackoutCells.length} slots...`, 3);
+			try {
+				frappe.show_alert(`Removing blackouts from ${blackoutCells.length} slots...`, 3);
 
-        // Group by instructor for bulk API
-        const byInstructor = {};
-        blackoutCells.forEach(cell => {
-            if (!byInstructor[cell.instructor]) {
-                byInstructor[cell.instructor] = [];
-            }
-            byInstructor[cell.instructor].push({
-                dayIndex: cell.dayIndex,
-                slot: cell.slot
-            });
-        });
+				// Group by instructor for bulk API
+				const byInstructor = {};
+				blackoutCells.forEach(cell => {
+					if (!byInstructor[cell.instructor]) {
+						byInstructor[cell.instructor] = [];
+					}
+					byInstructor[cell.instructor].push({
+						dayIndex: cell.dayIndex,
+						slot: cell.slot
+					});
+				});
 
-        for (const [instructor, slots] of Object.entries(byInstructor)) {
-            await frappe.call({
-                method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.bulk_toggle_blackouts",
-                args: {
-                    instructor: instructor,
-                    slots: JSON.stringify(slots),
-                    week_start_date: currentWeekStart.format("YYYY-MM-DD")
-                }
-            });
-        }
+				for (const [instructor, slots] of Object.entries(byInstructor)) {
+					await frappe.call({
+						method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.bulk_toggle_blackouts",
+						args: {
+							instructor: instructor,
+							slots: JSON.stringify(slots),
+							week_start_date: currentWeekStart.format("YYYY-MM-DD")
+						}
+					});
+				}
 
-        frappe.show_alert(`Removed blackouts from ${blackoutCells.length} slots`, 5);
-        
-        // Clear selection
-        selectedRangeCells = [];
-        $('.assignable-slot, .blackout-slot').removeClass('multi-cell-selected');
-        updateBulkActionsVisibility();
-        
-        await loadAndRenderCalendar();
+				//frappe.show_alert(`Removed blackouts from ${blackoutCells.length} slots`, 5);
+				
+				// Clear selection
+				selectedRangeCells = [];
+				$('.assignable-slot, .blackout-slot').removeClass('multi-cell-selected');
+				updateBulkActionsVisibility();
+				
+				await loadAndRenderCalendar();
 
-    } catch (err) {
-        console.error("Bulk remove blackout error:", err);
-        frappe.show_alert("Error removing blackouts", 5);
-    }
-}
+			} catch (err) {
+				console.error("Bulk remove blackout error:", err);
+				frappe.show_alert("Error removing blackouts", 5);
+			}
+		}
+		
 	$('#calendar-container').on('click', '.remove-assignment', async function (e) {
 			e.preventDefault();
 			e.stopPropagation();
@@ -2188,10 +2218,8 @@ $('#calendar-container').off('paste.zoomed').on('paste.zoomed', '.assignable-slo
 			updateBulkActionsVisibility();
 		}
 	});
-	
-// --------------------
-// Bulk Toggle Function
-// --------------------
+	// Bulk Toggle Function
+
 	async function bulkToggleBlackouts(cells) {
 		if (cells.length === 0) {
 			frappe.show_alert("No slots selected", 3);
@@ -2217,69 +2245,112 @@ $('#calendar-container').off('paste.zoomed').on('paste.zoomed', '.assignable-slo
 
 			frappe.show_alert(`Applied blackouts to ${cells.length} slots`, 5);
 			
-			await loadAndRenderCalendar();
-
+			//await loadAndRenderCalendar();
 		} catch (err) {
 			console.error("Bulk blackout error:", err);
 			frappe.show_alert("Error applying blackouts", 5);
 		}
 		
+		cells.forEach(cell => {
+				const selector = `.assignable-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
+				const $cell = $(selector);
+				
+				if ($cell.length) {
+					$cell
+						.removeClass('assignable-slot multi-cell-selected')
+						.addClass('blackout-slot')
+						.css({
+							background: 'repeating-linear-gradient(45deg,#ccc,#ccc 10px,#bbb 10px,#bbb 20px)',
+							color: '#555',
+							textAlign: 'center',
+							minHeight: '40px',
+							cursor: 'not-allowed',
+							position: 'relative'
+						})
+						.html(`
+							<em>Blackout</em>
+							<span class="remove-blackout" 
+								style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>
+						`);
+				}
+			});
 		// Clear selection only after successful completion
 		selectedRangeCells = [];
 		$('.assignable-slot, .blackout-slot').removeClass('multi-cell-selected');
 		updateBulkActionsVisibility();
 	}
+
 	async function bulkRemoveBlackouts(cells) {
-    if (cells.length === 0) {
-        frappe.show_alert("No slots selected", 3);
-        return;
-    }
+		if (cells.length === 0) {
+			frappe.show_alert("No slots selected", 3);
+			return;
+		}
 
-    // Filter to only include cells that are actually blackout slots
-    const blackoutCells = [];
-    cells.forEach(cell => {
-        const selector = `.blackout-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
-        if ($(selector).length > 0) {
-            blackoutCells.push(cell);
-        }
-    });
+		// Filter to only include cells that are actually blackout slots
+		const blackoutCells = [];
+		cells.forEach(cell => {
+			const selector = `.blackout-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
+			if ($(selector).length > 0) {
+				blackoutCells.push(cell);
+			}
+		});
 
-    if (blackoutCells.length === 0) {
-        frappe.show_alert("No blackout slots in selection", 3);
-        return;
-    }
+		if (blackoutCells.length === 0) {
+			frappe.show_alert("No blackout slots in selection", 3);
+			return;
+		}
 
-    try {
-        frappe.show_alert(`Removing blackouts from ${blackoutCells.length} slots...`, 3);
+		try {
+			frappe.show_alert(`Removing blackouts from ${blackoutCells.length} slots...`, 3);
 
-        // Process each blackout cell individually
-        for (const cell of blackoutCells) {
-            console.log('Removing blackout from cell:', cell);
-            await frappe.call({
-                method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.toggle_blackout",
-                args: {
-                    instructor: cell.instructor,
-                    day_index: cell.dayIndex,
-                    slot: cell.slot,
-                    week_start_date: currentWeekStart.format("YYYY-MM-DD")
-                }
-            });
-        }
+			// Process each blackout cell individually
+			for (const cell of blackoutCells) {
+				console.log('Removing blackout from cell:', cell);
+				await frappe.call({
+					method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.toggle_blackout",
+					args: {
+						instructor: cell.instructor,
+						day_index: cell.dayIndex,
+						slot: cell.slot,
+						week_start_date: currentWeekStart.format("YYYY-MM-DD")
+					}
+				});
+			}
 
-        frappe.show_alert(`Removed blackouts from ${blackoutCells.length} slots`, 5);
-        
-        await loadAndRenderCalendar();
+			frappe.show_alert(`Removed blackouts from ${blackoutCells.length} slots`, 5);
+			
+			//await loadAndRenderCalendar();
+			
+		} catch (err) {
+			console.error("Bulk remove blackout error:", err);
+			frappe.show_alert("Error removing blackouts", 5);
+		}
+		
+		blackoutCells.forEach(cell => {
+			const selector = `.blackout-slot[data-instructor="${cell.instructor}"][data-day-index="${cell.dayIndex}"][data-slot="${cell.slot}"]`;
+			const $cell = $(selector);
+			
+			if ($cell.length) {
+				$cell
+					.removeClass('blackout-slot multi-cell-selected')
+					.addClass('assignable-slot')
+					.css({
+						cursor: 'pointer',
+						border: '2px dashed #ccc',
+						textAlign: 'center',
+						minHeight: '40px',
+						background: '',
+						color: ''
+					})
+					.html(`<small>${cell.slot}</small>`);
+			}
+		});
+		// Clear selection after completion
+		selectedRangeCells = [];
+		$('.assignable-slot, .blackout-slot').removeClass('multi-cell-selected');
+		updateBulkActionsVisibility();
+	}
 
-    } catch (err) {
-        console.error("Bulk remove blackout error:", err);
-        frappe.show_alert("Error removing blackouts", 5);
-    }
-    
-    // Clear selection after completion
-    selectedRangeCells = [];
-    $('.assignable-slot, .blackout-slot').removeClass('multi-cell-selected');
-    updateBulkActionsVisibility();
-}
 async function bulkRemoveActivities(cells) {
     if (cells.length === 0) return;
 
@@ -2670,6 +2741,39 @@ async function bulkRemoveActivities(cells) {
     await bulkRemoveActivities(selectedRangeCells);
 });
 
+	$('#calendar-container').on('click', '.remove-multiactivity', async function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		const $taskElement = $(this).closest('.assignable-cell');
+		const taskName = $taskElement.data('task-name');
+		const taskSubject = $taskElement.data('task-subject');
+
+		try {
+			// Show loading state
+			$taskElement.html('<small>Removing...</small>');
+
+			await frappe.call({
+				method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.remove_multiactivity_task",
+				args: {
+					task_name: taskName
+				}
+			});
+
+			// Remove from UI immediately without refresh
+			$taskElement.remove();
+			
+			frappe.show_alert(`Removed "${taskSubject}"`, 3);
+
+		} catch (error) {
+			console.error('Error removing multiactivity task:', error);
+			frappe.show_alert('Error removing task: ' + (error.message || 'Unknown error'), 5);
+			
+			// Restore the original content if removal failed
+			const originalContent = `${taskSubject}<span class="remove-multiactivity" style="color:red; cursor:pointer; font-weight:bold; margin-left: 5px; position: absolute; top: 2px; right: 5px;">&times;</span>`;
+			$taskElement.html(originalContent);
+		}
+	});
 
 	$('#calendar-container').on('click', 'td span.text-primary', async function (e) {
 	e.preventDefault();

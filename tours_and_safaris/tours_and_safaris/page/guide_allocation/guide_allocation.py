@@ -743,3 +743,21 @@ def bulk_remove_activities(assignments, week_start_date):
             removed.append(f"{date} {slot} {instructor}")
 
     return {"message": f"Removed {len(removed)} allocations."}
+
+@frappe.whitelist()
+def remove_multiactivity_task(task_name):
+    try:
+        # Delete the task
+        frappe.delete_doc("Task", task_name)
+        frappe.db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Task {task_name} removed successfully"
+        }
+    except Exception as e:
+        frappe.log_error(f"Error removing multiactivity task: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error removing task: {str(e)}"
+        }
