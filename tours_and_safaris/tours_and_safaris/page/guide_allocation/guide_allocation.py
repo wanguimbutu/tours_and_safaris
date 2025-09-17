@@ -712,3 +712,53 @@ def bulk_toggle_blackouts(instructor, slots, week_start_date):
         toggled.append(f"{date} {slot}")
 
     return {"message": f"Toggled {len(toggled)} blackout slots."}
+
+@frappe.whitelist()
+def bulk_remove_activities(assignments, week_start_date):
+    import json
+    from frappe.utils import getdate, add_days
+
+    week_start = getdate(week_start_date)
+    assignments = json.loads(assignments) if isinstance(assignments, str) else assignments
+    removed = []
+
+    for a in assignments:
+        day_index = int(a["dayIndex"])
+        slot = a["slot"]
+        instructor = a.get("instructor")
+
+        date = add_days(week_start, day_index)
+
+        existing = frappe.get_all(
+            "Instructor Allocation",
+            filters={
+                "instructor": instructor,
+                "activity_date": date,
+                "slot": slot
+            },
+            fields=["name"]
+        )
+
+        for alloc in existing:
+            frappe.delete_doc("Instructor Allocation", alloc.name)
+            removed.append(f"{date} {slot} {instructor}")
+
+    return {"message": f"Removed {len(removed)} allocations."}
+
+@frappe.whitelist()
+def remove_multiactivity_task(task_name):
+    try:
+        # Delete the task
+        frappe.delete_doc("Task", task_name)
+        frappe.db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Task {task_name} removed successfully"
+        }
+    except Exception as e:
+        frappe.log_error(f"Error removing multiactivity task: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error removing task: {str(e)}"
+        }
