@@ -464,7 +464,7 @@ def get_events(start, end, filters=None):
         FROM 
             `tabReservation` r
         LEFT JOIN 
-            `tabCustomer` c ON r.customer = c.name
+            `tabCustomer` c ON r.customer = c.customer_name
         WHERE 
             r.arrival_date <= %(end)s
             AND r.depature_date >= %(start)s
