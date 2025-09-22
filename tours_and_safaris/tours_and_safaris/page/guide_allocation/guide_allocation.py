@@ -165,7 +165,7 @@ def get_tasks_for_week(week_start, week_end):
             dependent_tasks = frappe.db.sql(f"""
                 SELECT name, subject, custom_customer_name, custom_customer,
                        exp_start_date, exp_end_date, custom_assigned_date, 
-                       custom_no_of_people,custom_customer_groups, status,color, project
+                       custom_no_of_people,custom_customer_groups, status,color,project
                 FROM `tabTask`
                 WHERE name IN ({','.join(['%s'] * len(dependent_task_names))})
             """, dependent_task_names, as_dict=True)
@@ -182,7 +182,7 @@ def get_tasks_for_week(week_start, week_end):
                         dt.exp_end_date = dt.exp_end_date or parent_task.exp_end_date
                         # Also inherit custom_assigned_date if not set
                         dt.custom_assigned_date = dt.custom_assigned_date or parent_task.custom_assigned_date
-                        dt.project = dt.project or parent_task.get("project")
+                        dt.project = dt.project or parent_task.project
             tasks.extend(dependent_tasks)
     
     return tasks
@@ -604,16 +604,14 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
 
 @frappe.whitelist()
 def create_multiactivity_task(customer, activity_type, start_date, end_date,
-                               custom_customer_name=None, custom_no_of_people=None, 
-                               project=None, custom_color=None):
+                               custom_customer_name=None, custom_no_of_people=None, project=None):
     frappe.logger().info({
         "msg": "create_multiactivity_task called",
         "customer": customer,
         "activity_type": activity_type,
         "custom_customer_name": custom_customer_name,
         "custom_no_of_people": custom_no_of_people,
-        "project": project,
-        "custom_color": custom_color
+        "project": project
     })
 
     task = frappe.new_doc("Task")
@@ -636,14 +634,6 @@ def create_multiactivity_task(customer, activity_type, start_date, end_date,
 
     if project:
         task.project = project
-
-    if custom_color:
-        task.color = custom_color
-    else:
-        # optional fallback: try customer default color
-        default_color = frappe.db.get_value("Customer", customer, "color")
-        if default_color:
-            task.color = default_color
 
     task.insert()
     return {"success": True, "task": task.name}
@@ -711,53 +701,3 @@ def bulk_toggle_blackouts(instructor, slots, week_start_date):
         toggled.append(f"{date} {slot}")
 
     return {"message": f"Toggled {len(toggled)} blackout slots."}
-
-@frappe.whitelist()
-def bulk_remove_activities(assignments, week_start_date):
-    import json
-    from frappe.utils import getdate, add_days
-
-    week_start = getdate(week_start_date)
-    assignments = json.loads(assignments) if isinstance(assignments, str) else assignments
-    removed = []
-
-    for a in assignments:
-        day_index = int(a["dayIndex"])
-        slot = a["slot"]
-        instructor = a.get("instructor")
-
-        date = add_days(week_start, day_index)
-
-        existing = frappe.get_all(
-            "Instructor Allocation",
-            filters={
-                "instructor": instructor,
-                "activity_date": date,
-                "slot": slot
-            },
-            fields=["name"]
-        )
-
-        for alloc in existing:
-            frappe.delete_doc("Instructor Allocation", alloc.name)
-            removed.append(f"{date} {slot} {instructor}")
-
-    return {"message": f"Removed {len(removed)} allocations."}
-
-@frappe.whitelist()
-def remove_multiactivity_task(task_name):
-    try:
-        # Delete the task
-        frappe.delete_doc("Task", task_name)
-        frappe.db.commit()
-        
-        return {
-            "success": True,
-            "message": f"Task {task_name} removed successfully"
-        }
-    except Exception as e:
-        frappe.log_error(f"Error removing multiactivity task: {str(e)}")
-        return {
-            "success": False,
-            "message": f"Error removing task: {str(e)}"
-        }
