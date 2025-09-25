@@ -235,56 +235,120 @@ def get_existing_allocations_optimized(week_start, week_end):
 
 @frappe.whitelist()
 def create_activity_allocation_optimized(task_name, activity_date, slot, instructor_name):
-    """Server-side allocation creation with validation"""
+    """Server-side allocation creation with validation and AM+PM -> FULL DAY merge"""
     try:
         # Get task details
         task = frappe.get_doc("Task", task_name)
-        
+
         # Get instructor qualification
         qualification = get_instructor_qualification(instructor_name, task.subject)
-        
-        # Check for conflicts
-        conflict = check_allocation_conflict(instructor_name, activity_date, slot)
-        if conflict:
-            return {"success": False, "message": "Instructor already assigned for this slot"}
-        
-        # Create allocation
-        session_mapping = {"AM": "HALF DAY", "PM": "HALF DAY"}
-        start_time = "08:00:00" if slot == "AM" else "13:30:00"
-        end_time = "12:30:00" if slot == "AM" else "17:30:00"
-        
+
+        # Times per slot
+        slot_times = {
+            "AM": ("08:00:00", "12:30:00"),
+            "PM": ("13:30:00", "17:30:00"),
+            "FULL": ("08:00:00", "17:30:00"),
+        }
+
         base_activity_name = task.subject.split(" - Group")[0].strip()
-        
-        allocation_doc = frappe.get_doc({
-            "doctype": "Activity Allocation",
-            "customer": task.custom_customer,
-            "task":task.name,
-            "activity_name": base_activity_name,
-            "start_date": task.exp_start_date,
-            "end_date": task.exp_end_date,
-            "activity_allocation_details": [{
+
+        # Find or create allocation doc
+        existing_alloc = frappe.get_all(
+            "Activity Allocation",
+            filters={
+                "task": task.name,
+                "activity_name": base_activity_name,
+                "customer": task.custom_customer,
+                "docstatus": 0,
+            },
+            limit=1,
+        )
+
+        if existing_alloc:
+            allocation_doc = frappe.get_doc("Activity Allocation", existing_alloc[0].name)
+        else:
+            allocation_doc = frappe.get_doc({
+                "doctype": "Activity Allocation",
+                "customer": task.custom_customer,
+                "task": task.name,
+                "activity_name": base_activity_name,
+                "start_date": task.exp_start_date,
+                "end_date": task.exp_end_date,
+                "activity_allocation_details": []
+            })
+
+        # Look for existing row for same date + instructor + activity
+        matching_rows = [
+            d for d in allocation_doc.activity_allocation_details
+            if (d.instructor == instructor_name and 
+                str(d.activity_date) == str(activity_date) and
+                d.activity_name == base_activity_name)
+        ]
+
+        if matching_rows:
+            existing_row = matching_rows[0]  
+            
+            if existing_row.session == "FULL DAY":
+                return {"success": False, "message": "Instructor already assigned full day for this activity"}
+            elif existing_row.session == "HALF DAY":
+                # Get the existing slot's start time to determine AM/PM
+                existing_start_time = existing_row.start_time
+                
+                # Convert to string format if it's a datetime object
+                if hasattr(existing_start_time, 'time'):
+                    existing_time_str = existing_start_time.time().strftime('%H:%M:%S')
+                else:
+                    # extract time part
+                    existing_time_str = str(existing_start_time).split(' ')[-1]
+                
+                # Determine if existing slot is AM or PM
+                existing_slot = "AM" if existing_time_str == slot_times["AM"][0] else "PM"
+                
+                # Check if we're trying to add the complementary slot
+                if (existing_slot == "AM" and slot == "PM") or (existing_slot == "PM" and slot == "AM"):
+                    # Merge to full day
+                    existing_row.session = "FULL DAY"
+                    existing_row.start_time = f"{activity_date} {slot_times['FULL'][0]}"
+                    existing_row.end_time = f"{activity_date} {slot_times['FULL'][1]}"
+                    allocation_doc.save()
+                    
+                    return {
+                        "success": True,
+                        "allocation_id": allocation_doc.name,
+                        "message": "Allocation merged to full day successfully"
+                    }
+                else:
+                    return {"success": False, "message": f"Instructor already has {existing_slot} slot for this activity"}
+        else:
+            # Create new half-day allocation
+            start_time, end_time = slot_times[slot]
+            allocation_doc.append("activity_allocation_details", {
                 "activity_name": base_activity_name,
                 "activity_date": activity_date,
-                "session": session_mapping.get(slot, slot),
+                "session": "HALF DAY",
                 "start_time": f"{activity_date} {start_time}",
                 "end_time": f"{activity_date} {end_time}",
                 "qualification": qualification,
                 "instructor": instructor_name
-            }]
-        })
-        
-        allocation_doc.insert()
-        
-        return {
-            "success": True, 
-            "allocation_id": allocation_doc.name,
-            "message": f"Allocation created successfully"
-        }
-        
+            })
+            
+            if allocation_doc.is_new():
+                allocation_doc.insert()
+                action = "created"
+            else:
+                allocation_doc.save()
+                action = "updated"
+
+            return {
+                "success": True,
+                "allocation_id": allocation_doc.name,
+                "message": f"Half-day allocation {action} successfully"
+            }
+
     except Exception as e:
         frappe.log_error(f"Error creating allocation: {str(e)}")
         return {"success": False, "message": str(e)}
-
+    
 def get_instructor_qualification(instructor_name, activity_name):
     """Get instructor qualification for specific activity"""
     base_activity = activity_name.split(" - Group")[0].strip()
@@ -552,9 +616,11 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
                     subtask.exp_start_date = parent_doc.exp_start_date
                     subtask.exp_end_date = parent_doc.exp_end_date or parent_doc.exp_start_date
                     subtask.custom_customer_name = parent_doc.custom_customer_name
+                    subtask.color =parent_doc.color
                     subtask.custom_no_of_people = group['people_count']
                     subtask.custom_group_name = group['group_name']
                     subtask.custom_group_index = group['group_index']
+                    
                     
                     
                     if hasattr(parent_doc, 'custom_assigned_date') and parent_doc.custom_assigned_date:
