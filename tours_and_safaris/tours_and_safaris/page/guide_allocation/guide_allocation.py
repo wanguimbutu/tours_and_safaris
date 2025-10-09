@@ -572,7 +572,8 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
             filters={
                 "custom_customer_name": customer_name,
                 "exp_start_date": ["between", [week_start_date, week_end_date]],
-                "parent_task": ["is", "not set"]
+                "parent_task": ["is", "not set"],
+                "custom_is_activity":1
             },
             fields=["name", "subject", "project", "exp_start_date", "exp_end_date", 
                    "custom_customer_name", "custom_no_of_people"]
@@ -667,7 +668,112 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
         frappe.log_error(f"Error in split_customer_groups: {str(e)}")
         return {"success": False, "message": f"Error splitting customer groups: {str(e)}"}
     
+@frappe.whitelist()
+def delete_customer_group_splitting(customer_name, week_start_date):
+    """
+    Delete all group splits (subtasks + group JSON) for a customer's activity tasks in a given week.
+    Fixed version that properly clears cache and handles re-splitting.
+    """
+    try:
+        week_end_date = frappe.utils.add_days(week_start_date, 6)
 
+        parent_tasks = frappe.get_all(
+            "Task",
+            filters={
+                "custom_customer_name": customer_name,
+                "exp_start_date": ["between", [week_start_date, week_end_date]],
+                "parent_task": ["is", "not set"],
+                "custom_is_activity": 1
+            },
+            fields=["name"]
+        )
+
+        if not parent_tasks:
+            return {
+                "success": False,
+                "message": f"No activity tasks found for {customer_name} in the given week."
+            }
+
+        deleted_subtasks = 0
+        updated_parents = 0
+
+        for parent in parent_tasks:
+            parent_doc = frappe.get_doc("Task", parent.name)
+
+            subtasks = frappe.get_all(
+                "Task",
+                filters={"parent_task": parent_doc.name},
+                fields=["name"]
+            )
+
+            for sub in subtasks:
+                try:
+                    frappe.db.sql("""
+                        DELETE FROM `tabTask Depends On`
+                        WHERE parent = %s OR task = %s
+                    """, (sub.name, sub.name))
+                    
+                    frappe.db.sql("""
+                        UPDATE `tabTask`
+                        SET parent_task = NULL
+                        WHERE parent_task = %s
+                    """, (sub.name,))
+                    
+                    child_tables = ["tabTask Depends On", "tabActivity Cost"]
+                    for child_table in child_tables:
+                        try:
+                            frappe.db.sql(f"""
+                                DELETE FROM `{child_table}`
+                                WHERE parent = %s
+                            """, (sub.name,))
+                        except Exception:
+                            pass
+                    
+                    frappe.db.sql("""
+                        DELETE FROM `tabTask`
+                        WHERE name = %s
+                    """, (sub.name,))
+                    
+                    frappe.clear_document_cache("Task", sub.name)
+                    
+                    deleted_subtasks += 1
+                    frappe.logger().info(f"Successfully deleted subtask: {sub.name}")
+
+                except Exception as del_err:
+                    frappe.log_error(
+                        title="Group Split Delete Error",
+                        message=f"Failed to delete subtask {sub.name}: {str(del_err)}"
+                    )
+
+            frappe.db.sql("""
+                DELETE FROM `tabTask Depends On`
+                WHERE parent = %s OR task = %s
+            """, (parent_doc.name, parent_doc.name))
+
+            if getattr(parent_doc, "custom_customer_groups", None):
+                frappe.db.set_value("Task", parent_doc.name, "custom_customer_groups", None)
+                updated_parents += 1
+                
+                frappe.clear_document_cache("Task", parent_doc.name)
+
+        frappe.db.commit()
+        
+        frappe.clear_cache(doctype="Task")
+
+        response = {
+            "success": True,
+            "message": f"Deleted {deleted_subtasks} subtasks and reset {updated_parents} parent task(s).",
+            "deleted_subtasks": deleted_subtasks,
+            "updated_parents": updated_parents
+        }
+
+        frappe.logger().info(response["message"])
+        return response
+
+    except Exception as e:
+        frappe.log_error(title="Delete Group Splitting Error", message=str(e))
+        return {"success": False, "message": f"Error deleting group splitting: {str(e)}"}
+    
 @frappe.whitelist()
 def create_multiactivity_task(customer, activity_type, start_date, end_date,
                                custom_customer_name=None, custom_no_of_people=None, project=None):
@@ -684,7 +790,6 @@ def create_multiactivity_task(customer, activity_type, start_date, end_date,
     task.subject = activity_type
     task.custom_customer = customer
 
-    # Validate fallback
     task.custom_customer_name = (
         custom_customer_name or frappe.db.get_value("Customer", customer, "customer_name")
     )
@@ -717,11 +822,9 @@ def toggle_blackout(instructor, day_index, slot, week_start_date):
     )
 
     if existing:
-        # Remove blackout
         frappe.delete_doc("Instructor Blackout", existing[0].name)
         return {"message": "Blackout removed"}
     else:
-        # Add blackout
         doc = frappe.get_doc({
             "doctype": "Instructor Blackout",
             "instructor": instructor,

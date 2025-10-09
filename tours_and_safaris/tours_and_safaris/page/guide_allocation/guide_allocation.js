@@ -505,6 +505,30 @@ async splitCustomerIntoGroups(customerName, totalPeople, numberOfGroups) {
     }
 },
 
+async deleteCustomerGroupSplitting(customerName) {
+    try {
+        const response = await frappe.call({
+            method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.delete_customer_group_splitting",
+            args: {
+                customer_name: customerName,
+                week_start_date: currentWeekStart.format('YYYY-MM-DD')
+            }
+        });
+
+        if (response.message && response.message.success) {
+            frappe.show_alert(response.message.message || `Group splitting deleted for ${customerName}`, 4);
+            
+            await Methods.loadWeekData(currentWeekStart, true);
+            await loadAndRenderCalendar();
+        } else {
+            frappe.show_alert(response.message?.message || 'Failed to delete group splitting', 5);
+        }
+    } catch (error) {
+        console.error('Error deleting group splitting:', error);
+        frappe.show_alert('Error deleting group splitting: ' + (error.message || 'Unknown error'), 5);
+    }
+},
+
 
 async loadActivityTypes() {
     try {
@@ -1718,11 +1742,52 @@ function renderZoomedOutCalendar(weeksData) {
 		console.log('Split groups clicked:', { customer, totalPeople, action });
 		
 		if (action === 'manage') {
-			
-			frappe.show_alert(`Managing ${$(this).text().match(/\((\d+)\)/)?.[1] || 0} groups for ${customer}`, 5);
+			const dialog = new frappe.ui.Dialog({
+				title: `Manage Groups for ${customer}`,
+				fields: [
+					{
+						fieldtype: 'HTML',
+						options: `<p>This customer already has groups created. You can:</p>
+							<ul>
+								<li><b>Redo Split</b> – delete existing groups and recreate new ones.</li>
+								<li><b>Delete Split</b> – remove all groups and revert to a single activity.</li>
+							</ul>`
+					}
+				],
+				primary_action_label: 'Redo Split',
+				secondary_action_label: 'Delete Split',
+				primary_action: async () => {
+					dialog.hide();
+					const totalPeople = $(this).data('people');
+					
+					const numberOfGroups = await frappe.prompt(
+						[
+							{
+								label: 'Number of Groups',
+								fieldname: 'number_of_groups',
+								fieldtype: 'Int',
+								reqd: 1,
+								default: 2
+							}
+						],
+						async (values) => {
+							frappe.show_alert('Redoing group split...', 3);
+							await Methods.deleteCustomerGroupSplitting(customer);
+							await Methods.splitCustomerIntoGroups(customer, totalPeople, values.number_of_groups);
+						},
+						'Redo Group Split'
+					);
+				},
+				secondary_action: async () => {
+					dialog.hide();
+					frappe.show_alert('Deleting all group splits...', 3);
+					await Methods.deleteCustomerGroupSplitting(customer);
+				}
+			});
+			dialog.show();
 			return;
 		}
-		
+
 		if (!totalPeople || totalPeople <= 1) {
 			frappe.show_alert('Customer must have more than 1 person to split into groups', 5);
 			return;
