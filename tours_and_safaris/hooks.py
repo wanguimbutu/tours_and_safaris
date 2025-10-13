@@ -41,6 +41,9 @@ doc_events = {
         "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.allocate_instructor",
         "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.process_activity_calendar_events"
     ],
+    },
+    "Customer": {
+        "before_insert": "tours_and_safaris.tours_and_safaris.api.customer_color.assign_unique_light_color"
     }
 }
 
