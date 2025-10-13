@@ -1,11 +1,10 @@
-# your_app/utils.py
 import random
 import colorsys
 import frappe
 
 def _generate_pastel_hex():
     """Generate a pastel hex color using HSL with high lightness, low-mid saturation."""
-    h = random.random()  # 0..1
+    h = random.random()  
     s = random.uniform(0.25, 0.45)  
     l = random.uniform(0.78, 0.92)  
     # convert to rgb 0..255
@@ -23,7 +22,7 @@ def assign_unique_light_color(doc, method):
             frappe.logger("custom_color").debug(f"Customer {doc.name}: custom_color already set; skipping assignment.")
             return
 
-        # fetch existing colors (lowercased) once
+        # fetch existing colors
         existing = frappe.get_all("Customer", fields=["custom_color"])
         used = { (c.custom_color or "").strip().lower() for c in existing if c.custom_color }
 
