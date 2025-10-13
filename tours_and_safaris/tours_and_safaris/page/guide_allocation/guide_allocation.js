@@ -614,7 +614,6 @@ async testBackendConnection() {
 	
 	//frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructorName}`, 4);
 	
-	// Clean up and refresh
 	exitMultiSelectMode();
 	//await loadAndRenderCalendar();
 }
@@ -733,7 +732,6 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 		try {
 			let data;
 
-			// Add this condition at the top:
 			if (zoomMode === 'zoomed-out') {
 				const weeksData = await Methods.loadMultipleWeeks(
 					currentWeekStart, 
@@ -745,14 +743,12 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				}
 				renderZoomedOutCalendar(weeksData);
 				
-				// Update title to show the range more clearly
 				const startWeek = currentWeekStart.clone().subtract(zoomWeeksBeforeCurrent, 'weeks');
 				const endWeek = currentWeekStart.clone().add(zoomWeeksToShow - zoomWeeksBeforeCurrent - 1, 'weeks');
 				$('#week-range-title').text(`${zoomWeeksToShow} Weeks: ${startWeek.format('MMM D')} - ${endWeek.add(6, 'days').format('MMM D, YYYY')}`);
 				return;
 			}
 
-			// Rest of your existing logic remains the same...
 			if (viewMode === 'week') {
 				data = await Methods.loadWeekData(currentWeekStart, true);
 			} else {
@@ -853,7 +849,6 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 
 	Methods.loadMultipleWeeks = async function(currentWeek, totalWeeks, weeksBefore) {
 		const weeks = [];
-		// Start from weeksBefore weeks ago
 		let cursor = currentWeek.clone().subtract(weeksBefore, 'weeks');
 		
 		for (let i = 0; i < totalWeeks; i++) {
