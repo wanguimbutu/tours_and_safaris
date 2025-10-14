@@ -1120,16 +1120,23 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 			} else {
 				// Render main customer with option to split
 				const customerLabel = peopleCount > 0 ? 
-					`<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong> 
-					<button class="btn btn-xs btn-primary split-groups-btn" 
-							data-customer="${grouped.customerName}" 
-							data-project="${grouped.project || ""}"
-							data-people="${peopleCount}" 
-							data-action="split">Split Groups</button>` 
-				: 
-					`<strong>${grouped.customerName} (${grouped.project || "No Project"})</strong>`;
+				`<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong> 
+				<button class="btn btn-xs btn-primary split-groups-btn"
+					data-customer="${grouped.customerName}" 
+					data-project="${grouped.project || ""}"
+					data-people="${peopleCount}" 
+					data-action="split">Split Groups</button>
+				<button class="btn btn-xs btn-outline-success project-tasks-btn"
+					data-project="${grouped.project || ""}">
+					View Project
+				</button>`
+			: 
+				`<strong>${grouped.customerName} (${grouped.project || "No Project"})</strong>
+				<button class="btn btn-xs btn-outline-success project-tasks-btn"
+					data-project="${grouped.project || ""}">
+					View Project
+				</button>`;
 
-				
 				// Show parent tasks
 				renderTaskRow(customerLabel, grouped.parentTasks, color, daysToProcess);
 				
@@ -2125,6 +2132,18 @@ function renderZoomedOutCalendar(weeksData) {
 				// restore subject text in case of failure
 				cell.html(`${subject}<span class="remove-assignment" style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>`);
 			}
+		});
+
+		$('#calendar-container').on('click', '.project-tasks-btn', function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const projectName = $(this).data('project');
+			if (!projectName) {
+				frappe.show_alert('No project name found for this customer.', 5);
+				return;
+			}
+			frappe.set_route('List', 'Task', { project: projectName });
 		});
 
 
