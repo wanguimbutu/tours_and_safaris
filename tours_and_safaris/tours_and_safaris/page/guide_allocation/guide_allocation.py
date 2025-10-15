@@ -4,6 +4,8 @@ from frappe import _
 import json
 
 from frappe.utils import getdate
+from frappe.utils.file_manager import get_file
+from frappe.utils import nowdate
 
 @frappe.whitelist()
 def remove_activity_allocation(instructor, activity_date, activity_name):
@@ -203,7 +205,6 @@ def get_active_instructors():
         GROUP BY i.name, i.name1, i.position
         ORDER BY CAST(COALESCE(i.position, 999) AS UNSIGNED) ASC, i.name1 ASC
     """, as_dict=True)
-
 
 def get_existing_allocations_optimized(week_start, week_end):
     """Get all allocations for the week in single optimized query"""
@@ -573,7 +574,8 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
             filters={
                 "custom_customer_name": customer_name,
                 "exp_start_date": ["between", [week_start_date, week_end_date]],
-                "parent_task": ["is", "not set"]
+                "parent_task": ["is", "not set"],
+                "custom_is_activity":1
             },
             fields=["name", "subject", "project", "exp_start_date", "exp_end_date", 
                    "custom_customer_name", "custom_no_of_people"]
@@ -668,7 +670,112 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
         frappe.log_error(f"Error in split_customer_groups: {str(e)}")
         return {"success": False, "message": f"Error splitting customer groups: {str(e)}"}
     
+@frappe.whitelist()
+def delete_customer_group_splitting(customer_name, week_start_date):
+    """
+    Delete all group splits (subtasks + group JSON) for a customer's activity tasks in a given week.
+    Fixed version that properly clears cache and handles re-splitting.
+    """
+    try:
+        week_end_date = frappe.utils.add_days(week_start_date, 6)
 
+        parent_tasks = frappe.get_all(
+            "Task",
+            filters={
+                "custom_customer_name": customer_name,
+                "exp_start_date": ["between", [week_start_date, week_end_date]],
+                "parent_task": ["is", "not set"],
+                "custom_is_activity": 1
+            },
+            fields=["name"]
+        )
+
+        if not parent_tasks:
+            return {
+                "success": False,
+                "message": f"No activity tasks found for {customer_name} in the given week."
+            }
+
+        deleted_subtasks = 0
+        updated_parents = 0
+
+        for parent in parent_tasks:
+            parent_doc = frappe.get_doc("Task", parent.name)
+
+            subtasks = frappe.get_all(
+                "Task",
+                filters={"parent_task": parent_doc.name},
+                fields=["name"]
+            )
+
+            for sub in subtasks:
+                try:
+                    frappe.db.sql("""
+                        DELETE FROM `tabTask Depends On`
+                        WHERE parent = %s OR task = %s
+                    """, (sub.name, sub.name))
+                    
+                    frappe.db.sql("""
+                        UPDATE `tabTask`
+                        SET parent_task = NULL
+                        WHERE parent_task = %s
+                    """, (sub.name,))
+                    
+                    child_tables = ["tabTask Depends On", "tabActivity Cost"]
+                    for child_table in child_tables:
+                        try:
+                            frappe.db.sql(f"""
+                                DELETE FROM `{child_table}`
+                                WHERE parent = %s
+                            """, (sub.name,))
+                        except Exception:
+                            pass
+                    
+                    frappe.db.sql("""
+                        DELETE FROM `tabTask`
+                        WHERE name = %s
+                    """, (sub.name,))
+                    
+                    frappe.clear_document_cache("Task", sub.name)
+                    
+                    deleted_subtasks += 1
+                    frappe.logger().info(f"Successfully deleted subtask: {sub.name}")
+
+                except Exception as del_err:
+                    frappe.log_error(
+                        title="Group Split Delete Error",
+                        message=f"Failed to delete subtask {sub.name}: {str(del_err)}"
+                    )
+
+            frappe.db.sql("""
+                DELETE FROM `tabTask Depends On`
+                WHERE parent = %s OR task = %s
+            """, (parent_doc.name, parent_doc.name))
+
+            if getattr(parent_doc, "custom_customer_groups", None):
+                frappe.db.set_value("Task", parent_doc.name, "custom_customer_groups", None)
+                updated_parents += 1
+                
+                frappe.clear_document_cache("Task", parent_doc.name)
+
+        frappe.db.commit()
+        
+        frappe.clear_cache(doctype="Task")
+
+        response = {
+            "success": True,
+            "message": f"Deleted {deleted_subtasks} subtasks and reset {updated_parents} parent task(s).",
+            "deleted_subtasks": deleted_subtasks,
+            "updated_parents": updated_parents
+        }
+
+        frappe.logger().info(response["message"])
+        return response
+
+    except Exception as e:
+        frappe.log_error(title="Delete Group Splitting Error", message=str(e))
+        return {"success": False, "message": f"Error deleting group splitting: {str(e)}"}
+    
 @frappe.whitelist()
 def create_multiactivity_task(customer, activity_type, start_date, end_date,
                                custom_customer_name=None, custom_no_of_people=None, project=None):
@@ -685,7 +792,6 @@ def create_multiactivity_task(customer, activity_type, start_date, end_date,
     task.subject = activity_type
     task.custom_customer = customer
 
-    # Validate fallback
     task.custom_customer_name = (
         custom_customer_name or frappe.db.get_value("Customer", customer, "customer_name")
     )
@@ -718,11 +824,9 @@ def toggle_blackout(instructor, day_index, slot, week_start_date):
     )
 
     if existing:
-        # Remove blackout
         frappe.delete_doc("Instructor Blackout", existing[0].name)
         return {"message": "Blackout removed"}
     else:
-        # Add blackout
         doc = frappe.get_doc({
             "doctype": "Instructor Blackout",
             "instructor": instructor,
@@ -768,3 +872,48 @@ def bulk_toggle_blackouts(instructor, slots, week_start_date):
         toggled.append(f"{date} {slot}")
 
     return {"message": f"Toggled {len(toggled)} blackout slots."}
+
+
+
+@frappe.whitelist()
+def queue_calendar_email(recipient_emails, file_url, filename=None):
+    """Queue the calendar PDF email using ERPNext's email system."""
+    import json
+    if isinstance(recipient_emails, str):
+        recipient_emails = json.loads(recipient_emails)
+
+    if not recipient_emails:
+        frappe.throw(_("No recipient emails found."))
+
+    file_doc = get_file(file_url)
+    if not file_doc or not file_doc[1]:
+        frappe.throw(_("Could not retrieve file content."))
+
+    file_content = file_doc[1]
+    filename = filename or f"Guide_Allocation_{nowdate()}.pdf"
+
+    subject = f"Guide Allocation Calendar - {nowdate()}"
+    message = """
+        <p>Dear Instructor,</p>
+        <p>Please find attached the latest Guide Allocation calendar.</p>
+        <p>Regards,<br>Your Scheduling Team</p>
+    """
+
+    # ✅ Use ERPNext's built-in queued email system
+    frappe.enqueue(
+        method=frappe.sendmail,
+        queue='long',
+        recipients=recipient_emails,
+        subject=subject,
+        message=message,
+        attachments=[{
+            'fname': filename,
+            'fcontent': file_content,
+            'content_type': 'application/pdf'
+        }],
+        reference_doctype='Project',
+        reference_name=None,
+        now=False
+    )
+
+    return {"success": True, "message": f"Queued email for {len(recipient_emails)} instructors."}

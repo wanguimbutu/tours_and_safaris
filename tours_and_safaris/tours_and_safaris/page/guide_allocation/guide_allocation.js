@@ -20,6 +20,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
         <div class="mb-3 d-flex gap-2">
 			<button class="btn btn-sm btn-warning" id="submit-allocations">Submit All Allocations</button>
 			<button class="btn btn-sm btn-outline-success" id="download-pdf">📄 Download PDF</button>
+			<button class="btn btn-sm btn-outline-info" id="email-calendar">📧 Email Calendar</button>
 
 		</div>
 		<div class="mb-3">
@@ -505,6 +506,30 @@ async splitCustomerIntoGroups(customerName, totalPeople, numberOfGroups) {
     }
 },
 
+async deleteCustomerGroupSplitting(customerName) {
+    try {
+        const response = await frappe.call({
+            method: "tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.delete_customer_group_splitting",
+            args: {
+                customer_name: customerName,
+                week_start_date: currentWeekStart.format('YYYY-MM-DD')
+            }
+        });
+
+        if (response.message && response.message.success) {
+            frappe.show_alert(response.message.message || `Group splitting deleted for ${customerName}`, 4);
+            
+            await Methods.loadWeekData(currentWeekStart, true);
+            await loadAndRenderCalendar();
+        } else {
+            frappe.show_alert(response.message?.message || 'Failed to delete group splitting', 5);
+        }
+    } catch (error) {
+        console.error('Error deleting group splitting:', error);
+        frappe.show_alert('Error deleting group splitting: ' + (error.message || 'Unknown error'), 5);
+    }
+},
+
 
 async loadActivityTypes() {
     try {
@@ -614,6 +639,7 @@ async testBackendConnection() {
 	
 	//frappe.show_alert(`Assigned ${successCount}/${selectedTasks.length} tasks to ${instructorName}`, 4);
 	
+	// Clean up and refresh
 	exitMultiSelectMode();
 	//await loadAndRenderCalendar();
 }
@@ -732,6 +758,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 		try {
 			let data;
 
+			// Add this condition at the top:
 			if (zoomMode === 'zoomed-out') {
 				const weeksData = await Methods.loadMultipleWeeks(
 					currentWeekStart, 
@@ -743,12 +770,14 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 				}
 				renderZoomedOutCalendar(weeksData);
 				
+				// Update title to show the range more clearly
 				const startWeek = currentWeekStart.clone().subtract(zoomWeeksBeforeCurrent, 'weeks');
 				const endWeek = currentWeekStart.clone().add(zoomWeeksToShow - zoomWeeksBeforeCurrent - 1, 'weeks');
 				$('#week-range-title').text(`${zoomWeeksToShow} Weeks: ${startWeek.format('MMM D')} - ${endWeek.add(6, 'days').format('MMM D, YYYY')}`);
 				return;
 			}
 
+			// Rest of your existing logic remains the same...
 			if (viewMode === 'week') {
 				data = await Methods.loadWeekData(currentWeekStart, true);
 			} else {
@@ -849,6 +878,7 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 
 	Methods.loadMultipleWeeks = async function(currentWeek, totalWeeks, weeksBefore) {
 		const weeks = [];
+		// Start from weeksBefore weeks ago
 		let cursor = currentWeek.clone().subtract(weeksBefore, 'weeks');
 		
 		for (let i = 0; i < totalWeeks; i++) {
@@ -1091,16 +1121,23 @@ async function assignMultipleTasksFromStartCell(instructor, startDayIndex, start
 			} else {
 				// Render main customer with option to split
 				const customerLabel = peopleCount > 0 ? 
-					`<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong> 
-					<button class="btn btn-xs btn-primary split-groups-btn" 
-							data-customer="${grouped.customerName}" 
-							data-project="${grouped.project || ""}"
-							data-people="${peopleCount}" 
-							data-action="split">Split Groups</button>` 
-				: 
-					`<strong>${grouped.customerName} (${grouped.project || "No Project"})</strong>`;
+				`<strong>${grouped.customerName} (${grouped.project || "No Project"}) (${peopleCount} people)</strong> 
+				<button class="btn btn-xs btn-primary split-groups-btn"
+					data-customer="${grouped.customerName}" 
+					data-project="${grouped.project || ""}"
+					data-people="${peopleCount}" 
+					data-action="split">Split Groups</button>
+				<button class="btn btn-xs btn-outline-success project-tasks-btn"
+					data-project="${grouped.project || ""}">
+					View Project
+				</button>`
+			: 
+				`<strong>${grouped.customerName} (${grouped.project || "No Project"})</strong>
+				<button class="btn btn-xs btn-outline-success project-tasks-btn"
+					data-project="${grouped.project || ""}">
+					View Project
+				</button>`;
 
-				
 				// Show parent tasks
 				renderTaskRow(customerLabel, grouped.parentTasks, color, daysToProcess);
 				
@@ -1713,11 +1750,54 @@ function renderZoomedOutCalendar(weeksData) {
 		console.log('Split groups clicked:', { customer, totalPeople, action });
 		
 		if (action === 'manage') {
-			
-			frappe.show_alert(`Managing ${$(this).text().match(/\((\d+)\)/)?.[1] || 0} groups for ${customer}`, 5);
+			const dialog = new frappe.ui.Dialog({
+				title: `Manage Groups for ${customer}`,
+				fields: [
+					{
+						fieldtype: 'HTML',
+						options: `<p>This customer already has groups created. You can:</p>
+							<ul>
+								<li><b>Redo Split</b> – delete existing groups and recreate new ones.</li>
+								<li><b>Delete Split</b> – remove all groups and revert to a single activity.</li>
+							</ul>`
+					}
+				],
+				primary_action_label: 'Redo Split',
+				secondary_action_label: 'Delete Split',
+				primary_action: async () => {
+					dialog.hide();
+					const totalPeople = $(this).data('people');
+					
+					const numberOfGroups = await frappe.prompt(
+						[
+							{
+								label: 'Number of Groups',
+								fieldname: 'number_of_groups',
+								fieldtype: 'Int',
+								reqd: 1,
+								default: 2
+							}
+						],
+						async (values) => {
+							frappe.show_alert('Redoing group split...', 3);
+							await Methods.deleteCustomerGroupSplitting(customer);
+							await Methods.splitCustomerIntoGroups(customer, totalPeople, values.number_of_groups);
+							
+							await loadAndRenderCalendar();
+						},
+						'Redo Group Split'
+					);
+				},
+				secondary_action: async () => {
+					dialog.hide();
+					frappe.show_alert('Deleting all group splits...', 3);
+					await Methods.deleteCustomerGroupSplitting(customer);
+				}
+			});
+			dialog.show();
 			return;
 		}
-		
+
 		if (!totalPeople || totalPeople <= 1) {
 			frappe.show_alert('Customer must have more than 1 person to split into groups', 5);
 			return;
@@ -2055,6 +2135,18 @@ function renderZoomedOutCalendar(weeksData) {
 				// restore subject text in case of failure
 				cell.html(`${subject}<span class="remove-assignment" style="color:red; cursor:pointer; font-weight:bold; position: absolute; top: 2px; right: 5px;">&times;</span>`);
 			}
+		});
+
+		$('#calendar-container').on('click', '.project-tasks-btn', function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			const projectName = $(this).data('project');
+			if (!projectName) {
+				frappe.show_alert('No project name found for this customer.', 5);
+				return;
+			}
+			frappe.set_route('List', 'Task', { project: projectName });
 		});
 
 
@@ -2529,6 +2621,135 @@ function renderZoomedOutCalendar(weeksData) {
 				frappe.show_alert('PDF generation failed. Please try again.', 5);
 			});
 		});
+
+		$(document).on('click', '#email-calendar', async function () {
+			try {
+				const calendarWrapper = document.getElementById('calendar-scroll-wrapper');
+				if (!calendarWrapper) {
+					frappe.show_alert('Calendar is not rendered yet.');
+					return;
+				}
+
+				// Store original styles
+				const originalWrapperStyle = calendarWrapper.getAttribute('style') || '';
+				const table = calendarWrapper.querySelector('table');
+				const originalTableStyle = table ? table.getAttribute('style') || '' : '';
+
+				calendarWrapper.style.maxHeight = 'unset';
+				calendarWrapper.style.overflow = 'visible';
+				calendarWrapper.style.height = 'auto';
+
+				if (table) {
+					table.style.pageBreakInside = 'auto';
+					table.style.breakInside = 'auto';
+				}
+
+				const opt = viewMode === 'month' ? {
+					margin: [0.2, 0.1, 0.2, 0.1],
+					filename: `Calendar-Month-${currentMonthStart.format('YYYY-MM')}.pdf`,
+					image: { type: 'jpeg', quality: 0.95, useCORS: true },
+					html2canvas: { 
+						scale: 1.5,
+						scrollY: 0,
+						scrollX: 0,
+						allowTaint: true,
+						useCORS: true,
+						height: calendarWrapper.scrollHeight,
+						width: calendarWrapper.scrollWidth
+					},
+					jsPDF: { 
+						unit: 'in', 
+						format: 'a2',
+						orientation: 'landscape',
+						putOnlyUsedFonts: true,
+						compress: true
+					},
+					pagebreak: { 
+						mode: ['avoid-all', 'css', 'legacy'],
+						before: '.page-break-before',
+						after: '.page-break-after' 
+					}
+				} : {
+					margin: 0.3,
+					filename: `Calendar-Week-${currentWeekStart.format('YYYY-MM-DD')}.pdf`,
+					image: { type: 'jpeg', quality: 0.98 },
+					html2canvas: { scale: 2, scrollY: 0 },
+					jsPDF: { unit: 'in', format: 'a3', orientation: 'landscape' }
+				};
+
+				frappe.show_alert('Generating calendar PDF for email...', 3);
+
+				const pdfBlob = await html2pdf().set(opt).from(calendarWrapper).output('blob');
+
+				calendarWrapper.setAttribute('style', originalWrapperStyle);
+				if (table) table.setAttribute('style', originalTableStyle);
+
+				const response = await frappe.call({
+					method: 'frappe.client.get_list',
+					args: {
+						doctype: 'Instructor',
+						fields: ['instructor_email'],
+						filters: [['instructor_email', 'is', 'set']],
+						limit_page_length: 1000
+					}
+				});
+
+				const emails = (response.message || [])
+					.map(i => i.instructor_email)
+					.filter(e => e && e.includes('@'));
+
+				if (!emails.length) {
+					frappe.show_alert('No instructor emails found.', 5);
+					return;
+				}
+
+				frappe.show_alert(`Uploading PDF & queuing emails for ${emails.length} instructors...`, 5);
+
+				const fileBase64 = await new Promise(resolve => {
+					const reader = new FileReader();
+					reader.onload = e => resolve(e.target.result.split(',')[1]);
+					reader.readAsDataURL(pdfBlob);
+				});
+
+				const uploadResponse = await frappe.call({
+					method: 'frappe.client.attach_file',
+					args: {
+						filename: opt.filename,
+						filedata: fileBase64,
+						is_private: 1,
+						doctype: 'User',
+						docname: frappe.session.user,
+						decode_base64: 1
+					}
+				});
+
+				const fileUrl = uploadResponse.message.file_url;
+				if (!fileUrl) {
+					throw new Error('File upload failed.');
+				}
+
+				// 4️⃣ Send via ERPNext mail queue
+				await frappe.call({
+					method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.queue_calendar_email',
+					args: {
+						recipient_emails: emails,
+						file_url: fileUrl,
+						filename: opt.filename
+					},
+					freeze: true,
+					freeze_message: 'Queuing calendar emails...'
+				});
+
+				frappe.show_alert(`Calendar emailed to ${emails.length} instructors.`, 5);
+
+			} catch (error) {
+				console.error('Email calendar error:', error);
+				frappe.msgprint(__('Failed to email calendar: {0}', [error.message || error]));
+			}
+		});
+
+
+
 
 	$('#calendar-container').on('click', '.blackout-toggle', function (e) {
 		e.preventDefault();
