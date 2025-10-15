@@ -1782,6 +1782,8 @@ function renderZoomedOutCalendar(weeksData) {
 							frappe.show_alert('Redoing group split...', 3);
 							await Methods.deleteCustomerGroupSplitting(customer);
 							await Methods.splitCustomerIntoGroups(customer, totalPeople, values.number_of_groups);
+							
+							await loadAndRenderCalendar();
 						},
 						'Redo Group Split'
 					);
