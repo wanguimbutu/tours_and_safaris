@@ -4,6 +4,8 @@ from frappe import _
 import json
 
 from frappe.utils import getdate
+from frappe.utils.file_manager import get_file
+from frappe.utils import nowdate
 
 @frappe.whitelist()
 def remove_activity_allocation(instructor, activity_date, activity_name):
@@ -870,3 +872,48 @@ def bulk_toggle_blackouts(instructor, slots, week_start_date):
         toggled.append(f"{date} {slot}")
 
     return {"message": f"Toggled {len(toggled)} blackout slots."}
+
+
+
+@frappe.whitelist()
+def queue_calendar_email(recipient_emails, file_url, filename=None):
+    """Queue the calendar PDF email using ERPNext's email system."""
+    import json
+    if isinstance(recipient_emails, str):
+        recipient_emails = json.loads(recipient_emails)
+
+    if not recipient_emails:
+        frappe.throw(_("No recipient emails found."))
+
+    file_doc = get_file(file_url)
+    if not file_doc or not file_doc[1]:
+        frappe.throw(_("Could not retrieve file content."))
+
+    file_content = file_doc[1]
+    filename = filename or f"Guide_Allocation_{nowdate()}.pdf"
+
+    subject = f"Guide Allocation Calendar - {nowdate()}"
+    message = """
+        <p>Dear Instructor,</p>
+        <p>Please find attached the latest Guide Allocation calendar.</p>
+        <p>Regards,<br>Your Scheduling Team</p>
+    """
+
+    # ✅ Use ERPNext's built-in queued email system
+    frappe.enqueue(
+        method=frappe.sendmail,
+        queue='long',
+        recipients=recipient_emails,
+        subject=subject,
+        message=message,
+        attachments=[{
+            'fname': filename,
+            'fcontent': file_content,
+            'content_type': 'application/pdf'
+        }],
+        reference_doctype='Project',
+        reference_name=None,
+        now=False
+    )
+
+    return {"success": True, "message": f"Queued email for {len(recipient_emails)} instructors."}

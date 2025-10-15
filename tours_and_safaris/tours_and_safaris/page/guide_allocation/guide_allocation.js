@@ -20,6 +20,7 @@ frappe.pages['guide-allocation'].on_page_load = function(wrapper) {
         <div class="mb-3 d-flex gap-2">
 			<button class="btn btn-sm btn-warning" id="submit-allocations">Submit All Allocations</button>
 			<button class="btn btn-sm btn-outline-success" id="download-pdf">📄 Download PDF</button>
+			<button class="btn btn-sm btn-outline-info" id="email-calendar">📧 Email Calendar</button>
 
 		</div>
 		<div class="mb-3">
@@ -2618,6 +2619,135 @@ function renderZoomedOutCalendar(weeksData) {
 				frappe.show_alert('PDF generation failed. Please try again.', 5);
 			});
 		});
+
+		$(document).on('click', '#email-calendar', async function () {
+			try {
+				const calendarWrapper = document.getElementById('calendar-scroll-wrapper');
+				if (!calendarWrapper) {
+					frappe.show_alert('Calendar is not rendered yet.');
+					return;
+				}
+
+				// Store original styles
+				const originalWrapperStyle = calendarWrapper.getAttribute('style') || '';
+				const table = calendarWrapper.querySelector('table');
+				const originalTableStyle = table ? table.getAttribute('style') || '' : '';
+
+				calendarWrapper.style.maxHeight = 'unset';
+				calendarWrapper.style.overflow = 'visible';
+				calendarWrapper.style.height = 'auto';
+
+				if (table) {
+					table.style.pageBreakInside = 'auto';
+					table.style.breakInside = 'auto';
+				}
+
+				const opt = viewMode === 'month' ? {
+					margin: [0.2, 0.1, 0.2, 0.1],
+					filename: `Calendar-Month-${currentMonthStart.format('YYYY-MM')}.pdf`,
+					image: { type: 'jpeg', quality: 0.95, useCORS: true },
+					html2canvas: { 
+						scale: 1.5,
+						scrollY: 0,
+						scrollX: 0,
+						allowTaint: true,
+						useCORS: true,
+						height: calendarWrapper.scrollHeight,
+						width: calendarWrapper.scrollWidth
+					},
+					jsPDF: { 
+						unit: 'in', 
+						format: 'a2',
+						orientation: 'landscape',
+						putOnlyUsedFonts: true,
+						compress: true
+					},
+					pagebreak: { 
+						mode: ['avoid-all', 'css', 'legacy'],
+						before: '.page-break-before',
+						after: '.page-break-after' 
+					}
+				} : {
+					margin: 0.3,
+					filename: `Calendar-Week-${currentWeekStart.format('YYYY-MM-DD')}.pdf`,
+					image: { type: 'jpeg', quality: 0.98 },
+					html2canvas: { scale: 2, scrollY: 0 },
+					jsPDF: { unit: 'in', format: 'a3', orientation: 'landscape' }
+				};
+
+				frappe.show_alert('Generating calendar PDF for email...', 3);
+
+				const pdfBlob = await html2pdf().set(opt).from(calendarWrapper).output('blob');
+
+				calendarWrapper.setAttribute('style', originalWrapperStyle);
+				if (table) table.setAttribute('style', originalTableStyle);
+
+				const response = await frappe.call({
+					method: 'frappe.client.get_list',
+					args: {
+						doctype: 'Instructor',
+						fields: ['instructor_email'],
+						filters: [['instructor_email', 'is', 'set']],
+						limit_page_length: 1000
+					}
+				});
+
+				const emails = (response.message || [])
+					.map(i => i.instructor_email)
+					.filter(e => e && e.includes('@'));
+
+				if (!emails.length) {
+					frappe.show_alert('No instructor emails found.', 5);
+					return;
+				}
+
+				frappe.show_alert(`Uploading PDF & queuing emails for ${emails.length} instructors...`, 5);
+
+				const fileBase64 = await new Promise(resolve => {
+					const reader = new FileReader();
+					reader.onload = e => resolve(e.target.result.split(',')[1]);
+					reader.readAsDataURL(pdfBlob);
+				});
+
+				const uploadResponse = await frappe.call({
+					method: 'frappe.client.attach_file',
+					args: {
+						filename: opt.filename,
+						filedata: fileBase64,
+						is_private: 1,
+						doctype: 'User',
+						docname: frappe.session.user,
+						decode_base64: 1
+					}
+				});
+
+				const fileUrl = uploadResponse.message.file_url;
+				if (!fileUrl) {
+					throw new Error('File upload failed.');
+				}
+
+				// 4️⃣ Send via ERPNext mail queue
+				await frappe.call({
+					method: 'tours_and_safaris.tours_and_safaris.page.guide_allocation.guide_allocation.queue_calendar_email',
+					args: {
+						recipient_emails: emails,
+						file_url: fileUrl,
+						filename: opt.filename
+					},
+					freeze: true,
+					freeze_message: 'Queuing calendar emails...'
+				});
+
+				frappe.show_alert(`Calendar emailed to ${emails.length} instructors.`, 5);
+
+			} catch (error) {
+				console.error('Email calendar error:', error);
+				frappe.msgprint(__('Failed to email calendar: {0}', [error.message || error]));
+			}
+		});
+
+
+
 
 	$('#calendar-container').on('click', '.blackout-toggle', function (e) {
 		e.preventDefault();
