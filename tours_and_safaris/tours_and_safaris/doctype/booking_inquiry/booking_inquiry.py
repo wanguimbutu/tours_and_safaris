@@ -272,6 +272,7 @@ def create_quotation(inquiry_name):
                     "qty": meals.qty or 1,
                     "rate": meals.rate or 0
                 })
+    quotation.calculate_taxes_and_totals()
 
     quotation.insert(ignore_permissions=True)
 
