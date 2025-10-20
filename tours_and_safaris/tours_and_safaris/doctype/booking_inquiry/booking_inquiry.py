@@ -159,7 +159,6 @@ def lock_rates_after_fetch(doc, method):
         lock_rates(doc.transport_service)
 
         
-
 @frappe.whitelist()
 def create_quotation(inquiry_name):
     """Generate a quotation for a reservation."""
@@ -183,6 +182,39 @@ def create_quotation(inquiry_name):
     company_currency = frappe.db.get_value("Company", company, "default_currency")
     quotation_currency = inquiry.billing_currency or company_currency
 
+    # Get the proper exchange rate
+    conversion_rate = 1.0
+    if quotation_currency != company_currency:
+        # Try to get exchange rate from Currency Exchange doctype
+        exchange_rate = frappe.db.get_value(
+            "Currency Exchange",
+            {"from_currency": quotation_currency, "to_currency": company_currency},
+            "exchange_rate"
+        )
+        
+        if exchange_rate:
+            conversion_rate = flt(exchange_rate)
+        else:
+            # If no exchange rate exists, try the reverse
+            reverse_rate = frappe.db.get_value(
+                "Currency Exchange",
+                {"from_currency": company_currency, "to_currency": quotation_currency},
+                "exchange_rate"
+            )
+            
+            if reverse_rate and flt(reverse_rate) != 0:
+                conversion_rate = 1.0 / flt(reverse_rate)
+            else:
+                # Use inquiry exchange rate as fallback
+                conversion_rate = flt(inquiry.get("exchange_rate")) or 1.0
+                
+                # If still no valid rate, throw an error
+                if conversion_rate == 0:
+                    frappe.throw(
+                        f"Exchange Rate not found for {quotation_currency} to {company_currency}. "
+                        f"Please create a Currency Exchange record or set the exchange rate in the Booking Inquiry."
+                    )
+
     # Proceed with creating a new quotation
     quotation = frappe.get_doc({
         "doctype": "Quotation",
@@ -195,8 +227,7 @@ def create_quotation(inquiry_name):
         "custom_no_of_adults": inquiry.no_of_adults,
         "custom_no_of_children": inquiry.no_of_children,
         "currency": quotation_currency,
-        # Ensure conversion rate is always valid
-        "conversion_rate": 1 if quotation_currency == company_currency else 0,
+        "conversion_rate": conversion_rate,  # Use calculated conversion rate
         "custom_accommodation_needed": inquiry.accommodation_needed,
         "custom_rooms": inquiry.rooms,
         "custom_tents": inquiry.tents,
@@ -275,23 +306,21 @@ def create_quotation(inquiry_name):
                 "rate": flt(meal.rate) or 0.0
             })
 
-    # --- SAFETY FIXES START HERE ---
-
     # Ensure every item has valid qty and rate
     for item in quotation.items:
         item.qty = flt(item.qty) or 1.0
         item.rate = flt(item.rate) or 0.0
 
-    # Calculate totals safely
-    quotation.calculate_taxes_and_totals()
+    # Let ERPNext calculate totals (this will set base amounts correctly)
+    quotation.run_method("calculate_taxes_and_totals")
 
-    # Guarantee base/grand totals exist
+    # Ensure base totals are set with fallback values
     quotation.total = flt(quotation.total) or 0.0
-    quotation.base_total = flt(quotation.base_total) or 0.0
-    quotation.net_total = flt(quotation.net_total) or 0.0
-    quotation.base_net_total = flt(quotation.base_net_total) or 0.0
-    quotation.grand_total = flt(quotation.grand_total) or 0.0
-    quotation.base_grand_total = flt(quotation.base_grand_total) or 0.0
+    quotation.base_total = flt(quotation.base_total) or flt(quotation.total) * conversion_rate
+    quotation.net_total = flt(quotation.net_total) or flt(quotation.total)
+    quotation.base_net_total = flt(quotation.base_net_total) or flt(quotation.net_total) * conversion_rate
+    quotation.grand_total = flt(quotation.grand_total) or flt(quotation.total)
+    quotation.base_grand_total = flt(quotation.base_grand_total) or flt(quotation.grand_total) * conversion_rate
 
     # Clear payment schedule AFTER totals are set
     quotation.set("payment_schedule", [])
