@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import today, getdate
+from frappe.utils import flt, today, getdate
 from collections import Counter
 
 
@@ -169,15 +169,24 @@ def create_quotation(inquiry_name):
         frappe.throw("Please ensure the Customer Name field is filled in the Booking Inquiry.")
 
     # Check if a quotation already exists and is submitted
-    existing_quotation = frappe.get_all("Quotation", filters={"custom_booking_inquiry": inquiry_name, "docstatus": 1}, fields=["name"])
+    existing_quotation = frappe.get_all(
+        "Quotation", 
+        filters={"custom_booking_inquiry": inquiry_name, "docstatus": 1}, 
+        fields=["name"]
+    )
     
     if existing_quotation:
         frappe.throw("A quotation has already been created and submitted for this Booking Inquiry.")
 
+    # Get company and currency info
+    company = frappe.defaults.get_user_default("Company")
+    company_currency = frappe.db.get_value("Company", company, "default_currency")
+    quotation_currency = inquiry.billing_currency or company_currency
+
     # Proceed with creating a new quotation
     quotation = frappe.get_doc({
         "doctype": "Quotation",
-        "quotation_to":"Customer",  
+        "quotation_to": "Customer",
         "party_name": inquiry.customer,
         "custom_arrival_date": inquiry.from_date,
         "custom_depature_date": inquiry.to_date,
@@ -185,98 +194,112 @@ def create_quotation(inquiry_name):
         "custom_no_of_people": inquiry.no_of_people,
         "custom_no_of_adults": inquiry.no_of_adults,
         "custom_no_of_children": inquiry.no_of_children,
-        "currency": inquiry.billing_currency,
+        "currency": quotation_currency,
+        # Ensure conversion rate is always valid
+        "conversion_rate": 1 if quotation_currency == company_currency else 0,
         "custom_accommodation_needed": inquiry.accommodation_needed,
         "custom_rooms": inquiry.rooms,
         "custom_tents": inquiry.tents,
         "custom_is_consolidated": inquiry.is_consolidated,
         "custom_consolidated_amount": inquiry.consolidated_amount,
         "custom_remarks": inquiry.remarks,
-        "custom_grade":inquiry.grade,
-        "custom_is_meals_at_camp":inquiry.is_meals_at_camp,
+        "custom_grade": inquiry.grade,
+        "custom_is_meals_at_camp": inquiry.is_meals_at_camp,
         "items": []
     })
 
-    # Check for consolidation
+    # Check for consolidated activities
     if inquiry.get("is_consolidated"):
-        # Assume only one activity row exists for consolidated case
         activity = inquiry.activities[0] if inquiry.activities else None
-
         if activity:
             quotation.append("items", {
                 "item_code": activity.item_code or "SC-014",
                 "item_name": activity.activity_name or "Multi Activity",
-                "qty": activity.qty or 1,
-                "rate": activity.rate or 0
+                "qty": flt(activity.qty) or 1.0,
+                "rate": flt(activity.rate) or 0.0
+            })
+    else:
+        # Activities
+        for activity in inquiry.get("activities") or []:
+            quotation.append("items", {
+                "item_code": activity.item_code,
+                "item_name": activity.activity_name,
+                "qty": flt(activity.qty) or 1.0,
+                "rate": flt(activity.rate) or 0.0
             })
 
+        # Rooms
+        for room in inquiry.get("room_booking") or []:
+            quotation.append("items", {
+                "item_code": room.room_type,
+                "item_name": room.room_type_name or "Room",
+                "description": f"Room Booking: {room.room_type or 'N/A'}",
+                "qty": flt(room.qty) or 1.0,
+                "rate": flt(room.rate) or 0.0
+            })
 
-    else:
-        # Add activities
-        if inquiry.activities:
-            for activity in inquiry.activities:
-                quotation.append("items", {
-                    "item_code": activity.item_code,
-                    "item_name": activity.activity_name,
-                    "qty": activity.qty,  
-                    "rate": activity.rate or 0
-                })
+        # Tents
+        for tent in inquiry.get("tent_selection") or []:
+            quotation.append("items", {
+                "item_code": tent.tent_type,
+                "item_name": tent.tent_name or "Tent",
+                "description": f"Tent: {tent.tent_type or 'N/A'}",
+                "qty": flt(tent.qty) or 1.0,
+                "rate": flt(tent.rate) or 0.0
+            })
 
-        # Add room bookings
-        if inquiry.room_booking:
-            for room in inquiry.room_booking:
-                quotation.append("items", {
-                    "item_code": room.room_type,
-                    "item_name": room.room_type_name or "Room",
-                    "description": f"Room Booking: {room.room_type or 'N/A'}",
-                    "qty": room.qty or 1,
-                    "rate": room.rate or 0
-                })
+        # Transport
+        for transport in inquiry.get("transport_service") or []:
+            quotation.append("items", {
+                "item_code": transport.transport_name,
+                "item_name": transport.item_name or "Transport",
+                "qty": flt(transport.qty) or 1.0,
+                "rate": flt(transport.rate) or 0.0
+            })
 
-        # Add tent selections
-        if inquiry.tent_selection:
-            for tent in inquiry.tent_selection:
-                quotation.append("items", {
-                    "item_code": tent.tent_type,
-                    "item_name": tent.tent_name or "Tent",
-                    "description": f"Tent: {tent.tent_type or 'N/A'}",
-                    "qty": tent.qty or 1,
-                    "rate": tent.rate or 0
-                })
+        # Hired Services
+        for service in inquiry.get("hired_service") or []:
+            quotation.append("items", {
+                "item_code": service.service_name,
+                "item_name": service.name or "Service",
+                "qty": flt(service.qty) or 1.0,
+                "rate": flt(service.rate) or 0.0
+            })
 
-        # Add transport costs
-        if inquiry.transport_service:
-            for transport in inquiry.transport_service:
-                quotation.append("items", {
-                    "item_code": transport.transport_name,
-                    "item_name": transport.item_name,
-                    "qty": transport.qty,
-                    "rate": transport.rate or 0
-                })
+        # Meals
+        for meal in inquiry.get("meals") or []:
+            quotation.append("items", {
+                "item_code": meal.meal_type,
+                "item_name": meal.meal_type or "Meal",
+                "qty": flt(meal.qty) or 1.0,
+                "rate": flt(meal.rate) or 0.0
+            })
 
-        # Add hired services
-        if inquiry.hired_service:
-            for service in inquiry.hired_service:
-                quotation.append("items", {
-                    "item_code": service.service_name,
-                    "item_name": service.name or "Service",
-                    "qty": service.qty,
-                    "rate": service.rate or 0
-                })
+    # --- SAFETY FIXES START HERE ---
 
-        # Add meals
-        if inquiry.meals:
-            for meals in inquiry.meals:
-                quotation.append("items", {
-                    "item_code": meals.meal_type,
-                    "qty": meals.qty or 1,
-                    "rate": meals.rate or 0
-                })
+    # Ensure every item has valid qty and rate
+    for item in quotation.items:
+        item.qty = flt(item.qty) or 1.0
+        item.rate = flt(item.rate) or 0.0
 
+    # Calculate totals safely
+    quotation.calculate_taxes_and_totals()
+
+    # Guarantee base/grand totals exist
+    quotation.total = flt(quotation.total) or 0.0
+    quotation.base_total = flt(quotation.base_total) or 0.0
+    quotation.net_total = flt(quotation.net_total) or 0.0
+    quotation.base_net_total = flt(quotation.base_net_total) or 0.0
+    quotation.grand_total = flt(quotation.grand_total) or 0.0
+    quotation.base_grand_total = flt(quotation.base_grand_total) or 0.0
+
+    # Clear payment schedule AFTER totals are set
+    quotation.set("payment_schedule", [])
+
+    # Insert quotation safely
     quotation.insert(ignore_permissions=True)
 
     return {"quotation_name": quotation.name, "url": f"/app/quotation/{quotation.name}"}
-
 
 @frappe.whitelist()
 def update_calendar_info(doc, method):
