@@ -185,7 +185,7 @@ def create_quotation(inquiry_name):
         "custom_no_of_people": inquiry.no_of_people,
         "custom_no_of_adults": inquiry.no_of_adults,
         "custom_no_of_children": inquiry.no_of_children,
-        "currency": inquiry.billing_currency,
+        "currency": inquiry.billing_currency or "KES",
         "custom_accommodation_needed": inquiry.accommodation_needed,
         "custom_rooms": inquiry.rooms,
         "custom_tents": inquiry.tents,
@@ -272,7 +272,14 @@ def create_quotation(inquiry_name):
                     "qty": meals.qty or 1,
                     "rate": meals.rate or 0
                 })
+                
     quotation.calculate_taxes_and_totals()
+    quotation.set("payment_schedule", [])
+
+    if not quotation.grand_total:
+        quotation.grand_total = 0
+        quotation.base_grand_total = 0
+
 
     quotation.insert(ignore_permissions=True)
 
