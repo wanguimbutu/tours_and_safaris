@@ -281,6 +281,7 @@ def create_quotation(inquiry_name):
         quotation.base_grand_total = 0
 
 
+
     quotation.insert(ignore_permissions=True)
 
     return {"quotation_name": quotation.name, "url": f"/app/quotation/{quotation.name}"}
