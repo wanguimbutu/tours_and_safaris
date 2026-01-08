@@ -87,7 +87,7 @@
   },
   {
    "fieldname": "calendar_info",
-   "fieldtype": "Data",
+   "fieldtype": "Long Text",
    "label": "Calendar Info"
   },
   {
