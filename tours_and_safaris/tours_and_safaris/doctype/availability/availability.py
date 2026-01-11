@@ -58,3 +58,39 @@ def process_checkout():
         frappe.db.set_value("Availability", entry["name"], "status", "Checked Out")
 
     frappe.db.commit()
+@frappe.whitelist()
+def get_calendar_events(start, end, filters=None):
+    """Get availability calendar events excluding cancelled documents"""
+    
+    events = frappe.get_all(
+        "Availability",
+        filters={
+            "docstatus": ["!=", 2],  # Exclude cancelled documents
+            "check_in_date": ["<=", end],
+            "check_out_date": [">=", start]
+        },
+        fields=[
+            "name",
+            "calendar_info",
+            "check_in_date",
+            "check_out_date",
+            "room_name",
+            "customer_name",
+            "docstatus"
+        ]
+    )
+    
+    calendar_events = []
+    for event in events:
+        # Double-check that document is not cancelled
+        if event.docstatus != 2:
+            calendar_events.append({
+                "name": event.name,
+                "title": event.calendar_info or f"{event.room_name} - {event.customer_name}",
+                "start": event.check_in_date,
+                "end": event.check_out_date,
+                "allDay": 1,
+                "doctype": "Availability"
+            })
+    
+    return calendar_events
