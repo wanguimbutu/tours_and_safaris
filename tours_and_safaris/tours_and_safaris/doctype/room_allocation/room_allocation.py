@@ -36,6 +36,28 @@ class RoomAllocation(Document):
             availability.insert(ignore_permissions=True) 
             availability.submit()
 
+    def on_cancel(self):
+        # Find all Availability documents associated with this Room Allocation
+        for booked_room in self.booked_rooms:
+            availability_docs = frappe.get_all(
+                "Availability",
+                filters={
+                    "room_name": booked_room.room_name,
+                    "reservation": self.reservation,
+                    "check_in_date": self.arrival_date,
+                    "check_out_date": self.departure_date,
+                    "customer": self.customer,
+                    "docstatus": 1  
+                },
+                pluck="name"
+            )
+
+            # Cancel each associated Availability document
+            for availability_name in availability_docs:
+                availability_doc = frappe.get_doc("Availability", availability_name)
+                availability_doc.cancel()
+                frappe.db.commit()
+
 @frappe.whitelist()
 def get_available_rooms(room_type, check_in_date, check_out_date):
     # get all rooms of this type
@@ -52,8 +74,9 @@ def get_available_rooms(room_type, check_in_date, check_out_date):
         "Availability", 
         filters={
             "room_name": ["in", available_rooms],   
-            "check_in_date": ["<", check_out_date],  # Changed from <= to <
-            "check_out_date": [">", check_in_date]   # Changed from >= to >
+            "check_in_date": ["<", check_out_date],  # Changed from <= to 
+            "check_out_date": [">", check_in_date],   # Changed from >= to >
+            "docstatus": 1  # Only consider submitted/active bookings
         },
         pluck="room_name"
     )
