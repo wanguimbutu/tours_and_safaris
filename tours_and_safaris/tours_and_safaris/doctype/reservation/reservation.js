@@ -147,14 +147,15 @@ frappe.ui.form.on("Reservation", {
         // You can add any logic here if needed when a row is removed
     },
     arrival_date: function(frm) {
-        let today = frappe.datetime.get_today();
-
-        if (frm.doc.arrival_date && frm.doc.arrival_date < today) {
-            frappe.msgprint(__('Arrival Date cannot be before today.'));
-            frm.set_value('arrival_date', ''); 
-        }
-        fetch_available_rooms(frm);
+    // Allow back-dated arrival dates.
+    // Just ensure departure (if set) is not before arrival.
+    if (frm.doc.arrival_date && frm.doc.depature_date && frm.doc.depature_date < frm.doc.arrival_date) {
+        frappe.msgprint(__('Departure Date cannot be before Arrival Date.'));
+        frm.set_value('depature_date', '');
+    }
+    fetch_available_rooms(frm);
     },
+
 
     depature_date: function(frm) {
         if (frm.doc.depature_date && frm.doc.arrival_date && frm.doc.depature_date < frm.doc.arrival_date) {
