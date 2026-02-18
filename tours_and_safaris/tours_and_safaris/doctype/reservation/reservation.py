@@ -257,12 +257,12 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, no_of
     # Parse dates
     new_start = getdate(new_start_date)
     new_end = getdate(new_end_date)
-    today = getdate(nowdate())
+   # today = getdate(nowdate())
 
-    if new_end <= new_start:
-        frappe.throw("End Date must be after Start Date.")
-    if new_start < today:
-        frappe.throw("Start Date (also used as Delivery Date) cannot be in the past.")
+    #if new_end <= new_start:
+        #frappe.throw("End Date must be after Start Date.")
+    #if new_start < today:
+        #frappe.throw("Start Date (also used as Delivery Date) cannot be in the past.")
 
     # Parse tables from JSON
     if activities and isinstance(activities, str):
