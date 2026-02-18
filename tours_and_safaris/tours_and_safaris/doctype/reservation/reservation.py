@@ -69,6 +69,7 @@ def create_sales_order(reservation_name):
     sales_order = frappe.get_doc({
         "doctype": "Sales Order",
         "customer": reservation.customer_name,
+        "transaction_date": reservation.arrival_date,
         "arrival_date": reservation.arrival_date,
         "depature_date": reservation.depature_date,
         "delivery_date": reservation.depature_date,
@@ -92,7 +93,9 @@ def create_sales_order(reservation_name):
                 "item_code": activity.item_code or "SC-014",
                 "item_name": activity.activity_name or "Multi Activity",
                 "qty": activity.qty or 1,
-                "rate": activity.rate or 0
+                "rate": activity.rate or 0,
+                "delivery_date": reservation.depature_date,
+
             })
     else:
         # Add activities
