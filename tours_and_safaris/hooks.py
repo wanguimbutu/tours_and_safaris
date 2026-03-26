@@ -28,7 +28,8 @@ doc_events = {
      "Booking Inquiry": {
         "on_submit": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.update_calendar_info",
         "before_save": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.prevent_rate_reset",
-        "validate": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.lock_rates_after_fetch"
+        "validate": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.lock_rates_after_fetch",
+        "on_cancel": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.cancel_linked_documents"
     },
     "Reservation": {
        # "before_insert": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.apply_exchange_rate_conversion",

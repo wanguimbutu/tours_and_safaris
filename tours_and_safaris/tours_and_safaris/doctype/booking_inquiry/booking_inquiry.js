@@ -107,19 +107,20 @@ frappe.ui.form.on('Booking Inquiry', {
 
 
     from_date: function(frm) {
-    
         if (frm.doc.from_date && frappe.datetime.get_diff(frm.doc.from_date, frappe.datetime.get_today()) < 0) {
             frappe.msgprint("From Date cannot be in the past.");
-        
             frm.set_value("from_date", '');
+            return;
         }
+        if (frm.doc.meals_required) populate_meal_dates(frm);
     },
-    to_date:function(frm){
-        if(frm.doc.to_date && frappe.datetime.get_diff(frm.doc.to_date, frm.doc.from_date) < 0){
+    to_date: function(frm) {
+        if (frm.doc.to_date && frappe.datetime.get_diff(frm.doc.to_date, frm.doc.from_date) < 0) {
             frappe.msgprint("To Date cannot be earlier than From Date.");
-
             frm.set_value("to_date", '');
+            return;
         }
+        if (frm.doc.meals_required) populate_meal_dates(frm);
     },
     
 
@@ -163,8 +164,9 @@ frappe.ui.form.on('Booking Inquiry', {
         validate_people_count(frm);
     },
 
-    meals_required: function(frm){
+    meals_required: function(frm) {
         toggle_meals_table(frm);
+        if (frm.doc.meals_required) populate_meal_dates(frm);
     },
     
 }); 
@@ -216,6 +218,45 @@ function toggle_accommodation_options(frm) {
 
 function toggle_meals_table(frm) {
     frm.set_df_property("meals", "hidden", !frm.doc.meals_required);
+}
+
+function populate_meal_dates(frm) {
+    if (!frm.doc.meals_required || !frm.doc.from_date || !frm.doc.to_date) return;
+
+    const diff = frappe.datetime.get_day_diff(frm.doc.to_date, frm.doc.from_date);
+    if (diff < 0) return;
+
+    // Preserve existing row data keyed by date
+    const existing = {};
+    (frm.doc.meals || []).forEach(row => {
+        if (row.date) existing[row.date] = row;
+    });
+
+    frm.clear_table("meals");
+
+    const day_names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    for (let i = 0; i <= diff; i++) {
+        const date = frappe.datetime.add_days(frm.doc.from_date, i);
+        const prev = existing[date];
+        const row = frm.add_child("meals");
+        row.date = date;
+        row.day = day_names[new Date(date).getDay()];
+        if (prev) {
+            row.meal_type      = prev.meal_type;
+            row.meal_name      = prev.meal_name;
+            row.qty            = prev.qty;
+            row.rate           = prev.rate;
+            row.amount         = prev.amount;
+            row.converted_rate = prev.converted_rate;
+            row.original_rate  = prev.original_rate;
+            row.breakfast      = prev.breakfast;
+            row.lunch          = prev.lunch;
+            row.dinner         = prev.dinner;
+        }
+    }
+
+    frm.refresh_field("meals");
 }
 
 function toggle_transport_option(frm){

@@ -297,35 +297,27 @@ def create_quotation(inquiry_name):
                 "rate": flt(service.rate) or 0.0
             })
 
-        # Meals
-        for meal in inquiry.get("meals") or []:
-            quotation.append("items", {
-                "item_code": meal.meal_type,
-                "item_name": meal.meal_type or "Meal",
-                "qty": flt(meal.qty) or 1.0,
-                "rate": flt(meal.rate) or 0.0
-            })
+        # Add meals
+        if inquiry.meals:
+            for meals in inquiry.meals:
+                if not meals.meal_type:
+                    continue
+                sessions = [s for s, flag in [("Breakfast", meals.breakfast), ("Lunch", meals.lunch), ("Dinner", meals.dinner)] if flag]
+                session_label = ", ".join(sessions) if sessions else ""
+                if meals.date:
+                    from datetime import date as date_cls
+                    day_name = meals.date.strftime("%A") if hasattr(meals.date, "strftime") else date_cls.fromisoformat(str(meals.date)).strftime("%A")
+                    date_label = f"{day_name} {frappe.utils.formatdate(meals.date)}"
+                else:
+                    date_label = ""
+                description = " - ".join(filter(None, [date_label, session_label]))
+                quotation.append("items", {
+                    "item_code": meals.meal_type,
+                    "description": description,
+                    "qty": meals.qty or 1,
+                    "rate": meals.rate or 0
+                })
 
-    # Ensure every item has valid qty and rate
-    for item in quotation.items:
-        item.qty = flt(item.qty) or 1.0
-        item.rate = flt(item.rate) or 0.0
-
-    # Let ERPNext calculate totals (this will set base amounts correctly)
-    quotation.run_method("calculate_taxes_and_totals")
-
-    # Ensure base totals are set with fallback values
-    quotation.total = flt(quotation.total) or 0.0
-    quotation.base_total = flt(quotation.base_total) or flt(quotation.total) * conversion_rate
-    quotation.net_total = flt(quotation.net_total) or flt(quotation.total)
-    quotation.base_net_total = flt(quotation.base_net_total) or flt(quotation.net_total) * conversion_rate
-    quotation.grand_total = flt(quotation.grand_total) or flt(quotation.total)
-    quotation.base_grand_total = flt(quotation.base_grand_total) or flt(quotation.grand_total) * conversion_rate
-
-    # Clear payment schedule AFTER totals are set
-    quotation.set("payment_schedule", [])
-
-    # Insert quotation safely
     quotation.insert(ignore_permissions=True)
 
     return {"quotation_name": quotation.name, "url": f"/app/quotation/{quotation.name}"}
@@ -334,3 +326,68 @@ def create_quotation(inquiry_name):
 def update_calendar_info(doc, method):
     if doc.customer and doc.no_of_people:
         doc.calendar_info = f"{doc.customer} ({doc.no_of_people}) adults:({doc.no_of_adults}) children:({doc.no_of_children})"
+
+
+@frappe.whitelist()
+def cancel_linked_documents(doc, method):
+    """Cancel all documents linked to this Booking Inquiry on cancellation.
+
+    Cancellation order (children first):
+      1. Projects (linked via Reservation)
+      2. Sales Orders (linked via Reservation)
+      3. Reservations (linked via Booking Inquiry)
+      4. Quotations (linked via Booking Inquiry)
+    """
+    inquiry_name = doc.name
+
+    # Get all reservations linked to this inquiry
+    reservations = frappe.get_all(
+        "Reservation",
+        filters={"booking_inquiry": inquiry_name, "docstatus": 1},
+        fields=["name"]
+    )
+
+    for res in reservations:
+        res_name = res["name"]
+
+        # Cancel Projects linked to this reservation
+        projects = frappe.get_all(
+            "Project",
+            filters={"custom_reservation": res_name, "status": ["!=", "Cancelled"]},
+            fields=["name"]
+        )
+        for proj in projects:
+            project_doc = frappe.get_doc("Project", proj["name"])
+            if project_doc.status != "Cancelled":
+                project_doc.status = "Cancelled"
+                project_doc.save(ignore_permissions=True)
+
+        # Cancel Sales Orders linked to this reservation
+        sales_orders = frappe.get_all(
+            "Sales Order",
+            filters={"custom_reservation": res_name, "docstatus": 1},
+            fields=["name"]
+        )
+        for so in sales_orders:
+            so_doc = frappe.get_doc("Sales Order", so["name"])
+            so_doc.cancel()
+
+        # Cancel the Reservation
+        res_doc = frappe.get_doc("Reservation", res_name)
+        res_doc.cancel()
+
+    # Cancel Quotations linked to this inquiry
+    quotations = frappe.get_all(
+        "Quotation",
+        filters={"custom_booking_inquiry": inquiry_name, "docstatus": 1},
+        fields=["name"]
+    )
+    for qt in quotations:
+        qt_doc = frappe.get_doc("Quotation", qt["name"])
+        qt_doc.cancel()
+
+    frappe.msgprint(
+        "All linked documents (Quotations, Reservations, Sales Orders, Projects) have been cancelled.",
+        title="Linked Documents Cancelled",
+        indicator="blue"
+    )

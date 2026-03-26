@@ -158,8 +158,15 @@ def create_sales_order(reservation_name):
         # Add meals
         if reservation.meals:
             for meals in reservation.meals:
+                if not meals.meal_type:
+                    continue
+                sessions = [s for s, flag in [("Breakfast", meals.breakfast), ("Lunch", meals.lunch), ("Dinner", meals.dinner)] if flag]
+                session_label = ", ".join(sessions) if sessions else ""
+                day_label = f"{meals.day} {frappe.utils.formatdate(meals.date)}" if meals.date else ""
+                description = " - ".join(filter(None, [day_label, session_label]))
                 sales_order.append("items", {
                     "item_code": meals.meal_type,
+                    "description": description,
                     "qty": meals.qty or 1,
                     "rate": meals.rate or 0,
                     "prevdoc_docname": reservation.quotation
@@ -425,8 +432,15 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, no_of
 
         if new_res.meals:
             for meal in new_res.meals:
+                if not meal.meal_type:
+                    continue
+                sessions = [s for s, flag in [("Breakfast", meal.breakfast), ("Lunch", meal.lunch), ("Dinner", meal.dinner)] if flag]
+                session_label = ", ".join(sessions) if sessions else ""
+                day_label = f"{meal.day} {frappe.utils.formatdate(meal.date)}" if meal.date else ""
+                description = " - ".join(filter(None, [day_label, session_label]))
                 so.append("items", {
                     "item_code": meal.meal_type,
+                    "description": description,
                     "qty": meal.qty or 1,
                     "rate": meal.rate or 0,
                     "prevdoc_docname": new_res.quotation
