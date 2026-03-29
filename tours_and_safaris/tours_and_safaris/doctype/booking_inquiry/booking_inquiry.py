@@ -446,20 +446,24 @@ def cancel_linked_documents(doc, method):
                 project_doc.status = "Cancelled"
                 project_doc.save(ignore_permissions=True)
 
-        # Cancel Sales Orders linked to this reservation
+        # Cancel Sales Orders linked to this reservation (submitted or draft)
         sales_orders = frappe.get_all(
             "Sales Order",
-            filters={"custom_reservation": res_name, "docstatus": 1},
-            fields=["name"]
+            filters={"custom_reservation": res_name, "docstatus": ["in", [0, 1]]},
+            fields=["name", "docstatus"]
         )
         for so in sales_orders:
-            so_doc = frappe.get_doc("Sales Order", so["name"])
-            so_doc.flags.ignore_links = True
-            so_doc.cancel()
+            if so["docstatus"] == 1:
+                so_doc = frappe.get_doc("Sales Order", so["name"])
+                so_doc.flags.ignore_links = True
+                so_doc.cancel()
+            # Clear the link so Frappe doesn't block the Reservation cancel
+            frappe.db.set_value("Sales Order", so["name"], "custom_reservation", None)
 
-        # Cancel the Reservation — ignore link validation since SO is already cancelled above
+        frappe.db.commit()
+
+        # Cancel the Reservation
         res_doc = frappe.get_doc("Reservation", res_name)
-        res_doc.flags.ignore_links = True
         res_doc.cancel()
 
     # Cancel Quotations linked to this inquiry
