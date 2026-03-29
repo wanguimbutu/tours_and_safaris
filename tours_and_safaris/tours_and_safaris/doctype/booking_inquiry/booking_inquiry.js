@@ -107,8 +107,8 @@ frappe.ui.form.on('Booking Inquiry', {
 
 
     from_date: function(frm) {
-        if (frm.doc.from_date && frappe.datetime.get_diff(frm.doc.from_date, frappe.datetime.get_today()) < 0) {
-            frappe.msgprint("From Date cannot be in the past.");
+        if (frm.doc.from_date && frappe.datetime.get_diff(frm.doc.from_date, frappe.datetime.get_today()) < -3) {
+            frappe.msgprint("From Date cannot be more than 3 days in the past.");
             frm.set_value("from_date", '');
             return;
         }
