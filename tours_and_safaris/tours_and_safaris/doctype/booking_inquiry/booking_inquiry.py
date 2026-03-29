@@ -19,19 +19,22 @@ def validate_booking_inquiry(doc, method):
 def validate_people_count(doc, method):
     no_of_adults = doc.get("no_of_adults") or 0
     no_of_children = doc.get("no_of_children") or 0
+    # Only validate if the user has filled in adults or children
+    if not no_of_adults and not no_of_children:
+        return
     total = no_of_adults + no_of_children
-
-    if doc.get("no_of_people") != total:
-         frappe.throw("No of People must equal the sum of No of Adults and No of Children.")
+    if doc.get("no_of_people") and doc.get("no_of_people") != total:
+        frappe.throw("No of People must equal the sum of No of Adults and No of Children.")
 
 @frappe.whitelist()
 def validate_guest_details(doc, method):
-    # Initialize counters
+    # Guest details is optional — only validate if rows have been added
+    if not doc.get("guest_details"):
+        return
+
     guest_adults = 0
     guest_children = 0
-
-    # Loop through the guest_details child table
-    for guest in doc.get("guest_details") or []:
+    for guest in doc.get("guest_details"):
         if guest.age and guest.age.lower() == "adult":
             guest_adults += 1
         elif guest.age and guest.age.lower() == "child":
@@ -40,11 +43,12 @@ def validate_guest_details(doc, method):
     no_of_adults = doc.get("no_of_adults") or 0
     no_of_children = doc.get("no_of_children") or 0
 
-    if guest_adults != no_of_adults:
+    # Only cross-check if adults/children fields are filled
+    if no_of_adults and guest_adults != no_of_adults:
         frappe.throw(
             "Mismatch in Adults: Guest Details has {} adults, but 'No of Adults' is set to {}.".format(guest_adults, no_of_adults)
         )
-    if guest_children != no_of_children:
+    if no_of_children and guest_children != no_of_children:
         frappe.throw(
             "Mismatch in Children: Guest Details has {} children, but 'No of Children' is set to {}.".format(guest_children, no_of_children)
         )
