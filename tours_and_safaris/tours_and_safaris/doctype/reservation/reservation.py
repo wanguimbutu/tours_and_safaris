@@ -452,6 +452,68 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, no_of
     return {"new_reservation": new_res.name, "new_sales_order": so.name}
 
 @frappe.whitelist()
+def propagate_reservation_amendment(doc, method):
+    """When an amended Reservation is submitted, update the linked Sales Order chain."""
+    if not doc.amended_from:
+        return
+
+    # Cancel the old sales order linked to the original reservation (if still draft)
+    old_sales_orders = frappe.get_all(
+        "Sales Order",
+        filters={"custom_reservation": doc.amended_from, "docstatus": 0},
+        fields=["name"]
+    )
+    for so in old_sales_orders:
+        try:
+            so_doc = frappe.get_doc("Sales Order", so["name"])
+            frappe.db.set_value("Sales Order", so["name"], "custom_reservation", doc.name)
+        except Exception as e:
+            frappe.log_error(f"Amendment: failed to update SO {so['name']}: {e}")
+
+    # Also update submitted sales orders to point to new reservation
+    submitted_sales_orders = frappe.get_all(
+        "Sales Order",
+        filters={"custom_reservation": doc.amended_from, "docstatus": 1},
+        fields=["name"]
+    )
+    for so in submitted_sales_orders:
+        frappe.db.set_value("Sales Order", so["name"], {
+            "custom_reservation": doc.name,
+            "arrival_date": doc.arrival_date,
+            "depature_date": doc.depature_date,
+            "custom_no_of_people": doc.no_of_people,
+            "custom_no_of_adults": doc.no_of_adults,
+            "custom_no_of_children": doc.no_of_children,
+        })
+
+    msg = f"Reservation amended from {doc.amended_from}."
+    if submitted_sales_orders or old_sales_orders:
+        msg += f" Linked Sales Order(s) updated to reference new Reservation <b>{doc.name}</b>."
+    frappe.msgprint(msg, title="Amendment Propagated", indicator="green")
+
+
+@frappe.whitelist()
+def propagate_sales_order_amendment(doc, method):
+    """When an amended Sales Order is submitted, update the linked Project."""
+    if not doc.amended_from:
+        return
+
+    projects = frappe.get_all(
+        "Project",
+        filters={"custom_sales_order": doc.amended_from},
+        fields=["name"]
+    )
+    for proj in projects:
+        frappe.db.set_value("Project", proj["name"], "custom_sales_order", doc.name)
+
+    if projects:
+        frappe.msgprint(
+            f"Sales Order amended. Linked Project(s) updated to reference new Sales Order <b>{doc.name}</b>.",
+            title="Amendment Propagated", indicator="green"
+        )
+
+
+@frappe.whitelist()
 def get_events(start, end, filters=None):
     from frappe.utils import getdate
 

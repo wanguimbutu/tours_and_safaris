@@ -329,6 +329,81 @@ def update_calendar_info(doc, method):
 
 
 @frappe.whitelist()
+def propagate_booking_inquiry_amendment(doc, method):
+    """When an amended Booking Inquiry is submitted, auto-create a new Quotation
+    and propagate key field changes to the existing Reservation chain."""
+    if not doc.amended_from:
+        return
+
+    # Auto-create a fresh Quotation for the amended inquiry
+    try:
+        result = create_quotation(doc.name)
+        new_quotation = result.get("quotation_name") if result else None
+    except Exception as e:
+        frappe.log_error(f"Amendment: failed to create quotation for {doc.name}: {e}")
+        new_quotation = None
+
+    # Update any Reservation still linked to the old Booking Inquiry (draft state)
+    reservations = frappe.get_all(
+        "Reservation",
+        filters={"booking_inquiry": doc.amended_from},
+        fields=["name", "docstatus"]
+    )
+    for res in reservations:
+        update = {
+            "booking_inquiry": doc.name,
+            "arrival_date": doc.from_date,
+            "depature_date": doc.to_date,
+            "no_of_people": doc.no_of_people,
+            "no_of_adults": doc.no_of_adults,
+            "no_of_children": doc.no_of_children,
+        }
+        if new_quotation:
+            update["quotation"] = new_quotation
+        frappe.db.set_value("Reservation", res.name, update)
+
+    msg = "Booking Inquiry amended."
+    if new_quotation:
+        msg += f" New Quotation <b>{new_quotation}</b> created automatically."
+    frappe.msgprint(msg, title="Amendment Propagated", indicator="green")
+
+
+@frappe.whitelist()
+def propagate_quotation_amendment(doc, method):
+    """When an amended Quotation is submitted, update the linked Reservation to reference the new Quotation."""
+    if not doc.amended_from:
+        return
+
+    reservations = frappe.get_all(
+        "Reservation",
+        filters={"quotation": doc.amended_from},
+        fields=["name"]
+    )
+    for res in reservations:
+        update = {
+            "quotation": doc.name,
+        }
+        # Also sync key fields from the quotation if available
+        if doc.get("custom_arrival_date"):
+            update["arrival_date"] = doc.custom_arrival_date
+        if doc.get("custom_depature_date"):
+            update["depature_date"] = doc.custom_depature_date
+        if doc.get("custom_no_of_people"):
+            update["no_of_people"] = doc.custom_no_of_people
+        if doc.get("custom_no_of_adults"):
+            update["no_of_adults"] = doc.custom_no_of_adults
+        if doc.get("custom_no_of_children"):
+            update["no_of_children"] = doc.custom_no_of_children
+        frappe.db.set_value("Reservation", res["name"], update)
+
+    if reservations:
+        frappe.msgprint(
+            f"Quotation amended. Linked Reservation(s) updated to reference new Quotation <b>{doc.name}</b>.",
+            title="Amendment Propagated", indicator="green"
+        )
+
+
+@frappe.whitelist()
 def cancel_linked_documents(doc, method):
     """Cancel all documents linked to this Booking Inquiry on cancellation.
 

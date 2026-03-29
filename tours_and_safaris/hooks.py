@@ -10,38 +10,40 @@ doc_events = {
     "Maintenance Log": {
         "on_submit": "tours_and_safaris.tours_and_safaris.doctype.booking.booking.on_submit_maintenance_log"
     },
-    "Reservation": {
-        "on_update": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_room_availability"
-    },
     "Booking Inquiry": {
-        "validate":"tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.validate_boking_inquiry"
-    },
-    "Booking Inquiry":{
-        "validate":"tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.validate_people_count"
-    },
-    "Booking Inquiry":{
-        "validate":"tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.validate_guest_details"
-    },
-    "Booking Inquiry":{
-        "validate":"tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.update_diet_preferences"
-    },
-     "Booking Inquiry": {
-        "on_submit": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.update_calendar_info",
+        "validate": [
+            "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.validate_booking_inquiry",
+            "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.validate_people_count",
+            "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.validate_guest_details",
+            "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.update_diet_preferences",
+            "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.lock_rates_after_fetch"
+        ],
         "before_save": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.prevent_rate_reset",
-        "validate": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.lock_rates_after_fetch",
+        "on_submit": [
+            "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.update_calendar_info",
+            "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.propagate_booking_inquiry_amendment"
+        ],
         "on_cancel": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.cancel_linked_documents"
     },
+    "Quotation": {
+        "on_submit": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.propagate_quotation_amendment"
+    },
     "Reservation": {
-       # "before_insert": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.apply_exchange_rate_conversion",
-        "before_save":[ "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.prevent_rate_reset",
-                       "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_calendar_info"
-        ]
+        "on_update": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_room_availability",
+        "before_save": [
+            "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.prevent_rate_reset",
+            "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_calendar_info"
+        ],
+        "on_submit": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.propagate_reservation_amendment"
+    },
+    "Sales Order": {
+        "on_submit": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.propagate_sales_order_amendment"
     },
     "Activity Allocation": {
-    "on_submit": [
-        "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.allocate_instructor",
-        "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.process_activity_calendar_events"
-    ],
+        "on_submit": [
+            "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.allocate_instructor",
+            "tours_and_safaris.tours_and_safaris.doctype.activity_allocation.activity_allocation.process_activity_calendar_events"
+        ]
     },
     "Customer": {
         "before_insert": "tours_and_safaris.tours_and_safaris.api.customer_color.assign_unique_light_color"
