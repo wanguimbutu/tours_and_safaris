@@ -500,11 +500,11 @@ def propagate_sales_order_amendment(doc, method):
 
     projects = frappe.get_all(
         "Project",
-        filters={"custom_sales_order": doc.amended_from},
+        filters={"sales_order": doc.amended_from},
         fields=["name"]
     )
     for proj in projects:
-        frappe.db.set_value("Project", proj["name"], "custom_sales_order", doc.name)
+        frappe.db.set_value("Project", proj["name"], "sales_order", doc.name)
 
     if projects:
         frappe.msgprint(
