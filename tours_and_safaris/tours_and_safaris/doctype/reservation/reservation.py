@@ -12,6 +12,17 @@ class Reservation(Document):
     pass
 
 @frappe.whitelist()
+def validate_reservation_dates(doc, method):
+    from frappe.utils import add_days, getdate, today
+    if doc.arrival_date:
+        earliest_allowed = getdate(add_days(today(), -3))
+        if getdate(doc.arrival_date) < earliest_allowed:
+            frappe.throw("Arrival Date cannot be more than 3 days in the past.")
+    if doc.arrival_date and doc.depature_date and getdate(doc.depature_date) <= getdate(doc.arrival_date):
+        frappe.throw("Departure Date must be later than Arrival Date.")
+
+
+@frappe.whitelist()
 def calculate_total_cost(reservation_name):
     """Calculate the total cost of a reservation, including accommodation, activities, and transport."""
     

@@ -30,6 +30,7 @@ doc_events = {
     },
     "Reservation": {
         "on_update": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_room_availability",
+        "validate": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.validate_reservation_dates",
         "before_save": [
             "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.prevent_rate_reset",
             "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_calendar_info"
