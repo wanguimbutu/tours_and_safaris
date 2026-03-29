@@ -454,10 +454,12 @@ def cancel_linked_documents(doc, method):
         )
         for so in sales_orders:
             so_doc = frappe.get_doc("Sales Order", so["name"])
+            so_doc.flags.ignore_links = True
             so_doc.cancel()
 
-        # Cancel the Reservation
+        # Cancel the Reservation — ignore link validation since SO is already cancelled above
         res_doc = frappe.get_doc("Reservation", res_name)
+        res_doc.flags.ignore_links = True
         res_doc.cancel()
 
     # Cancel Quotations linked to this inquiry
@@ -468,6 +470,7 @@ def cancel_linked_documents(doc, method):
     )
     for qt in quotations:
         qt_doc = frappe.get_doc("Quotation", qt["name"])
+        qt_doc.flags.ignore_links = True
         qt_doc.cancel()
 
     frappe.msgprint(
