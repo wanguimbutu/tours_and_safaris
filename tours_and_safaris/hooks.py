@@ -29,7 +29,6 @@ doc_events = {
         "on_submit": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.propagate_quotation_amendment"
     },
     "Reservation": {
-        "on_update": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_room_availability",
         "validate": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.validate_reservation_dates",
         "before_save": [
             "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.prevent_rate_reset",
