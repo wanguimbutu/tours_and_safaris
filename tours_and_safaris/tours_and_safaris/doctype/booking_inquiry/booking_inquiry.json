@@ -115,6 +115,7 @@
    "fieldtype": "Section Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "from_date",
    "fieldtype": "Date",
    "in_list_view": 1,
@@ -122,6 +123,7 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "to_date",
    "fieldtype": "Date",
    "in_list_view": 1,
@@ -133,17 +135,20 @@
    "fieldtype": "Column Break"
   },
   {
+   "allow_on_submit": 1,
    "default": "1",
    "fieldname": "no_of_people",
    "fieldtype": "Int",
    "label": "No. of People"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "no_of_adults",
    "fieldtype": "Int",
    "label": "No. of Adults"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "no_of_children",
    "fieldtype": "Int",
    "label": "No. of Children"
@@ -355,6 +360,7 @@
    "label": "Remarks"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks"
@@ -411,6 +417,7 @@
    "show_dashboard": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "calendar_info",
    "fieldtype": "Read Only",
    "hidden": 1,
@@ -423,6 +430,7 @@
    "label": "Is Consolidated"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "consolidated_amount",
    "fieldtype": "Currency",
    "label": "Consolidated Amount",
@@ -443,7 +451,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-12 11:56:43.665950",
+ "modified": "2026-04-14 16:35:16.632899",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Booking Inquiry",
@@ -503,6 +511,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [

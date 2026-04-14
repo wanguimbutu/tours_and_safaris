@@ -6,8 +6,6 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "date",
-  "day",
   "breakfast",
   "lunch",
   "dinner",
@@ -21,45 +19,37 @@
  ],
  "fields": [
   {
-   "fieldname": "date",
-   "fieldtype": "Date",
-   "in_list_view": 1,
-   "label": "Date",
-   "read_only": 1
-  },
-  {
-   "fieldname": "day",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Day",
-   "read_only": 1
-  },
-  {
+   "allow_on_submit": 1,
+   "default": "0",
    "fieldname": "breakfast",
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Breakfast"
   },
   {
+   "allow_on_submit": 1,
+   "default": "0",
    "fieldname": "lunch",
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Lunch"
   },
   {
+   "allow_on_submit": 1,
+   "default": "0",
    "fieldname": "dinner",
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Dinner"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "meal_type",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Meal Type",
    "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Meals\"]]",
-   "options": "Item",
-   "reqd": 1
+   "options": "Item"
   },
   {
    "fetch_from": "meal_type.item_name",
@@ -69,6 +59,7 @@
    "label": "Meal Name"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "qty",
    "fieldtype": "Int",
    "in_list_view": 1,
@@ -76,6 +67,7 @@
    "non_negative": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -84,6 +76,7 @@
    "options": "billing_currency"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
@@ -106,12 +99,13 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-03-23 11:00:00.000000",
+ "modified": "2026-04-14 16:34:01.899502",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Meal Details",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
