@@ -307,25 +307,21 @@ def create_quotation(inquiry_name):
             })
 
         # Add meals
-        if inquiry.meals:
-            for meals in inquiry.meals:
-                if not meals.meal_type:
-                    continue
-                sessions = [s for s, flag in [("Breakfast", meals.breakfast), ("Lunch", meals.lunch), ("Dinner", meals.dinner)] if flag]
-                session_label = ", ".join(sessions) if sessions else ""
-                if meals.date:
-                    from datetime import date as date_cls
-                    day_name = meals.date.strftime("%A") if hasattr(meals.date, "strftime") else date_cls.fromisoformat(str(meals.date)).strftime("%A")
-                    date_label = f"{day_name} {frappe.utils.formatdate(meals.date)}"
-                else:
-                    date_label = ""
-                description = " - ".join(filter(None, [date_label, session_label]))
-                quotation.append("items", {
-                    "item_code": meals.meal_type,
-                    "description": description,
-                    "qty": meals.qty or 1,
-                    "rate": meals.rate or 0
-                })
+        for meal in inquiry.get("meals") or []:
+            if not meal.meal_type:
+                frappe.log_error(f"Meal row skipped — no meal_type set (Booking Inquiry: {inquiry_name})", "create_quotation")
+                continue
+            sessions = [s for s, flag in [("Breakfast", meal.breakfast), ("Lunch", meal.lunch), ("Dinner", meal.dinner)] if flag]
+            session_label = ", ".join(sessions) if sessions else ""
+            meal_name = meal.meal_name or meal.meal_type
+            description = f"{meal_name} ({session_label})" if session_label else meal_name
+            quotation.append("items", {
+                "item_code": meal.meal_type,
+                "item_name": meal_name,
+                "description": description,
+                "qty": flt(meal.qty) or 1.0,
+                "rate": flt(meal.rate) or 0.0
+            })
 
     quotation.insert(ignore_permissions=True)
 
