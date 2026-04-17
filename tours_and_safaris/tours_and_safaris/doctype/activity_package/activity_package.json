@@ -8,6 +8,8 @@
  "field_order": [
   "activity_group",
   "activity_name",
+  "session_period",
+  "arrival_time",
   "qty",
   "rate",
   "amount",
@@ -32,6 +34,22 @@
    "label": "Activity Group",
    "link_filters": "[[\"Item Group\",\"parent_item_group\",\"!=\",\"All Item Groups\"]]",
    "options": "Item Group"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "session_period",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Session",
+   "options": "\nAM\nPM"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "arrival_time",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Arrival Time",
+   "options": "\nAM\nPM"
   },
   {
    "fetch_from": "activity_name.custom_item_code",

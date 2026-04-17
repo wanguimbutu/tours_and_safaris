@@ -112,10 +112,17 @@ def create_sales_order(reservation_name):
         # Add activities
         if reservation.activities:
             for activity in reservation.activities:
+                parts = []
+                if activity.session_period:
+                    parts.append(activity.session_period)
+                if activity.arrival_time:
+                    parts.append(f"Arrival: {activity.arrival_time}")
+                activity_desc = f"{activity.activity_name} ({', '.join(parts)})" if parts else activity.activity_name
                 sales_order.append("items", {
                     "item_code": activity.item_code,
                     "item_name": activity.activity_name,
-                    "qty": activity.qty,  
+                    "description": activity_desc,
+                    "qty": activity.qty,
                     "rate": activity.rate or 0,
                     "prevdoc_docname": reservation.quotation
                 })
@@ -336,6 +343,8 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, no_of
             new_res.append("activities", {
                 "activity_group": act.get("activity_group"),
                 "activity_name": act.get("activity_name"),
+                "session_period": act.get("session_period"),
+                "arrival_time": act.get("arrival_time"),
                 "qty": qty,
                 "rate": rate,
                 "amount": amount
@@ -391,9 +400,16 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, no_of
     else:
         if new_res.activities:
             for activity in new_res.activities:
+                parts = []
+                if activity.session_period:
+                    parts.append(activity.session_period)
+                if activity.arrival_time:
+                    parts.append(f"Arrival: {activity.arrival_time}")
+                activity_desc = f"{activity.activity_name} ({', '.join(parts)})" if parts else activity.activity_name
                 so.append("items", {
                     "item_code": activity.item_code,
                     "item_name": activity.activity_name,
+                    "description": activity_desc,
                     "qty": activity.qty,
                     "rate": activity.rate or 0,
                     "prevdoc_docname": new_res.quotation

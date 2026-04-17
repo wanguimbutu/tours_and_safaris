@@ -261,9 +261,16 @@ def create_quotation(inquiry_name):
     else:
         # Activities
         for activity in inquiry.get("activities") or []:
+            parts = []
+            if activity.session_period:
+                parts.append(activity.session_period)
+            if activity.arrival_time:
+                parts.append(f"Arrival: {activity.arrival_time}")
+            activity_desc = f"{activity.activity_name} ({', '.join(parts)})" if parts else activity.activity_name
             quotation.append("items", {
                 "item_code": activity.item_code,
                 "item_name": activity.activity_name,
+                "description": activity_desc,
                 "qty": flt(activity.qty) or 1.0,
                 "rate": flt(activity.rate) or 0.0
             })

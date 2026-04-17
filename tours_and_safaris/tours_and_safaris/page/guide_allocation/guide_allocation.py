@@ -110,7 +110,7 @@ def get_tasks_for_week(week_start, week_end):
     # Single query to get all tasks with subtasks
     # Updated to consider custom_assigned_date when it has a value
     query = f"""
-        SELECT 
+        SELECT
             t.name,
             t.subject,
             t.custom_customer_name,
@@ -122,6 +122,8 @@ def get_tasks_for_week(week_start, week_end):
             t.color,
             t.custom_assigned_date,
             t.custom_no_of_people,
+            t.custom_session_period,
+            t.custom_arrival_time,
             t.status,
             t.project,
             -- Get parent task info if this is a subtask
@@ -166,8 +168,9 @@ def get_tasks_for_week(week_start, week_end):
         if dependent_task_names:
             dependent_tasks = frappe.db.sql(f"""
                 SELECT name, subject, custom_customer_name, custom_customer,
-                       exp_start_date, exp_end_date, custom_assigned_date, 
-                       custom_no_of_people,custom_customer_groups, status,color,project
+                       exp_start_date, exp_end_date, custom_assigned_date,
+                       custom_no_of_people, custom_customer_groups, status, color, project,
+                       custom_session_period, custom_arrival_time
                 FROM `tabTask`
                 WHERE name IN ({','.join(['%s'] * len(dependent_task_names))})
             """, dependent_task_names, as_dict=True)
@@ -778,7 +781,8 @@ def delete_customer_group_splitting(customer_name, week_start_date):
     
 @frappe.whitelist()
 def create_multiactivity_task(customer, activity_type, start_date, end_date,
-                               custom_customer_name=None, custom_no_of_people=None, project=None):
+                               custom_customer_name=None, custom_no_of_people=None, project=None,
+                               session_period=None, arrival_time=None):
     frappe.logger().info({
         "msg": "create_multiactivity_task called",
         "customer": customer,
@@ -807,6 +811,12 @@ def create_multiactivity_task(customer, activity_type, start_date, end_date,
 
     if project:
         task.project = project
+
+    if session_period:
+        task.custom_session_period = session_period
+
+    if arrival_time:
+        task.custom_arrival_time = arrival_time
 
     task.insert()
     return {"success": True, "task": task.name}
