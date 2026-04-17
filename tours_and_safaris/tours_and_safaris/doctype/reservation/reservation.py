@@ -270,6 +270,55 @@ def prevent_rate_reset(doc, method):
 
         
 @frappe.whitelist()
+def sync_reservation_changes(doc, method):
+    """Propagate field changes from a submitted Reservation to its linked Sales Order and Project."""
+    if doc.flags.get("from_sync"):
+        return
+
+    # ── Sales Order ────────────────────────────────────────────────────────
+    sales_orders = frappe.get_all(
+        "Sales Order",
+        filters={"custom_reservation": doc.name, "docstatus": ["!=", 2]},
+        fields=["name"]
+    )
+    for so in sales_orders:
+        frappe.db.set_value("Sales Order", so["name"], {
+            "custom_arrival_date": doc.arrival_date,
+            "custom_depature_date": doc.depature_date,
+            "custom_no_of_people": doc.no_of_people,
+            "custom_no_of_adults": doc.no_of_adults,
+            "custom_no_of_children": doc.no_of_children,
+            "custom_is_consolidated": doc.is_consolidated,
+            "custom_grade": doc.grade,
+            "custom_is_meals_at_camp": doc.is_meals_at_camp,
+        })
+
+    # ── Project ────────────────────────────────────────────────────────────
+    projects = frappe.get_all(
+        "Project",
+        filters={"custom_reservation": doc.name, "status": ["!=", "Cancelled"]},
+        fields=["name"]
+    )
+    for proj in projects:
+        frappe.db.set_value("Project", proj["name"], {
+            "expected_start_date": doc.arrival_date,
+            "expected_end_date": doc.depature_date,
+            "custom_no_of_people": doc.no_of_people,
+            "custom_no_of_adults": doc.no_of_adults,
+            "custom_no_of_children": doc.no_of_children,
+            "custom_is_meals_at_camp": doc.is_meals_at_camp,
+        })
+
+    updated = []
+    if sales_orders:
+        updated.append(f"{len(sales_orders)} Sales Order(s)")
+    if projects:
+        updated.append(f"{len(projects)} Project(s)")
+    if updated:
+        frappe.msgprint(f"Auto-updated: {', '.join(updated)}.", alert=True, indicator="green")
+
+
+@frappe.whitelist()
 def update_calendar_info(doc, method):
     if doc.customer and doc.no_of_people:
         doc.calendar_info = f"{doc.customer} ({doc.no_of_people}) adults:({doc.no_of_adults}) children:({doc.no_of_children})"

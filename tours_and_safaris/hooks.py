@@ -23,6 +23,7 @@ doc_events = {
             "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.update_calendar_info",
             "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.propagate_booking_inquiry_amendment"
         ],
+        "on_update_after_submit": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.sync_booking_inquiry_changes",
         "on_cancel": "tours_and_safaris.tours_and_safaris.doctype.booking_inquiry.booking_inquiry.cancel_linked_documents"
     },
     "Quotation": {
@@ -34,7 +35,8 @@ doc_events = {
             "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.prevent_rate_reset",
             "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.update_calendar_info"
         ],
-        "on_submit": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.propagate_reservation_amendment"
+        "on_submit": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.propagate_reservation_amendment",
+        "on_update_after_submit": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.sync_reservation_changes"
     },
     "Sales Order": {
         "on_submit": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.propagate_sales_order_amendment"

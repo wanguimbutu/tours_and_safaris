@@ -341,6 +341,142 @@ def update_calendar_info(doc, method):
 
 
 @frappe.whitelist()
+def sync_booking_inquiry_changes(doc, method):
+    """Propagate field changes from a submitted Booking Inquiry to its linked Quotation and Reservation."""
+    if doc.flags.get("from_sync"):
+        return
+
+    # ── Quotation (scalar custom fields only) ──────────────────────────────
+    quotations = frappe.get_all(
+        "Quotation",
+        filters={"custom_booking_inquiry": doc.name, "docstatus": ["!=", 2]},
+        fields=["name"]
+    )
+    for qt in quotations:
+        frappe.db.set_value("Quotation", qt["name"], {
+            "custom_arrival_date": doc.from_date,
+            "custom_depature_date": doc.to_date,
+            "custom_no_of_people": doc.no_of_people,
+            "custom_no_of_adults": doc.no_of_adults,
+            "custom_no_of_children": doc.no_of_children,
+            "custom_accommodation_needed": doc.accommodation_needed,
+            "custom_rooms": doc.rooms,
+            "custom_tents": doc.tents,
+            "custom_is_consolidated": doc.is_consolidated,
+            "custom_consolidated_amount": doc.consolidated_amount,
+            "custom_grade": doc.grade,
+            "custom_is_meals_at_camp": doc.is_meals_at_camp,
+            "custom_remarks": doc.remarks,
+        })
+
+    # ── Reservation (scalar + child tables) ───────────────────────────────
+    reservations = frappe.get_all(
+        "Reservation",
+        filters={"booking_inquiry": doc.name, "docstatus": ["!=", 2]},
+        fields=["name"]
+    )
+    for res in reservations:
+        res_doc = frappe.get_doc("Reservation", res["name"])
+        res_doc.flags.from_sync = True
+        res_doc.flags.ignore_validate_update_after_submit = True
+
+        # Scalar fields
+        res_doc.arrival_date = doc.from_date
+        res_doc.depature_date = doc.to_date
+        res_doc.no_of_people = doc.no_of_people
+        res_doc.no_of_adults = doc.no_of_adults
+        res_doc.no_of_children = doc.no_of_children
+        res_doc.accommodation_needed = doc.accommodation_needed
+        res_doc.rooms = doc.rooms
+        res_doc.tents = doc.tents
+        res_doc.is_consolidated = doc.is_consolidated
+        res_doc.consolidated_amount = doc.consolidated_amount
+        res_doc.grade = doc.grade
+        res_doc.is_meals_at_camp = doc.is_meals_at_camp
+        res_doc.billing_currency = doc.billing_currency
+
+        # Activities
+        res_doc.activities = []
+        for row in doc.get("activities") or []:
+            res_doc.append("activities", {
+                "activity_group": row.activity_group,
+                "activity_name": row.activity_name,
+                "session_period": row.session_period,
+                "arrival_time": row.arrival_time,
+                "qty": row.qty,
+                "rate": row.rate,
+                "amount": row.amount,
+                "item_code": row.item_code,
+            })
+
+        # Meals
+        res_doc.meals = []
+        for row in doc.get("meals") or []:
+            res_doc.append("meals", {
+                "date": row.date,
+                "day": row.day,
+                "breakfast": row.breakfast,
+                "lunch": row.lunch,
+                "dinner": row.dinner,
+                "meal_type": row.meal_type,
+                "qty": row.qty,
+                "rate": row.rate,
+                "amount": row.amount,
+            })
+
+        # Transport
+        res_doc.transport_service = []
+        for row in doc.get("transport_service") or []:
+            res_doc.append("transport_service", {
+                "transport_name": row.transport_name,
+                "vehicle_name": row.vehicle_name,
+                "qty": row.qty,
+                "rate": row.rate,
+                "amount": row.amount,
+            })
+
+        # Hired services (BI field: hired_service → Reservation field: hired_services)
+        res_doc.hired_services = []
+        for row in doc.get("hired_service") or []:
+            res_doc.append("hired_services", {
+                "service_name": row.service_name,
+                "qty": row.qty,
+                "rate": row.rate,
+                "amount": row.amount,
+            })
+
+        # Tent selection
+        res_doc.tent_selection = []
+        for row in doc.get("tent_selection") or []:
+            res_doc.append("tent_selection", {
+                "tent_type": row.tent_type,
+                "qty": row.qty,
+                "rate": row.rate,
+                "amount": row.amount,
+            })
+
+        # Room booking (BI field: room_booking → Reservation field: room_type_booking)
+        res_doc.room_type_booking = []
+        for row in doc.get("room_booking") or []:
+            res_doc.append("room_type_booking", {
+                "room_type": row.room_type,
+                "qty": row.qty,
+                "rate": row.rate,
+                "amount": row.amount,
+            })
+
+        res_doc.save(ignore_permissions=True)
+
+    updated = []
+    if quotations:
+        updated.append(f"{len(quotations)} Quotation(s)")
+    if reservations:
+        updated.append(f"{len(reservations)} Reservation(s)")
+    if updated:
+        frappe.msgprint(f"Auto-updated: {', '.join(updated)}.", alert=True, indicator="green")
+
+
+@frappe.whitelist()
 def propagate_booking_inquiry_amendment(doc, method):
     """When an amended Booking Inquiry is submitted, auto-create a new Quotation
     and propagate key field changes to the existing Reservation chain."""
