@@ -645,7 +645,7 @@ def get_events(start, end, filters=None):
             "id": res.name,
             "title": res.calendar_info,
             "start": str(res.arrival_date),
-            "end": str(res.depature_date),
+            "end": str(add_days(res.depature_date, 1)),  # FullCalendar end is exclusive for allDay events
             "allDay": True,
             "color": color,
             "url": f"/app/reservation/{res.name}"
