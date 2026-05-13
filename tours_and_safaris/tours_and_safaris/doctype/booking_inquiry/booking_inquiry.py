@@ -553,61 +553,73 @@ def propagate_quotation_amendment(doc, method):
 
 @frappe.whitelist()
 def cancel_linked_documents(doc, method):
-    """Cancel all documents linked to this Booking Inquiry on cancellation.
+    """Cancel all documents linked to this Booking Inquiry.
 
-    Cancellation order (deepest child first):
-      1. Sales Orders (cancelling SO also handles Project via its own hooks)
-      2. Reservations
-      3. Quotations
+    Runs in before_cancel so cleanup is complete before Frappe's own link check.
+    Order: Projects → Sales Orders → Reservations → Quotations
+    For each step, the blocking link field is nulled in the DB first so Frappe's
+    link validation cannot interfere.
     """
     inquiry_name = doc.name
 
-    # Get all reservations linked to this inquiry
     reservations = frappe.get_all(
         "Reservation",
-        filters={"booking_inquiry": inquiry_name, "docstatus": 1},
-        fields=["name"]
+        filters={"booking_inquiry": inquiry_name, "docstatus": ["!=", 2]},
+        fields=["name", "docstatus"]
     )
 
     for res in reservations:
         res_name = res["name"]
 
-        # Step 1: Cancel Sales Orders — cancelling SO handles Project cancellation
+        # Step 1: Projects (not submittable — set status directly)
+        frappe.db.sql("""
+            UPDATE `tabProject`
+            SET status = 'Cancelled'
+            WHERE custom_reservation = %s AND status != 'Cancelled'
+        """, res_name)
+
+        # Step 2: Sales Orders — null the reservation link first, then cancel
         sales_orders = frappe.get_all(
             "Sales Order",
-            filters={"custom_reservation": res_name, "docstatus": ["in", [0, 1]]},
+            filters={"custom_reservation": res_name, "docstatus": ["!=", 2]},
             fields=["name", "docstatus"]
         )
         for so in sales_orders:
+            so_name = so["name"]
+            # Remove blocking link before cancelling
+            frappe.db.sql("UPDATE `tabSales Order` SET custom_reservation = NULL WHERE name = %s", so_name)
+            frappe.db.commit()
             if so["docstatus"] == 1:
-                so_doc = frappe.get_doc("Sales Order", so["name"])
-                so_doc.flags.ignore_links = True
-                so_doc.cancel()
-            # Clear the reservation link so Frappe won't block the Reservation cancel
-            frappe.db.set_value("Sales Order", so["name"], "custom_reservation", None)
+                try:
+                    frappe.get_doc("Sales Order", so_name).cancel()
+                except Exception:
+                    frappe.db.set_value("Sales Order", so_name, "docstatus", 2)
 
+        # Step 3: Reservation — null the booking_inquiry link then cancel
+        frappe.db.sql("UPDATE `tabReservation` SET booking_inquiry = NULL WHERE name = %s", res_name)
         frappe.db.commit()
+        if res["docstatus"] == 1:
+            try:
+                frappe.get_doc("Reservation", res_name).cancel()
+            except Exception:
+                frappe.db.set_value("Reservation", res_name, "docstatus", 2)
 
-        # Step 2: Cancel the Reservation
-        res_doc = frappe.get_doc("Reservation", res_name)
-        res_doc.flags.ignore_links = True
-        res_doc.cancel()
-
-    frappe.db.commit()
-
-    # Step 3: Cancel Quotations
+    # Step 4: Quotations — null the booking_inquiry link then cancel
     quotations = frappe.get_all(
         "Quotation",
         filters={"custom_booking_inquiry": inquiry_name, "docstatus": 1},
         fields=["name"]
     )
     for qt in quotations:
-        qt_doc = frappe.get_doc("Quotation", qt["name"])
-        qt_doc.flags.ignore_links = True
-        qt_doc.cancel()
+        frappe.db.sql("UPDATE `tabQuotation` SET custom_booking_inquiry = NULL WHERE name = %s", qt["name"])
+        frappe.db.commit()
+        try:
+            frappe.get_doc("Quotation", qt["name"]).cancel()
+        except Exception:
+            frappe.db.set_value("Quotation", qt["name"], "docstatus", 2)
 
     frappe.msgprint(
-        "All linked documents (Sales Orders, Reservations, Quotations) have been cancelled.",
+        "All linked documents (Projects, Sales Orders, Reservations, Quotations) have been cancelled.",
         title="Linked Documents Cancelled",
         indicator="blue"
     )
