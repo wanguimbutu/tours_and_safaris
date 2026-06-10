@@ -589,6 +589,80 @@ def propagate_sales_order_amendment(doc, method):
         )
 
 
+def cancel_linked_so_documents(doc, method):
+    """Before-cancel hook for Sales Order.
+
+    Cascades the cancellation to linked Reservation, Booking Inquiry, Quotation,
+    and Project.  The guard flag on frappe.flags prevents re-entrant cascades when
+    Booking Inquiry's own before_cancel subsequently tries to cancel other Sales
+    Orders linked to the same inquiry.
+    """
+    # Skip if we're already inside a BI-initiated SO cancel cascade
+    if frappe.flags.get("cancelling_so_cascade_in_progress"):
+        return
+
+    # Cancel linked Project (Project is not submittable — set status directly)
+    if doc.project:
+        try:
+            frappe.db.set_value("Project", doc.project, "status", "Cancelled")
+        except Exception:
+            pass
+
+    reservation_name = doc.custom_reservation
+    if not reservation_name:
+        return
+
+    reservation = frappe.db.get_value(
+        "Reservation", reservation_name,
+        ["booking_inquiry", "docstatus"], as_dict=True
+    )
+    if not reservation:
+        return
+
+    bi_name = reservation.get("booking_inquiry")
+
+    # Null the reservation link on this SO *before* triggering the BI cascade so that
+    # BI's cancel_linked_documents (which queries SO by custom_reservation) won't find
+    # this SO and try to cancel it a second time.
+    frappe.db.sql(
+        "UPDATE `tabSales Order` SET custom_reservation = NULL WHERE name = %s",
+        doc.name
+    )
+    frappe.db.commit()
+
+    if bi_name:
+        bi_status = frappe.db.get_value("Booking Inquiry", bi_name, "docstatus")
+        if bi_status == 1:
+            frappe.flags.cancelling_so_cascade_in_progress = True
+            try:
+                bi_doc = frappe.get_doc("Booking Inquiry", bi_name)
+                bi_doc.flags.ignore_permissions = True
+                bi_doc.cancel()
+                return
+            except Exception as e:
+                frappe.log_error(
+                    f"SO cancel cascade: failed to cancel Booking Inquiry {bi_name}: {e}",
+                    "SO Cancel Cascade"
+                )
+                frappe.db.set_value("Booking Inquiry", bi_name, "docstatus", 2)
+            finally:
+                frappe.flags.cancelling_so_cascade_in_progress = False
+
+    # Fallback: cancel the Reservation directly when there is no Booking Inquiry
+    # (or when the BI cancel failed)
+    if reservation.get("docstatus") == 1:
+        try:
+            res_doc = frappe.get_doc("Reservation", reservation_name)
+            res_doc.flags.ignore_permissions = True
+            res_doc.cancel()
+        except Exception as e:
+            frappe.log_error(
+                f"SO cancel cascade: failed to cancel Reservation {reservation_name}: {e}",
+                "SO Cancel Cascade"
+            )
+            frappe.db.set_value("Reservation", reservation_name, "docstatus", 2)
+
+
 @frappe.whitelist()
 def get_events(start, end, filters=None):
     from frappe.utils import getdate

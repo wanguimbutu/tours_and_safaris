@@ -39,7 +39,8 @@ doc_events = {
         "on_update_after_submit": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.sync_reservation_changes"
     },
     "Sales Order": {
-        "on_submit": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.propagate_sales_order_amendment"
+        "on_submit": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.propagate_sales_order_amendment",
+        "before_cancel": "tours_and_safaris.tours_and_safaris.doctype.reservation.reservation.cancel_linked_so_documents"
     },
     "Activity Allocation": {
         "on_submit": [
