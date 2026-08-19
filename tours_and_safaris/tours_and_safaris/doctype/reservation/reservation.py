@@ -18,8 +18,8 @@ def validate_reservation_dates(doc, method):
         earliest_allowed = getdate(add_days(today(), -3))
         if getdate(doc.arrival_date) < earliest_allowed:
             frappe.throw("Arrival Date cannot be more than 3 days in the past.")
-    if doc.arrival_date and doc.depature_date and getdate(doc.depature_date) <= getdate(doc.arrival_date):
-        frappe.throw("Departure Date must be later than Arrival Date.")
+    if doc.arrival_date and doc.depature_date and getdate(doc.depature_date) < getdate(doc.arrival_date):
+        frappe.throw("Departure Date cannot be earlier than Arrival Date.")
 
 
 @frappe.whitelist()
