@@ -313,22 +313,56 @@ def create_quotation(inquiry_name):
                 "rate": flt(service.rate) or 0.0
             })
 
-        # Add meals
+        # Add meals — a meal plan's rate covers the whole trip, so group the
+        # per-day rows by meal_type and bill each plan once, not once per day.
+        # Adults and children can be priced differently, so each tier gets its
+        # own clearly labelled line instead of one line that looks duplicated.
+        meal_groups = {}
         for meal in inquiry.get("meals") or []:
             if not meal.meal_type:
                 frappe.log_error(f"Meal row skipped — no meal_type set (Booking Inquiry: {inquiry_name})", "create_quotation")
                 continue
             sessions = [s for s, flag in [("Breakfast", meal.breakfast), ("Lunch", meal.lunch), ("Dinner", meal.dinner)] if flag]
             session_label = ", ".join(sessions) if sessions else ""
-            meal_name = meal.meal_name or meal.meal_type
-            description = f"{meal_name} ({session_label})" if session_label else meal_name
-            quotation.append("items", {
-                "item_code": meal.meal_type,
-                "item_name": meal_name,
-                "description": description,
-                "qty": flt(meal.qty) or 1.0,
-                "rate": flt(meal.rate) or 0.0
+            day_label = f"{meal.day} {frappe.utils.formatdate(meal.date)}" if meal.date else ""
+            day_desc = " - ".join(filter(None, [day_label, session_label]))
+
+            group = meal_groups.setdefault(meal.meal_type, {
+                "meal_name": meal.meal_name or meal.meal_type,
+                "qty": flt(meal.qty),
+                "rate": flt(meal.rate),
+                "child_qty": flt(meal.get("child_qty")),
+                "child_rate": flt(meal.get("child_rate")),
+                "days": []
             })
+            if day_desc:
+                group["days"].append(day_desc)
+
+        for meal_type, group in meal_groups.items():
+            days_desc = "; ".join(group["days"])
+            has_children = bool(group["child_qty"] and group["child_rate"])
+
+            if group["rate"] or not has_children:
+                label = f"{group['meal_name']} - Adults" if has_children else group["meal_name"]
+                description = f"{label} ({days_desc})" if days_desc else label
+                quotation.append("items", {
+                    "item_code": meal_type,
+                    "item_name": label,
+                    "description": description,
+                    "qty": group["qty"] or 1.0,
+                    "rate": group["rate"]
+                })
+
+            if has_children:
+                label = f"{group['meal_name']} - Children"
+                description = f"{label} ({days_desc})" if days_desc else label
+                quotation.append("items", {
+                    "item_code": meal_type,
+                    "item_name": label,
+                    "description": description,
+                    "qty": group["child_qty"],
+                    "rate": group["child_rate"]
+                })
 
     quotation.insert(ignore_permissions=True)
 
@@ -421,6 +455,8 @@ def sync_booking_inquiry_changes(doc, method):
                 "meal_type": row.meal_type,
                 "qty": row.qty,
                 "rate": row.rate,
+                "child_qty": row.get("child_qty"),
+                "child_rate": row.get("child_rate"),
                 "amount": row.amount,
             })
 

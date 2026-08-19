@@ -173,22 +173,58 @@ def create_sales_order(reservation_name):
                     "prevdoc_docname": reservation.quotation
                 })
 
-        # Add meals
+        # Add meals — a meal plan's rate covers the whole trip, so group the
+        # per-day rows by meal_type and bill each plan once, not once per day.
+        # Adults and children can be priced differently, so each tier gets its
+        # own clearly labelled line instead of one line that looks duplicated.
         if reservation.meals:
+            meal_groups = {}
             for meals in reservation.meals:
                 if not meals.meal_type:
                     continue
                 sessions = [s for s, flag in [("Breakfast", meals.breakfast), ("Lunch", meals.lunch), ("Dinner", meals.dinner)] if flag]
                 session_label = ", ".join(sessions) if sessions else ""
                 day_label = f"{meals.day} {frappe.utils.formatdate(meals.date)}" if meals.date else ""
-                description = " - ".join(filter(None, [day_label, session_label]))
-                sales_order.append("items", {
-                    "item_code": meals.meal_type,
-                    "description": description,
-                    "qty": meals.qty or 1,
+                day_desc = " - ".join(filter(None, [day_label, session_label]))
+
+                group = meal_groups.setdefault(meals.meal_type, {
+                    "meal_name": meals.meal_name or meals.meal_type,
+                    "qty": meals.qty or 0,
                     "rate": meals.rate or 0,
-                    "prevdoc_docname": reservation.quotation
+                    "child_qty": meals.get("child_qty") or 0,
+                    "child_rate": meals.get("child_rate") or 0,
+                    "days": []
                 })
+                if day_desc:
+                    group["days"].append(day_desc)
+
+            for meal_type, group in meal_groups.items():
+                days_desc = "; ".join(group["days"])
+                has_children = bool(group["child_qty"] and group["child_rate"])
+
+                if group["rate"] or not has_children:
+                    label = f"{group['meal_name']} - Adults" if has_children else group["meal_name"]
+                    description = f"{label} ({days_desc})" if days_desc else label
+                    sales_order.append("items", {
+                        "item_code": meal_type,
+                        "item_name": label,
+                        "description": description,
+                        "qty": group["qty"] or 1,
+                        "rate": group["rate"],
+                        "prevdoc_docname": reservation.quotation
+                    })
+
+                if has_children:
+                    label = f"{group['meal_name']} - Children"
+                    description = f"{label} ({days_desc})" if days_desc else label
+                    sales_order.append("items", {
+                        "item_code": meal_type,
+                        "item_name": label,
+                        "description": description,
+                        "qty": group["child_qty"],
+                        "rate": group["child_rate"],
+                        "prevdoc_docname": reservation.quotation
+                    })
 
     sales_order.insert(ignore_permissions=True)
 

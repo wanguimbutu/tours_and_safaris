@@ -6,6 +6,8 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "date",
+  "day",
   "breakfast",
   "lunch",
   "dinner",
@@ -13,11 +15,28 @@
   "meal_name",
   "qty",
   "rate",
+  "child_qty",
+  "child_rate",
   "amount",
   "converted_rate",
   "original_rate"
  ],
  "fields": [
+  {
+   "allow_on_submit": 1,
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "day",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Day",
+   "read_only": 1
+  },
   {
    "allow_on_submit": 1,
    "default": "0",
@@ -64,7 +83,7 @@
    "fieldname": "qty",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Qty",
+   "label": "Adult Qty",
    "non_negative": 1
   },
   {
@@ -72,7 +91,24 @@
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Rate",
+   "label": "Adult Rate",
+   "non_negative": 1,
+   "options": "billing_currency"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "child_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Child Qty",
+   "non_negative": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "child_rate",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Child Rate",
    "non_negative": 1,
    "options": "billing_currency"
   },
@@ -82,7 +118,8 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Amount",
-   "options": "billing_currency"
+   "options": "billing_currency",
+   "read_only": 1
   },
   {
    "fieldname": "converted_rate",

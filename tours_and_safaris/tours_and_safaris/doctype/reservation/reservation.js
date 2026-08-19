@@ -340,10 +340,75 @@ function update_amount(frm, cdt, cdn) {
     calculate_total_amount(frm);
 }
 
+function update_meal_amount(frm, cdt, cdn) {
+    // Meals price adults and children separately, so amount is the sum of
+    // both tiers rather than a single qty * rate.
+    let row = locals[cdt][cdn];
+
+    if (row.rate && !row.original_rate) {
+        frappe.model.set_value(cdt, cdn, 'original_rate', row.rate);
+    }
+
+    let adult_amount = (row.qty && row.rate) ? row.qty * row.rate : 0;
+    let child_amount = (row.child_qty && row.child_rate) ? row.child_qty * row.child_rate : 0;
+
+    frappe.model.set_value(cdt, cdn, 'amount', adult_amount + child_amount);
+
+    calculate_total_amount(frm);
+}
+
+function calculate_meals_total(frm) {
+    // Meal cost is a flat package rate (adults + children), not a per-day
+    // charge — count each distinct meal plan's amount once even though it
+    // has a row for every day.
+    let seen_meal_types = {};
+    let total = 0;
+    (frm.doc.meals || []).forEach(row => {
+        if (!row.meal_type || seen_meal_types[row.meal_type]) return;
+        seen_meal_types[row.meal_type] = true;
+        total += row.amount || 0;
+    });
+    return total;
+}
+
+function propagate_meal_pricing(frm, cdt, cdn) {
+    // A meal plan's rate applies to the whole trip, so once it's set on any
+    // day's row, copy it to the other days for that same plan instead of
+    // making the user re-enter it on every row.
+    // Setting fields on sibling rows re-fires their own handlers, which call
+    // back into this function — guard against that re-entrancy.
+    if (frm.__propagating_meals) return;
+
+    let source = locals[cdt][cdn];
+    if (!source.meal_type) return;
+
+    frm.__propagating_meals = true;
+    try {
+        (frm.doc.meals || []).forEach(row => {
+            if (row.name === source.name) return;
+            if (row.meal_type && row.meal_type !== source.meal_type) return;
+
+            frappe.model.set_value(row.doctype, row.name, 'meal_type', source.meal_type);
+            frappe.model.set_value(row.doctype, row.name, 'meal_name', source.meal_name);
+            frappe.model.set_value(row.doctype, row.name, 'qty', source.qty);
+            frappe.model.set_value(row.doctype, row.name, 'rate', source.rate);
+            frappe.model.set_value(row.doctype, row.name, 'child_qty', source.child_qty);
+            frappe.model.set_value(row.doctype, row.name, 'child_rate', source.child_rate);
+            frappe.model.set_value(row.doctype, row.name, 'original_rate', source.original_rate);
+            frappe.model.set_value(row.doctype, row.name, 'amount', source.amount);
+        });
+    } finally {
+        frm.__propagating_meals = false;
+    }
+
+    frm.refresh_field('meals');
+    calculate_total_amount(frm);
+}
+
 // Function to calculate total amount from all relevant tables
 function calculate_total_amount(frm) {
     let total = 0;
-    let tables = ['activities', 'tent_selection', 'room_booking','room_type_booking', 'transport_service', 'meals', 'hired_service'];
+    let tables = ['activities', 'tent_selection', 'room_booking','room_type_booking', 'transport_service', 'hired_service'];
 
     tables.forEach(table => {
         (frm.doc[table] || []).forEach(row => {
@@ -351,11 +416,13 @@ function calculate_total_amount(frm) {
         });
     });
 
+    total += calculate_meals_total(frm);
+
     frm.set_value('proposed_total_cost', total); // Update total amount field
 }
 
 // Attach the update function dynamically to multiple tables
-['Activity Package', 'Tent Selection', 'Room Type Booking', 'Transport', 'Meal Details', 'Reservation Services'].forEach(table_name => {
+['Activity Package', 'Tent Selection', 'Room Type Booking', 'Transport', 'Reservation Services'].forEach(table_name => {
     frappe.ui.form.on(table_name, {
         qty: function(frm, cdt, cdn) {
             update_amount(frm, cdt, cdn);
@@ -484,27 +551,29 @@ frappe.ui.form.on('Meal Details', {
             return;
         }
 
-        
-        let price_list = "Resident"; 
+
+        let price_list = "Resident";
         if (frm.doc.billing_currency && frm.doc.billing_currency !== "KES") {
             price_list = "Non Resident";
         }
 
         console.log("🔍 Fetching rate from:", price_list, "for Meal Type:", row.meal_type);
 
-    
+
         if (row.rate && row.rate !== 0) {
             console.log("🔄 User modified rate:", row.rate);
-            return; 
+            update_meal_amount(frm, cdt, cdn);
+            propagate_meal_pricing(frm, cdt, cdn);
+            return;
         }
 
-    
+
         frappe.call({
             method: "frappe.client.get_value",
             args: {
                 doctype: "Item Price",
                 filters: {
-                    item_code: row.meal_type,  
+                    item_code: row.meal_type,
                     price_list: price_list
                 },
                 fieldname: ["price_list_rate", "name"]
@@ -524,9 +593,30 @@ frappe.ui.form.on('Meal Details', {
                     frappe.msgprint(__("No response from Item Price API"));
                 }
 
-                update_amount(frm, cdt, cdn);
+                update_meal_amount(frm, cdt, cdn);
+                propagate_meal_pricing(frm, cdt, cdn);
             }
         });
+    },
+
+    rate: function(frm, cdt, cdn) {
+        update_meal_amount(frm, cdt, cdn);
+        propagate_meal_pricing(frm, cdt, cdn);
+    },
+
+    qty: function(frm, cdt, cdn) {
+        update_meal_amount(frm, cdt, cdn);
+        propagate_meal_pricing(frm, cdt, cdn);
+    },
+
+    child_qty: function(frm, cdt, cdn) {
+        update_meal_amount(frm, cdt, cdn);
+        propagate_meal_pricing(frm, cdt, cdn);
+    },
+
+    child_rate: function(frm, cdt, cdn) {
+        update_meal_amount(frm, cdt, cdn);
+        propagate_meal_pricing(frm, cdt, cdn);
     }
 });
 
