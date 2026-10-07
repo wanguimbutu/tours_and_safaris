@@ -322,7 +322,7 @@ def create_quotation(inquiry_name):
             if not meal.meal_type:
                 frappe.log_error(f"Meal row skipped — no meal_type set (Booking Inquiry: {inquiry_name})", "create_quotation")
                 continue
-            sessions = [s for s, flag in [("Breakfast", meal.breakfast), ("Lunch", meal.lunch), ("Dinner", meal.dinner)] if flag]
+            sessions = [s for s, flag in [("Breakfast", meal.breakfast), ("10 AM Tea", meal.tea_10am), ("Lunch", meal.lunch), ("4 PM Tea", meal.tea_4pm), ("Dinner", meal.dinner)] if flag]
             session_label = ", ".join(sessions) if sessions else ""
             day_label = f"{meal.day} {frappe.utils.formatdate(meal.date)}" if meal.date else ""
             day_desc = " - ".join(filter(None, [day_label, session_label]))
@@ -450,7 +450,9 @@ def sync_booking_inquiry_changes(doc, method):
                 "date": row.date,
                 "day": row.day,
                 "breakfast": row.breakfast,
+                "tea_10am": row.tea_10am,
                 "lunch": row.lunch,
+                "tea_4pm": row.tea_4pm,
                 "dinner": row.dinner,
                 "meal_type": row.meal_type,
                 "qty": row.qty,

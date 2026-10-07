@@ -251,7 +251,9 @@ function populate_meal_dates(frm) {
             row.converted_rate = prev.converted_rate;
             row.original_rate  = prev.original_rate;
             row.breakfast      = prev.breakfast;
+            row.tea_10am       = prev.tea_10am;
             row.lunch          = prev.lunch;
+            row.tea_4pm        = prev.tea_4pm;
             row.dinner         = prev.dinner;
         }
     }

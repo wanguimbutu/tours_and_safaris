@@ -9,7 +9,9 @@
   "date",
   "day",
   "breakfast",
+  "tea_10am",
   "lunch",
+  "tea_4pm",
   "dinner",
   "meal_type",
   "meal_name",
@@ -35,7 +37,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Day",
-   "read_only": 1
+   "read_only": 1,
+   "columns": 1
   },
   {
    "allow_on_submit": 1,
@@ -48,10 +51,26 @@
   {
    "allow_on_submit": 1,
    "default": "0",
+   "fieldname": "tea_10am",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "10 AM Tea"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
    "fieldname": "lunch",
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Lunch"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "tea_4pm",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "4 PM Tea"
   },
   {
    "allow_on_submit": 1,
@@ -137,7 +156,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-04-14 16:44:47.649283",
+ "modified": "2026-10-07 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Tours and Safaris",
  "name": "Meal Details",

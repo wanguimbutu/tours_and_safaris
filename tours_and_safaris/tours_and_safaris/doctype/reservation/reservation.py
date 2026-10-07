@@ -182,7 +182,7 @@ def create_sales_order(reservation_name):
             for meals in reservation.meals:
                 if not meals.meal_type:
                     continue
-                sessions = [s for s, flag in [("Breakfast", meals.breakfast), ("Lunch", meals.lunch), ("Dinner", meals.dinner)] if flag]
+                sessions = [s for s, flag in [("Breakfast", meals.breakfast), ("10 AM Tea", meals.tea_10am), ("Lunch", meals.lunch), ("4 PM Tea", meals.tea_4pm), ("Dinner", meals.dinner)] if flag]
                 session_label = ", ".join(sessions) if sessions else ""
                 day_label = f"{meals.day} {frappe.utils.formatdate(meals.date)}" if meals.date else ""
                 day_desc = " - ".join(filter(None, [day_label, session_label]))
@@ -546,7 +546,7 @@ def reschedule_reservation(reservation_name, new_start_date, new_end_date, no_of
             for meal in new_res.meals:
                 if not meal.meal_type:
                     continue
-                sessions = [s for s, flag in [("Breakfast", meal.breakfast), ("Lunch", meal.lunch), ("Dinner", meal.dinner)] if flag]
+                sessions = [s for s, flag in [("Breakfast", meal.breakfast), ("10 AM Tea", meal.tea_10am), ("Lunch", meal.lunch), ("4 PM Tea", meal.tea_4pm), ("Dinner", meal.dinner)] if flag]
                 session_label = ", ".join(sessions) if sessions else ""
                 day_label = f"{meal.day} {frappe.utils.formatdate(meal.date)}" if meal.date else ""
                 description = " - ".join(filter(None, [day_label, session_label]))
