@@ -75,18 +75,30 @@ def get_calendar_events(start, end, filters=None):
             "check_in_date",
             "check_out_date",
             "room_name",
+            "customer",
             "customer_name",
             "docstatus"
         ]
     )
-    
+
+    # Older records may have an empty customer_name, so look it up from Customer
+    missing = {e.customer for e in events if e.customer and not e.customer_name}
+    customer_names = dict(frappe.get_all(
+        "Customer",
+        filters={"name": ["in", list(missing)]},
+        fields=["name", "customer_name"],
+        as_list=True
+    )) if missing else {}
+
     calendar_events = []
     for event in events:
         # Double-check that document is not cancelled
         if event.docstatus != 2:
+            customer = event.customer_name or customer_names.get(event.customer) or event.customer
+            title = " - ".join(filter(None, [customer, event.room_name]))
             calendar_events.append({
                 "name": event.name,
-                "title": event.calendar_info or f"{event.room_name} - {event.customer_name}",
+                "title": title or event.calendar_info or event.name,
                 "start": event.check_in_date,
                 "end": event.check_out_date,
                 "allDay": 1,
