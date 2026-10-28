@@ -153,6 +153,7 @@ def get_tasks_for_week(week_start, week_end):
     
     # Pass the week_start and week_end parameters for both conditions
     tasks = frappe.db.sql(query, (week_start, week_end, week_end, week_start), as_dict=True)
+    apply_activity_row_people(tasks)
     
     
     task_names = [t.name for t in tasks]
@@ -191,6 +192,61 @@ def get_tasks_for_week(week_start, week_end):
             tasks.extend(dependent_tasks)
     
     return tasks
+def apply_activity_row_people(tasks):
+    """Show each activity's own group size instead of the reservation total.
+
+    One Reservation can book the same school into several activity rows with different
+    sizes (e.g. 68, 10, 7), but the activity Tasks are created with the reservation's total
+    No. of People. Match each parent Task to its Reservation activity row (same activity,
+    same AM/PM session where set, in order) and use that row's qty. A Task whose people
+    count was changed by hand (not equal to the reservation total) is left alone.
+    """
+    parents = [t for t in tasks if not t.get("parent_task")]
+    if not parents:
+        return
+    try:
+        links = frappe.db.sql("""
+            SELECT t.name, COALESCE(NULLIF(t.custom_reservation, ''), p.custom_reservation) AS reservation
+            FROM `tabTask` t
+            LEFT JOIN `tabProject` p ON p.name = t.project
+            WHERE t.name IN %(names)s
+        """, {"names": tuple(t.name for t in parents)}, as_dict=True)
+    except Exception:
+        # Sites without the reservation link fields: keep Task values as they are
+        return
+    reservation_of = {l.name: l.reservation for l in links if l.reservation}
+    reservations = list(set(reservation_of.values()))
+    if not reservations:
+        return
+
+    totals = {
+        r.name: r.no_of_people
+        for r in frappe.get_all("Reservation", filters={"name": ["in", reservations]}, fields=["name", "no_of_people"])
+    }
+    rows_by_key = {}
+    for row in frappe.get_all(
+        "Activity Package",
+        filters={"parenttype": "Reservation", "parent": ["in", reservations]},
+        fields=["parent", "activity_name", "session_period", "qty", "idx"],
+        order_by="parent asc, idx asc",
+    ):
+        rows_by_key.setdefault((row.parent, row.activity_name), []).append(row)
+
+    used = set()
+    for task in sorted(parents, key=lambda t: (str(t.get("exp_start_date") or ""), t.name)):
+        reservation = reservation_of.get(task.name)
+        base_subject = (task.subject or "").split(" - Group")[0].strip()
+        rows = [r for r in rows_by_key.get((reservation, base_subject), []) if (r.parent, r.idx) not in used]
+        if not rows:
+            continue
+        session = task.get("custom_session_period")
+        row = next((r for r in rows if session and r.session_period == session), rows[0])
+        used.add((row.parent, row.idx))
+        current = task.get("custom_no_of_people")
+        if row.qty and (not current or current == totals.get(reservation)):
+            task.custom_no_of_people = row.qty
+
+
 def get_active_instructors():
     """Get all active instructors with their qualifications and position"""
     return frappe.db.sql("""
@@ -384,38 +440,80 @@ def check_allocation_conflict(instructor_name, activity_date, slot):
     return len(existing) > 0
 
 @frappe.whitelist()
-def remove_activity_allocation_optimized(instructor, activity_date, activity_name):
-    """Optimized removal of activity allocation"""
+def remove_activity_allocation_optimized(instructor, activity_date, activity_name, slot=None, task_name=None):
+    """Remove one instructor slot (AM/PM) of an activity allocation.
+
+    slot and task_name are optional for older callers. With slot, only that half is removed:
+    a HALF DAY row for that slot is deleted, and a FULL DAY row (AM+PM merged) is turned into
+    a HALF DAY row for the other slot instead of being deleted outright.
+    """
     try:
-        # Find the allocation detail
-        allocation_detail = frappe.db.sql("""
-            SELECT aad.name as detail_name, aad.parent as allocation_id
-            FROM `tabActivity Allocation Details` aad
-            INNER JOIN `tabActivity Allocation` aa ON aa.name = aad.parent
-            WHERE aad.instructor = %s
-            AND aad.activity_date = %s
-            AND (aa.activity_name = %s OR aad.activity_name = %s)
-            LIMIT 1
-        """, (instructor, activity_date, activity_name, activity_name), as_dict=True)
-        
-        if not allocation_detail:
+        slot = (slot or "").upper() or None
+        slot_times = {
+            "AM": ("08:00:00", "12:30:00"),
+            "PM": ("13:30:00", "17:30:00"),
+        }
+
+        def find_rows(with_task):
+            task_condition = "AND aa.task = %(task)s" if with_task else ""
+            return frappe.db.sql(f"""
+                SELECT aad.name as detail_name, aad.parent as allocation_id,
+                       aad.session, aad.start_time
+                FROM `tabActivity Allocation Details` aad
+                INNER JOIN `tabActivity Allocation` aa ON aa.name = aad.parent
+                WHERE aad.instructor = %(instructor)s
+                AND aad.activity_date = %(date)s
+                AND (aa.activity_name = %(activity)s OR aad.activity_name = %(activity)s)
+                {task_condition}
+                ORDER BY aad.start_time
+            """, {"instructor": instructor, "date": activity_date, "activity": activity_name, "task": task_name},
+                as_dict=True)
+
+        # Prefer the allocation for this exact task (two groups can share an activity name)
+        rows = (find_rows(True) if task_name else []) or find_rows(False)
+        if not rows:
             return {"status": "not_found", "message": "No matching allocation found"}
-        
-        allocation_doc = frappe.get_doc("Activity Allocation", allocation_detail[0].allocation_id)
-        
+
+        def row_slot(row):
+            if row.session == "FULL DAY":
+                return "FULL"
+            start = frappe.utils.get_datetime(row.start_time) if row.start_time else None
+            return "PM" if start and start.hour >= 12 else "AM"
+
+        if slot:
+            # Exact half-day match first, otherwise the full-day row that covers this slot
+            row = next((r for r in rows if row_slot(r) == slot), None) or \
+                next((r for r in rows if row_slot(r) == "FULL"), None)
+            if not row:
+                return {"status": "not_found", "message": f"No {slot} allocation found"}
+        else:
+            row = rows[0]
+
+        allocation_doc = frappe.get_doc("Activity Allocation", row.allocation_id)
+
+        if slot and row_slot(row) == "FULL":
+            # Keep the other half as a half-day allocation
+            other = "PM" if slot == "AM" else "AM"
+            detail = next(d for d in allocation_doc.activity_allocation_details if d.name == row.detail_name)
+            detail.session = "HALF DAY"
+            detail.start_time = f"{activity_date} {slot_times[other][0]}"
+            detail.end_time = f"{activity_date} {slot_times[other][1]}"
+            allocation_doc.save()
+            return {"status": "updated", "message": f"Removed {slot}; kept {other} as half day"}
+
         # If only one detail, delete entire allocation
         if len(allocation_doc.activity_allocation_details) == 1:
             allocation_doc.delete()
             return {"status": "deleted", "message": "Allocation deleted"}
-        else:
-            # Remove specific detail
-            allocation_doc.activity_allocation_details = [
-                d for d in allocation_doc.activity_allocation_details 
-                if d.name != allocation_detail[0].detail_name
-            ]
-            allocation_doc.save()
-            return {"status": "updated", "message": "Allocation detail removed"}
-            
+
+        # Remove specific detail
+        allocation_doc.activity_allocation_details = [
+            d for d in allocation_doc.activity_allocation_details
+            if d.name != row.detail_name
+        ]
+        allocation_doc.save()
+        return {"status": "updated", "message": "Allocation detail removed"}
+
     except Exception as e:
         frappe.log_error(f"Error removing allocation: {str(e)}")
         return {"status": "error", "message": str(e)}
