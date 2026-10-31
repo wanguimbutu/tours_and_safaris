@@ -5,7 +5,7 @@ import json
 
 from frappe.utils import getdate
 from frappe.utils.file_manager import get_file
-from frappe.utils import nowdate
+from frappe.utils import nowdate, flt
 
 @frappe.whitelist()
 def remove_activity_allocation(instructor, activity_date, activity_name):
@@ -192,32 +192,40 @@ def get_tasks_for_week(week_start, week_end):
             tasks.extend(dependent_tasks)
     
     return tasks
-def apply_activity_row_people(tasks):
-    """Show each activity's own group size instead of the reservation total.
+def match_tasks_to_activity_rows(task_names):
+    """Pair activity Tasks with the Reservation activity row (Activity Package) they came from.
 
-    One Reservation can book the same school into several activity rows with different
-    sizes (e.g. 68, 10, 7), but the activity Tasks are created with the reservation's total
-    No. of People. Match each parent Task to its Reservation activity row (same activity,
-    same AM/PM session where set, in order) and use that row's qty. A Task whose people
-    count was changed by hand (not equal to the reservation total) is left alone.
+    Matching uses every parent activity Task of the reservations involved (not just the ones
+    asked about), so a Task gets the same row no matter which week is being looked at:
+    same activity, same AM/PM session where set, otherwise in date order.
+
+    Returns (rows, reservation_of, totals): Task name -> row, Task name -> Reservation,
+    Reservation -> its total No. of People.
     """
-    parents = [t for t in tasks if not t.get("parent_task")]
-    if not parents:
-        return
+    if not task_names:
+        return {}, {}, {}
+    link_sql = """
+        SELECT t.name, t.subject, t.exp_start_date, t.custom_session_period,
+               COALESCE(NULLIF(t.custom_reservation, ''), p.custom_reservation) AS reservation
+        FROM `tabTask` t
+        LEFT JOIN `tabProject` p ON p.name = t.project
+        WHERE {condition}
+    """
     try:
-        links = frappe.db.sql("""
-            SELECT t.name, COALESCE(NULLIF(t.custom_reservation, ''), p.custom_reservation) AS reservation
-            FROM `tabTask` t
-            LEFT JOIN `tabProject` p ON p.name = t.project
-            WHERE t.name IN %(names)s
-        """, {"names": tuple(t.name for t in parents)}, as_dict=True)
+        asked = frappe.db.sql(link_sql.format(condition="t.name IN %(names)s"),
+                              {"names": tuple(task_names)}, as_dict=True)
+        reservations = tuple({a.reservation for a in asked if a.reservation})
+        if not reservations:
+            return {}, {}, {}
+        siblings = frappe.db.sql(link_sql.format(condition="""
+            t.custom_is_activity = 1
+            AND IFNULL(t.parent_task, '') = ''
+            AND t.status != 'Cancelled'
+            AND COALESCE(NULLIF(t.custom_reservation, ''), p.custom_reservation) IN %(reservations)s
+        """), {"reservations": reservations}, as_dict=True)
     except Exception:
-        # Sites without the reservation link fields: keep Task values as they are
-        return
-    reservation_of = {l.name: l.reservation for l in links if l.reservation}
-    reservations = list(set(reservation_of.values()))
-    if not reservations:
-        return
+        # Sites without the reservation link fields
+        return {}, {}, {}
 
     totals = {
         r.name: r.no_of_people
@@ -227,24 +235,146 @@ def apply_activity_row_people(tasks):
     for row in frappe.get_all(
         "Activity Package",
         filters={"parenttype": "Reservation", "parent": ["in", reservations]},
-        fields=["parent", "activity_name", "session_period", "qty", "idx"],
+        fields=["name", "parent", "activity_name", "item_code", "session_period", "qty", "rate", "idx"],
         order_by="parent asc, idx asc",
     ):
         rows_by_key.setdefault((row.parent, row.activity_name), []).append(row)
 
-    used = set()
-    for task in sorted(parents, key=lambda t: (str(t.get("exp_start_date") or ""), t.name)):
-        reservation = reservation_of.get(task.name)
+    rows, reservation_of, used = {}, {}, set()
+    for task in sorted(siblings, key=lambda t: (str(t.exp_start_date or ""), t.name)):
+        reservation_of[task.name] = task.reservation
         base_subject = (task.subject or "").split(" - Group")[0].strip()
-        rows = [r for r in rows_by_key.get((reservation, base_subject), []) if (r.parent, r.idx) not in used]
-        if not rows:
+        free = [r for r in rows_by_key.get((task.reservation, base_subject), []) if r.name not in used]
+        if not free:
             continue
-        session = task.get("custom_session_period")
-        row = next((r for r in rows if session and r.session_period == session), rows[0])
-        used.add((row.parent, row.idx))
+        session = task.custom_session_period
+        row = next((r for r in free if session and r.session_period == session), free[0])
+        used.add(row.name)
+        rows[task.name] = row
+    return rows, reservation_of, totals
+
+
+def apply_activity_row_people(tasks):
+    """Show each activity's own group size instead of the reservation total.
+
+    One Reservation can book the same school into several activity rows with different
+    sizes (e.g. 68, 10, 7), but the activity Tasks are created with the reservation's total
+    No. of People. Use the matched activity row's qty instead. A Task whose people count
+    was changed by hand (not equal to the reservation total) is left alone.
+    """
+    parents = [t for t in tasks if not t.get("parent_task")]
+    rows, reservation_of, totals = match_tasks_to_activity_rows([t.name for t in parents])
+    for task in parents:
+        row = rows.get(task.name)
         current = task.get("custom_no_of_people")
-        if row.qty and (not current or current == totals.get(reservation)):
+        if row and row.qty and (not current or current == totals.get(reservation_of.get(task.name))):
             task.custom_no_of_people = row.qty
+
+
+@frappe.whitelist()
+def update_activity_people(task_name, no_of_people):
+    """Change how many people take part in an activity, and carry it through to billing.
+
+    Updates the Task, its Reservation activity row (qty and amount) and the matching
+    Sales Order line. Billing is left untouched (with a warning) when the Sales Order line
+    is already invoiced or delivered, or the reservation is billed as one consolidated line.
+    Needs write permission on the Task, Reservation and Sales Order involved.
+    """
+    try:
+        people = int(no_of_people)
+    except (TypeError, ValueError):
+        return {"success": False, "message": "Number of people must be a whole number"}
+    if people < 1:
+        return {"success": False, "message": "Number of people must be at least 1"}
+
+    try:
+        task = frappe.get_doc("Task", task_name)
+        task.check_permission("write")
+
+        def update_task():
+            frappe.db.set_value("Task", task.name, "custom_no_of_people", people)
+
+        # Group sub-tasks (from Split) have no reservation row of their own
+        rows, reservation_of, _ = match_tasks_to_activity_rows([task.name]) if not task.parent_task else ({}, {}, {})
+        row = rows.get(task.name)
+        if not row:
+            update_task()
+            return {"success": True, "billing": "not_linked",
+                    "message": "People updated. This activity isn't linked to a reservation row, so billing is unchanged."}
+
+        reservation = frappe.get_doc("Reservation", row.parent)
+        reservation.check_permission("write")
+
+        if reservation.get("is_consolidated"):
+            update_task()
+            return {"success": True, "billing": "consolidated",
+                    "message": "People updated. This reservation is billed as one consolidated line, so billing is unchanged."}
+
+        sales_orders = frappe.get_all(
+            "Sales Order",
+            filters={"custom_reservation": reservation.name, "docstatus": ["<", 2]},
+            fields=["name"], order_by="creation desc", limit=1,
+        )
+        so = frappe.get_doc("Sales Order", sales_orders[0].name) if sales_orders else None
+        so_item = None
+        if so:
+            so.check_permission("write")
+            # k-th reservation row for this item ↔ k-th Sales Order line for the same item
+            same_rows = [r for r in reservation.activities
+                         if r.item_code == row.item_code and r.activity_name == row.activity_name]
+            position = next(i for i, r in enumerate(same_rows) if r.name == row.name)
+            same_items = [i for i in so.items
+                          if i.item_code == row.item_code and (i.item_name or "") == (row.activity_name or "")]
+            so_item = same_items[position] if position < len(same_items) else None
+
+        if so_item and so.docstatus == 1 and (flt(so_item.billed_amt) > 0 or flt(so_item.delivered_qty) > 0):
+            # Already invoiced/delivered: don't touch billing at all
+            update_task()
+            frappe.db.set_value("Activity Package", row.name,
+                                {"qty": people, "amount": flt(row.rate) * people})
+            return {"success": True, "billing": "invoiced",
+                    "message": (f"People updated on the reservation, but {so.name} is already invoiced for this "
+                                "activity — raise a credit note or an extra invoice for the difference.")}
+
+        # Reservation row (qty is editable after submit)
+        for r in reservation.activities:
+            if r.name == row.name:
+                r.qty = people
+                r.amount = flt(r.rate) * people
+        reservation.save()
+        update_task()
+
+        if not so or not so_item:
+            return {"success": True, "billing": "no_sales_order",
+                    "message": "People and reservation updated. No matching Sales Order line was found to update."}
+
+        if so.docstatus == 0:
+            so_item.qty = people
+            so.save()
+        else:
+            # ERPNext's "Update Items": every line must be sent, or the missing ones are deleted
+            from erpnext.controllers.accounts_controller import update_child_qty_rate
+            trans_items = [{
+                "docname": i.name,
+                "item_code": i.item_code,
+                "qty": people if i.name == so_item.name else i.qty,
+                "rate": i.rate,
+                "uom": i.uom,
+                "conversion_factor": i.conversion_factor,
+                "delivery_date": str(i.delivery_date) if i.delivery_date else None,
+            } for i in so.items]
+            update_child_qty_rate("Sales Order", json.dumps(trans_items), so.name)
+
+        return {"success": True, "billing": "updated",
+                "message": f"People, reservation and {so.name} updated to {people}."}
+
+    except frappe.PermissionError:
+        frappe.db.rollback()
+        return {"success": False, "message": "You don't have permission to change billing for this booking"}
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(f"Error updating activity people for {task_name}: {str(e)}")
+        return {"success": False, "message": str(e)}
 
 
 def get_active_instructors():
