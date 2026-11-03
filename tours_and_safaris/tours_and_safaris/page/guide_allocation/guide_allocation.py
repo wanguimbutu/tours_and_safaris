@@ -767,8 +767,33 @@ def process_task_with_assigned_date(task):
     return task
 
 
+def get_split_parent_tasks(customer_name, week_start_date, task_names=None, fields=None):
+    """Parent activity Tasks a split applies to: the planner row's Tasks when given
+    (a JSON list), otherwise every activity of the customer that week."""
+    fields = fields or ["name"]
+    if task_names:
+        names = json.loads(task_names) if isinstance(task_names, str) else task_names
+        return frappe.get_all(
+            "Task",
+            filters={"name": ["in", names], "parent_task": ["is", "not set"], "custom_is_activity": 1},
+            fields=fields,
+        )
+    week_end_date = frappe.utils.add_days(week_start_date, 6)
+    return frappe.get_all(
+        "Task",
+        filters={
+            "custom_customer_name": customer_name,
+            "exp_start_date": ["between", [week_start_date, week_end_date]],
+            "parent_task": ["is", "not set"],
+            "custom_is_activity": 1
+        },
+        fields=fields,
+    )
+
+
 @frappe.whitelist()
-def split_customer_groups(customer_name, total_people, number_of_groups, week_start_date, split_tasks=False):
+def split_customer_groups(customer_name, total_people, number_of_groups, week_start_date, split_tasks=False,
+                          task_names=None):
     """
     Split a customer into multiple groups and optionally create subtasks for each group
     """
@@ -797,20 +822,11 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
             }
             groups_data.append(group_data)
         
-        # Find all tasks for this customer in the specified week
-        week_end_date = frappe.utils.add_days(week_start_date, 6)
-        
-        # Get parent tasks (tasks without parent_task)
-        parent_tasks = frappe.get_all(
-            "Task",
-            filters={
-                "custom_customer_name": customer_name,
-                "exp_start_date": ["between", [week_start_date, week_end_date]],
-                "parent_task": ["is", "not set"],
-                "custom_is_activity":1
-            },
-            fields=["name", "subject", "project", "exp_start_date", "exp_end_date", 
-                   "custom_customer_name", "custom_no_of_people"]
+        # The planner row's tasks (every booking merged into that row), or the whole week
+        parent_tasks = get_split_parent_tasks(
+            customer_name, week_start_date, task_names,
+            fields=["name", "subject", "project", "exp_start_date", "exp_end_date",
+                    "custom_customer_name", "custom_no_of_people"]
         )
         
         if not parent_tasks:
@@ -903,24 +919,13 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
         return {"success": False, "message": f"Error splitting customer groups: {str(e)}"}
     
 @frappe.whitelist()
-def delete_customer_group_splitting(customer_name, week_start_date):
+def delete_customer_group_splitting(customer_name, week_start_date, task_names=None):
     """
     Delete all group splits (subtasks + group JSON) for a customer's activity tasks in a given week.
     Fixed version that properly clears cache and handles re-splitting.
     """
     try:
-        week_end_date = frappe.utils.add_days(week_start_date, 6)
-
-        parent_tasks = frappe.get_all(
-            "Task",
-            filters={
-                "custom_customer_name": customer_name,
-                "exp_start_date": ["between", [week_start_date, week_end_date]],
-                "parent_task": ["is", "not set"],
-                "custom_is_activity": 1
-            },
-            fields=["name"]
-        )
+        parent_tasks = get_split_parent_tasks(customer_name, week_start_date, task_names)
 
         if not parent_tasks:
             return {
