@@ -258,17 +258,16 @@ def apply_activity_row_people(tasks):
     """Show each activity's own group size instead of the reservation total.
 
     One Reservation can book the same school into several activity rows with different
-    sizes (e.g. 68, 10, 7), but the activity Tasks are created with the reservation's total
-    No. of People. Use the matched activity row's qty instead. A Task whose people count
-    was changed by hand (not equal to the reservation total) is left alone.
+    sizes (e.g. 68, 9, 8), but the activity Tasks are created with one copied number.
+    The matched activity row's qty is the source of truth: changing people from the
+    planner (update_activity_people) updates that row too.
     """
     parents = [t for t in tasks if not t.get("parent_task")]
-    rows, reservation_of, totals = match_tasks_to_activity_rows([t.name for t in parents])
+    rows, _, _ = match_tasks_to_activity_rows([t.name for t in parents])
     for task in parents:
         row = rows.get(task.name)
-        current = task.get("custom_no_of_people")
-        if row and row.qty and (not current or current == totals.get(reservation_of.get(task.name))):
-            task.custom_no_of_people = row.qty
+        if row and row.qty:
+            task.custom_no_of_people = int(row.qty)
 
 
 @frappe.whitelist()
@@ -307,6 +306,8 @@ def update_activity_people(task_name, no_of_people):
 
         if reservation.get("is_consolidated"):
             update_task()
+            # Keep the row in step (it's what the planner shows); the consolidated bill stays as is
+            frappe.db.set_value("Activity Package", row.name, "qty", people)
             return {"success": True, "billing": "consolidated",
                     "message": "People updated. This reservation is billed as one consolidated line, so billing is unchanged."}
 
