@@ -116,6 +116,8 @@ def get_tasks_for_week(week_start, week_end):
             t.custom_customer_name,
             t.custom_customer,
             t.custom_customer_groups,
+            t.custom_group_name,
+            t.custom_group_index,
             t.parent_task,
             t.exp_start_date,
             t.exp_end_date,
@@ -1016,7 +1018,10 @@ def delete_customer_group_splitting(customer_name, week_start_date, task_names=N
 @frappe.whitelist()
 def create_multiactivity_task(customer, activity_type, start_date, end_date,
                                custom_customer_name=None, custom_no_of_people=None, project=None,
-                               session_period=None, arrival_time=None):
+                               session_period=None, arrival_time=None,
+                               parent_task=None, group_name=None, group_index=None):
+    """Create an activity Task from the planner. With parent_task and group_name it is for
+    one split group only: a sub-task of that activity, like the ones a split creates."""
     frappe.logger().info({
         "msg": "create_multiactivity_task called",
         "customer": customer,
@@ -1051,6 +1056,16 @@ def create_multiactivity_task(customer, activity_type, start_date, end_date,
 
     if arrival_time:
         task.custom_arrival_time = arrival_time
+
+    if parent_task and group_name:
+        parent = frappe.get_doc("Task", parent_task)
+        task.subject = f"{activity_type} - {group_name}"
+        task.parent_task = parent.name
+        task.project = task.project or parent.project
+        task.color = parent.color
+        task.custom_group_name = group_name
+        if group_index not in (None, ""):
+            task.custom_group_index = int(group_index)
 
     task.insert()
     return {"success": True, "task": task.name}
