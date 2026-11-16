@@ -769,6 +769,15 @@ def process_task_with_assigned_date(task):
     return task
 
 
+def delete_task_allocations(task_name):
+    """Remove the guide allocations of a Task that is being deleted (a split group's activity),
+    so they don't stay on the guides' calendar. Submitted ones are cancelled first."""
+    for alloc in frappe.get_all("Activity Allocation", filters={"task": task_name}, fields=["name", "docstatus"]):
+        if alloc.docstatus == 1:
+            frappe.get_doc("Activity Allocation", alloc.name).cancel()
+        frappe.delete_doc("Activity Allocation", alloc.name, force=True)
+
+
 def get_split_parent_tasks(customer_name, week_start_date, task_names=None, fields=None):
     """Parent activity Tasks a split applies to: the planner row's Tasks when given
     (a JSON list), otherwise every activity of the customer that week."""
@@ -856,6 +865,7 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
                 # If subtasks already exist, delete them first to avoid duplicates
                 if existing_subtasks:
                     for existing in existing_subtasks:
+                        delete_task_allocations(existing.name)
                         frappe.delete_doc("Task", existing.name)
                     frappe.db.commit()
                 
@@ -949,6 +959,7 @@ def delete_customer_group_splitting(customer_name, week_start_date, task_names=N
 
             for sub in subtasks:
                 try:
+                    delete_task_allocations(sub.name)
                     frappe.db.sql("""
                         DELETE FROM `tabTask Depends On`
                         WHERE parent = %s OR task = %s
