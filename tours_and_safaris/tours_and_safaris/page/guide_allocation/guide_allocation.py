@@ -803,6 +803,13 @@ def get_split_parent_tasks(customer_name, week_start_date, task_names=None, fiel
 
 
 @frappe.whitelist()
+def get_planner_api_version():
+    """Lets the planner check this server has the features it relies on before using them.
+    2: split/delete split limited to the planner row (task_names)."""
+    return {"version": 2}
+
+
+@frappe.whitelist()
 def split_customer_groups(customer_name, total_people, number_of_groups, week_start_date, split_tasks=False,
                           task_names=None):
     """
@@ -914,7 +921,9 @@ def split_customer_groups(customer_name, total_people, number_of_groups, week_st
             "groups_created": groups_data,
             "parent_tasks_updated": len(parent_tasks),
             "subtasks_created": len(created_subtasks),
-            "subtasks": created_subtasks
+            "subtasks": created_subtasks,
+            # Lets the planner tell this split only touched the row it sent
+            "scope": "row" if task_names else "week"
         }
         
         frappe.logger().info(f"Customer {customer_name} split into {number_of_groups} groups. "
